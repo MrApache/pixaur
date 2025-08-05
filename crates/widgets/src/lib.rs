@@ -77,7 +77,7 @@ impl Widget for Text {
 mod tests {
     use std::any::Any;
 
-    use toolkit::{widget::{Container, Rect}, window::{Window, WindowRequest}, CommandBuffer, EventLoop, UserWindow, GUI};
+    use toolkit::{widget::{Container, Rect}, window::{Window, WindowRequest}, Anchor, CommandBuffer, EventLoop, UserWindow, GUI};
 
     use crate::*;
 
@@ -161,6 +161,7 @@ mod tests {
     impl UserWindow<App> for MainWindow {
         fn request(&self) -> WindowRequest {
             WindowRequest::desktop("desktop", 600, 400, false, false)
+            //WindowRequest::bottom("panel", 1920, 40, Anchor::Top, 40)
         }
 
         fn setup(&self, _gui: &mut App) -> Box<dyn Container> {

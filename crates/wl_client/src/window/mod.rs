@@ -24,8 +24,6 @@ use wayland_client::{
 };
 
 use wayland_protocols::xdg::shell::client::{
-    xdg_toplevel::XdgToplevel,
-    xdg_surface::XdgSurface,
     xdg_wm_base::XdgWmBase,
 };
 
@@ -36,7 +34,6 @@ use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
     },
     zwlr_layer_surface_v1::{
         Anchor,
-        ZwlrLayerSurfaceV1,
     }
 };
 
@@ -49,16 +46,6 @@ use wgpu::rwh::{
 
 
 pub type WindowId = Arc<String>;
-
-enum WindowLayer {
-    Desktop(Desktop),
-    LayerShell(ZwlrLayerSurfaceV1),
-}
-
-struct Desktop {
-    xdg_surface: XdgSurface,
-    xdg_toplevel: XdgToplevel,
-}
 
 #[derive(Clone, Copy)]
 pub struct DesktopOptions {
@@ -75,7 +62,6 @@ pub struct SpecialOptions {
 pub struct Window {
     surface: WlSurface,
     buffer: WlBuffer,
-    layer: WindowLayer,
     pool: ShmPool,
 
     pub id: Arc<String>,
@@ -127,8 +113,6 @@ impl Window {
         layer_surface.set_anchor(options.anchor);
         layer_surface.set_exclusive_zone(options.exclusive_zone as i32);
 
-        let layer = WindowLayer::LayerShell(layer_surface);
-
         surface.attach(Some(&buffer), 0, 0);
         surface.damage_buffer(0, 0, width, height);
         surface.commit();
@@ -139,7 +123,6 @@ impl Window {
             buffer,
             pool,
             id,
-            layer,
 
             width,
             height,
@@ -169,8 +152,7 @@ impl Window {
         let buffer = pool.create_buffer(0, width, height, qh, &id);
 
         let xdg_surface = xdg_wm_base.get_xdg_surface(&surface, qh, id.clone());
-        let xdg_toplevel = xdg_surface.get_toplevel(qh, id.clone());
-        let layer = WindowLayer::Desktop(Desktop { xdg_surface, xdg_toplevel });
+        let _xdg_toplevel = xdg_surface.get_toplevel(qh, id.clone());
 
         surface.attach(Some(&buffer), 0, 0);
         surface.damage_buffer(0, 0, width, height);
@@ -181,7 +163,6 @@ impl Window {
             buffer,
             pool,
             id,
-            layer,
 
             width,
             height,
