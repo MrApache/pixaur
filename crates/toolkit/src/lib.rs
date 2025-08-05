@@ -7,7 +7,7 @@ pub mod window;
 
 pub use color::*;
 pub use error::*;
-pub use wl_client::Anchor;
+pub use wl_client::{Anchor, window::{DesktopOptions, SpecialOptions}};
 
 use crate::{
     content::Content,
@@ -16,6 +16,7 @@ use crate::{
     window::{Window, WindowRequest}
 };
 
+use wl_client::WlClient;
 use ab_glyph::{point, Font};
 use std::{
     ffi::c_void,
@@ -24,7 +25,6 @@ use std::{
 };
 
 use wayland_client::{Connection, EventQueue, Proxy};
-use wl_client::{Layer, WlClient};
 
 pub const DEFAULT_FONT: &str = "Ubuntu Regular";
 
@@ -133,7 +133,7 @@ impl<T: GUI> EventLoop<T> {
                 window.graphics.update(&mut self.gui, &mut window.window);
 
                 let mut window_handle = window.window.handle.lock().unwrap();
-                window_handle.frame(&self.event_queue.handle());
+                window_handle.frame();
                 if !window_handle.can_draw() {
                     return;
                 }
@@ -142,7 +142,7 @@ impl<T: GUI> EventLoop<T> {
 
                 window.window.root.draw(&mut cm_buffer);
                 while let Some(command) = cm_buffer.pop() {
-                    //#[allow(unused)]
+                    #[allow(unused)]
                     match command {
                         DrawCommand::Rect { rect, color } => todo!(),
                         DrawCommand::Text { size, font, content, color } => {
@@ -152,7 +152,7 @@ impl<T: GUI> EventLoop<T> {
                             let scale = size / units_per_em;
                             
                             let ascent = font.ascent_unscaled();
-                            let base_y = ascent * scale; // <-- вот это основное изменение
+                            let base_y = ascent * scale;
                             
                             let mut pen_x = 0.0;
                             
@@ -193,55 +193,9 @@ impl<T: GUI> EventLoop<T> {
 
         user_windows.into_iter().for_each(|user_window| {
             let request = user_window.request();
-            let handle = match request.layer {
-                window::WindowLayer::Desktop(default_options) => self.client.desktop_window(
-                    self.display_ptr,
-                    &qh,
-                    &request.id,
-                    request.width,
-                    request.height,
-                    default_options,
-                ),
-                window::WindowLayer::Top(special_options) => self.client.special_window(
-                    self.display_ptr,
-                    &qh,
-                    &request.id,
-                    request.width,
-                    request.height,
-                    Layer::Top,
-                    special_options
-                ),
-                window::WindowLayer::Bottom(special_options) => self.client.special_window(
-                    self.display_ptr,
-                    &qh,
-                    &request.id,
-                    request.width,
-                    request.height,
-                    Layer::Bottom,
-                    special_options
-                ),
-                window::WindowLayer::Overlay(special_options) => self.client.special_window(
-                    self.display_ptr,
-                    &qh,
-                    &request.id,
-                    request.width,
-                    request.height,
-                    Layer::Overlay,
-                    special_options
-                ),
-                window::WindowLayer::Background(special_options) => self.client.special_window(
-                    self.display_ptr,
-                    &qh,
-                    &request.id,
-                    request.width,
-                    request.height,
-                    Layer::Overlay,
-                    special_options,
-                ),
-            };
-
+            let backend = self.client.create_window_backend(self.display_ptr, qh.clone(), request.id, request.width, request.height, request.layer);
             let root = user_window.setup(&mut self.gui);
-            let window = Window::new(root, handle);
+            let window = Window::new(root, backend);
             backends.push(WindowContext::new(user_window, window));
         });
 
@@ -305,32 +259,3 @@ impl FpsCounter {
         1.0 / avg_duration.as_secs_f64()
     }
 }
-
-//DrawCommand::Text { font, content, size } => {
-//    let font = self.content.get_font(font);
-//
-//    let units_per_em = font.units_per_em().unwrap();
-//    let scale = size / units_per_em;
-//
-//    let ascent = font.ascent_unscaled();
-//    let base_y = ascent * scale; // <-- вот это основное изменение
-//
-//    let mut pen_x = 0.0;
-//
-//    for ch in content.chars() {
-//        let glyph = font.glyph_id(ch).with_scale_and_position(size, point(pen_x, base_y));
-//        let pos_x = glyph.position.x;
-//        let pos_y = glyph.position.y;
-//        let h_advance = font.h_advance_unscaled(glyph.id);
-//        
-//        if let Some(outlined) = font.outline_glyph(glyph) {
-//            outlined.draw(|x, y, c| {
-//                let draw_x = pos_x + x as f32;
-//                let draw_y = pos_y + y as f32;
-//                //self.client.draw_text(&window.id, draw_x as u32, draw_y as u32, c);
-//            });
-//        }
-//
-//        pen_x += h_advance as f32 * scale;
-//    }
-//},

@@ -1,118 +1,54 @@
-use wl_client::{Anchor, WindowBackend};
-use wl_client::window::{DesktopOptions, SpecialOptions};
+use wl_client::WindowBackend;
+use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 
 use crate::widget::{Container, Widget};
 
-#[derive(Clone, Copy)]
-pub(crate) enum WindowLayer {
-    Desktop(DesktopOptions),
-    Top(SpecialOptions),
-    Bottom(SpecialOptions),
-    Overlay(SpecialOptions),
-    Background(SpecialOptions)
-}
-
 pub struct WindowRequest {
     pub(crate) id: String,
-    pub(crate) layer:  WindowLayer,
-
+    pub(crate) layer: WindowLayer,
     pub(crate) width: u32,
     pub(crate) height: u32,
 }
 
 impl WindowRequest {
-    pub fn desktop(
-        id: impl Into<String>,
-        width: u32,
-        height: u32,
-        resizable: bool,
-        decorations: bool,
-    ) ->Self {
+    pub fn new(id: impl Into<String>) -> Self {
         Self {
             id: id.into(),
-            layer: WindowLayer::Desktop(DesktopOptions {
-                resizable,
-                decorations,
-            }),
-            width,
-            height,
+            layer: WindowLayer::default(),
+            width: 600,
+            height: 400,
         }
     }
 
-    pub fn top(
-        id: impl Into<String>,
-        width: u32,
-        height: u32,
-        anchor: Anchor,
-        exclusive_zone: u32,
-    ) ->Self {
-        Self {
-            id: id.into(),
-            layer: WindowLayer::Top(
-                SpecialOptions {
-                    anchor,
-                    exclusive_zone,
-            }),
-            width,
-            height,
-        }
+    pub fn with_size(mut self, width: u32, height: u32) -> Self {
+        self.width = width;
+        self.height = height;
+        self
     }
 
-    pub fn bottom(
-        id: impl Into<String>,
-        width: u32,
-        height: u32,
-        anchor: Anchor,
-        exclusive_zone: u32,
-    ) ->Self {
-        Self {
-            id: id.into(),
-            layer: WindowLayer::Bottom(
-                SpecialOptions {
-                    anchor,
-                    exclusive_zone,
-            }),
-            width,
-            height,
-        }
+    pub fn desktop(mut self, options: DesktopOptions) -> Self {
+        self.layer = WindowLayer::Desktop(options);
+        self
     }
 
-    pub fn overlay(
-        id: impl Into<String>,
-        width: u32,
-        height: u32,
-        anchor: Anchor,
-        exclusive_zone: u32,
-    ) ->Self {
-        Self {
-            id: id.into(),
-            layer: WindowLayer::Overlay(
-                SpecialOptions {
-                    anchor,
-                    exclusive_zone,
-            }),
-            width,
-            height,
-        }
+    pub fn top(mut self, options: SpecialOptions) -> Self {
+        self.layer = WindowLayer::Top(options);
+        self
     }
 
-    pub fn background(
-        id: impl Into<String>,
-        width: u32,
-        height: u32,
-        anchor: Anchor,
-        exclusive_zone: u32,
-    ) ->Self {
-        Self {
-            id: id.into(),
-            layer: WindowLayer::Background(
-                SpecialOptions {
-                    anchor,
-                    exclusive_zone,
-            }),
-            width,
-            height,
-        }
+    pub fn bottom(mut self, options: SpecialOptions) -> Self {
+        self.layer = WindowLayer::Bottom(options);
+        self
+    }
+
+    pub fn overlay(mut self, options: SpecialOptions) -> Self {
+        self.layer = WindowLayer::Overlay(options);
+        self
+    }
+
+    pub fn background(mut self, options: SpecialOptions) -> Self {
+        self.layer = WindowLayer::Background(options);
+        self
     }
 }
 

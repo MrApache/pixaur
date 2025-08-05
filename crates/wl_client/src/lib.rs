@@ -69,8 +69,7 @@ use wayland_protocols::xdg::shell::client::{
     }
 };
 
-use crate::window::{DesktopOptions, SpecialOptions, Window, WindowId};
-use crate::window::ShmPool;
+use crate::window::{ShmPool, Window, WindowId, WindowLayer};
 
 
 const DESKTOP_DEFAULT_WIDTH: i32 = 600;
@@ -84,7 +83,7 @@ pub struct WlClient {
     shm: Option<WlShm>,
 
     outputs: HashMap<String, WlOutput>,
-    windows: HashMap<String, Arc<Mutex<Window>>>,
+    windows: HashMap<String, WindowBackend>,
 }
 
 
@@ -106,75 +105,41 @@ impl WlClient {
         (surface, pool, buffer)
     }
 
-    pub fn special_window(
+    pub fn create_window_backend(
         &mut self,
         display_ptr: NonNull<c_void>,
-        qh: &QueueHandle<WlClient>,
+        qh: QueueHandle<WlClient>,
         id: impl Into<String>,
         width: u32,
         height: u32,
-        layer: Layer,
-        options: SpecialOptions,
+        layer: WindowLayer,
     ) -> Arc<Mutex<Window>> {
         let width = width as i32;
         let height = height as i32;
 
         let id = id.into();
         let arc_id = Arc::new(id.clone());
-        let (surface, pool, buffer) = self.create_surface(qh, &arc_id, width, height);
-        let output = Some(self.outputs.get("HDMI-A-4").unwrap());
+        let (surface, pool, buffer) = self.create_surface(&qh, &arc_id, width, height);
+
         let window = 
             Arc::new(
                 Mutex::new(
-                    Window::layer_shell(
-                        self.layer_shell.as_ref().expect("unreachable"),
+                    Window::new(
+                        Some(self.layer_shell.as_ref().expect("unreachable")),
+                        Some(self.xdg_wm_base.as_ref().expect("unreachable")),
                         qh,
                         arc_id,
                         surface,
                         pool,
                         buffer,
-                        output,
+                        display_ptr,
                         width,
                         height,
-                        layer,
-                        options,
-                        display_ptr,
+                        layer
                     )
                 )
             );
 
-        self.windows.insert(id, window.clone());
-        window
-    }
-
-    pub fn desktop_window(
-        &mut self,
-        display_ptr: NonNull<c_void>,
-        qh: &QueueHandle<WlClient>,
-        id: impl Into<String>,
-        width: u32,
-        height: u32,
-        options: DesktopOptions,
-    ) -> Arc<Mutex<Window>> {
-        let width = width as i32;
-        let height = height as i32;
-        let id = id.into();
-        let window = 
-            Arc::new(
-                Mutex::new(
-                    Window::desktop_window(
-                        self.compositor.as_ref().expect("unreachable"),
-                        self.shm.as_ref().expect("unreachable"),
-                        self.xdg_wm_base.as_ref().expect("unreachable"),
-                        qh,
-                        Arc::new(id.clone()),
-                        width,
-                        height,
-                        options,
-                        display_ptr,
-                    )
-                )
-            );
 
         self.windows.insert(id, window.clone());
         window
@@ -336,13 +301,13 @@ impl Dispatch<XdgSurface, WindowId> for WlClient {
         event: XdgSurfaceEvent,
         id: &WindowId,
         _: &Connection,
-        qh: &QueueHandle<Self>,
+        _: &QueueHandle<Self>,
     ) {
         if let XdgSurfaceEvent::Configure { serial } = event {
             surface.ack_configure(serial);
             let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
             window.resize_pool_if_needed();
-            window.resize_buffer(id, qh);
+            window.resize_buffer();
             window.draw();
         }
     }
@@ -400,7 +365,7 @@ impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
             ZwlrLayerSurfaceV1Event::Configure { serial, width, height } => {
                 surface.ack_configure(serial);
                 let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
-                window.resize_buffer(id, qh);
+                window.resize_buffer();
                 window.draw();
             },
             ZwlrLayerSurfaceV1Event::Closed => {
@@ -422,8 +387,6 @@ impl Dispatch<WlCallback, WindowId> for WlClient {
     ) {
         let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
         window.can_draw = true;
-        //window.frame(qh, id.clone());
-        //window.draw();
     }
 }
 

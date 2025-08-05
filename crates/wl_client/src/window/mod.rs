@@ -14,9 +14,6 @@ use std::{
 use wayland_client::{
     protocol::{
         wl_buffer::WlBuffer,
-        wl_compositor::WlCompositor,
-        wl_output::WlOutput,
-        wl_shm::WlShm,
         wl_surface::WlSurface
     },
     Proxy,
@@ -47,139 +44,155 @@ use wgpu::rwh::{
 
 pub type WindowId = Arc<String>;
 
-#[derive(Clone, Copy)]
+#[derive(Default, Clone)]
 pub struct DesktopOptions {
+    pub title: String,
     pub resizable: bool,
     pub decorations: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct SpecialOptions {
     pub anchor: Anchor,
     pub exclusive_zone: u32,
+    pub target: TargetMonitor
+}
+
+#[derive(Clone)]
+pub enum WindowLayer {
+    Desktop(DesktopOptions),
+    Top(SpecialOptions),
+    Bottom(SpecialOptions),
+    Overlay(SpecialOptions),
+    Background(SpecialOptions)
+}
+
+impl Default for WindowLayer {
+    fn default() -> Self {
+        Self::Desktop(DesktopOptions::default())
+    }
+}
+
+#[derive(Default, Clone)]
+pub enum TargetMonitor {
+    #[default]
+    Primary,
+    Name(String),
+    Index(usize),
+    All,
 }
 
 pub struct Window {
     surface: WlSurface,
     buffer: WlBuffer,
     pool: ShmPool,
-
+    qh: QueueHandle<WlClient>,
     pub id: Arc<String>,
 
+    pub layer: WindowLayer,
+
+    //Window size
     pub width: i32,
     pub height: i32,
+
+    //Window transformation
     pub scale: i32,
     pub transform: Transform,
 
     pub(crate) can_draw: bool,
-
     pub(crate) display_ptr: NonNull<c_void>,
 }
 
 impl Window {
-    pub fn resize_buffer(&mut self, id: &WindowId, qh: &QueueHandle<WlClient>) {
-        self.buffer = self.pool.create_buffer(0, self.width, self.height, qh, id);
+    pub fn resize_buffer(&mut self) {
+        self.buffer = self.pool.create_buffer(0, self.width, self.height, &self.qh, &self.id);
     }
 
-    pub fn layer_shell(
-        ls: &ZwlrLayerShellV1,
-        qh: &QueueHandle<WlClient>,
+    pub fn new(
+        ls: Option<&ZwlrLayerShellV1>, // 'Some' when WindowLayer is not a WindowLayer::Desktop
+        xdg_wm_base: Option<&XdgWmBase>, // 'Some' when WindowLayer is a WindowLayer::Desktop
+
+        qh: QueueHandle<WlClient>,
         id: WindowId,
 
         surface: WlSurface,
         pool: ShmPool,
         buffer: WlBuffer,
 
-        output: Option<&WlOutput>,
-        width: i32,
-        height: i32,
-        layer: Layer,
-
-        options: SpecialOptions,
-
         display_ptr: NonNull<c_void>,
 
+        width: i32,
+        height: i32,
+        layer: WindowLayer,
     ) -> Self {
-        let layer_surface = ls.get_layer_surface(
-            &surface,
-            output,
-            layer,
-            "".into(),
-            qh,
-            id.clone()
-        );
-
-        layer_surface.set_size(width as u32, height as u32);
-        layer_surface.set_anchor(options.anchor);
-        layer_surface.set_exclusive_zone(options.exclusive_zone as i32);
-
-        surface.attach(Some(&buffer), 0, 0);
-        surface.damage_buffer(0, 0, width, height);
-        surface.commit();
-        surface.frame(qh, id.clone());
-
-        Self {
+        let mut instance = Self {
             surface,
             buffer,
             pool,
+            qh,
             id,
-
+            layer,
             width,
             height,
             scale: 1,
             transform: Transform::Normal0,
-
             can_draw: false,
             display_ptr,
-        }
+        };
+
+        instance.init(ls, xdg_wm_base);
+        instance.draw();
+        instance.frame();
+        instance
     }
 
-    pub fn desktop_window(
-        compositor: &WlCompositor,
-        shm: &WlShm,
+    fn init(&self,
+        ls: Option<&ZwlrLayerShellV1>,
+        xdg_wm_base: Option<&XdgWmBase>,
+        ) {
+        match &self.layer {
+            WindowLayer::Desktop(_) => self.init_desktop(xdg_wm_base.unwrap()),
+            WindowLayer::Top(options) => self.init_layer_shell(ls.unwrap(), Layer::Top, options),
+            WindowLayer::Bottom(options) => self.init_layer_shell(ls.unwrap(), Layer::Bottom, options),
+            WindowLayer::Overlay(options) => self.init_layer_shell(ls.unwrap(), Layer::Overlay, options),
+            WindowLayer::Background(options) => self.init_layer_shell(ls.unwrap(), Layer::Background, options),
+        };
+    }
+
+    fn init_layer_shell(
+        &self,
+        ls: &ZwlrLayerShellV1,
+        layer: Layer,
+        options: &SpecialOptions,
+    ) {
+        let layer_surface = ls.get_layer_surface(
+            &self.surface,
+            None, //TODO fix
+            layer,
+            self.id.as_ref().into(),
+            &self.qh,
+            self.id.clone()
+        );
+
+        layer_surface.set_size(self.width as u32, self.height as u32);
+        layer_surface.set_anchor(options.anchor);
+        layer_surface.set_exclusive_zone(options.exclusive_zone as i32);
+    }
+
+    fn init_desktop(
+        &self,
         xdg_wm_base: &XdgWmBase,
-        qh: &QueueHandle<WlClient>,
-
-        id: WindowId,
-        width: i32,
-        height: i32,
-        options: DesktopOptions,
-
-        display_ptr: NonNull<c_void>,
-    ) -> Self {
-        let surface = compositor.create_surface(qh, id.clone());
-        let pool = ShmPool::new((width as u64 * 4) * height as u64, &id, shm, qh);
-        let buffer = pool.create_buffer(0, width, height, qh, &id);
-
-        let xdg_surface = xdg_wm_base.get_xdg_surface(&surface, qh, id.clone());
-        let _xdg_toplevel = xdg_surface.get_toplevel(qh, id.clone());
-
-        surface.attach(Some(&buffer), 0, 0);
-        surface.damage_buffer(0, 0, width, height);
-        surface.commit();
-        surface.frame(qh, id.clone());
-        Self {
-            surface,
-            buffer,
-            pool,
-            id,
-
-            width,
-            height,
-            scale: 1,
-            transform: Transform::Normal0,
-
-            can_draw: false,
-            display_ptr,
-        }
+    ) {
+        let xdg_surface = xdg_wm_base.get_xdg_surface(&self.surface, &self.qh, self.id.clone());
+        let _xdg_toplevel = xdg_surface.get_toplevel(&self.qh, self.id.clone());
     }
 
     pub fn can_draw(&self) -> bool {
         self.can_draw
     }
 
-    pub fn frame(&self, qh: &QueueHandle<WlClient>) {
-        self.surface.frame(qh, self.id.clone());
+    pub fn frame(&self) {
+        self.surface.frame(&self.qh, self.id.clone());
     }
 
     pub fn commit(&mut self) {
