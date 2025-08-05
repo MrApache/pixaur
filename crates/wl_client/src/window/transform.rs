@@ -1,9 +1,7 @@
-
 use wayland_client::{
     protocol::wl_output::Transform as WTransform,
     WEnum
 };
-
 
 pub enum Transform {
     Normal0,

@@ -1,11 +1,26 @@
 mod transform;
 mod pool;
 
-use std::{ffi::c_void, ptr::NonNull, sync::Arc};
+use crate::WlClient;
+use transform::Transform;
+pub(crate) use pool::ShmPool;
+
+use std::{
+    ffi::c_void,
+    ptr::NonNull,
+    sync::Arc
+};
+
 use wayland_client::{
     protocol::{
-        wl_buffer::WlBuffer, wl_compositor::WlCompositor, wl_output::WlOutput, wl_shm::WlShm, wl_surface::WlSurface
-    }, Proxy, QueueHandle
+        wl_buffer::WlBuffer,
+        wl_compositor::WlCompositor,
+        wl_output::WlOutput,
+        wl_shm::WlShm,
+        wl_surface::WlSurface
+    },
+    Proxy,
+    QueueHandle
 };
 
 use wayland_protocols::xdg::shell::client::{
@@ -25,11 +40,13 @@ use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
     }
 };
 
+use wgpu::rwh::{
+    DisplayHandle,
+    WaylandDisplayHandle,
+    WaylandWindowHandle,
+    WindowHandle
+};
 
-pub(crate) use pool::ShmPool;
-use transform::Transform;
-use wgpu::{rwh::{DisplayHandle, WaylandDisplayHandle, WaylandWindowHandle, WindowHandle}, Surface};
-use crate::WlClient;
 
 pub type WindowId = Arc<String>;
 
@@ -41,6 +58,18 @@ enum WindowLayer {
 struct Desktop {
     xdg_surface: XdgSurface,
     xdg_toplevel: XdgToplevel,
+}
+
+#[derive(Clone, Copy)]
+pub struct DesktopOptions {
+    pub resizable: bool,
+    pub decorations: bool,
+}
+
+#[derive(Clone, Copy)]
+pub struct SpecialOptions {
+    pub anchor: Anchor,
+    pub exclusive_zone: u32,
 }
 
 pub struct Window {
@@ -59,8 +88,6 @@ pub struct Window {
     pub(crate) can_draw: bool,
 
     pub(crate) display_ptr: NonNull<c_void>,
-
-    pub(crate) gpu_surface: Surface<'static>
 }
 
 impl Window {
@@ -81,11 +108,10 @@ impl Window {
         width: i32,
         height: i32,
         layer: Layer,
-        anchor: Anchor,
-        exclusive_zone: i32,
+
+        options: SpecialOptions,
 
         display_ptr: NonNull<c_void>,
-        gpu_surface: Surface<'static>
 
     ) -> Self {
         let layer_surface = ls.get_layer_surface(
@@ -98,8 +124,8 @@ impl Window {
         );
 
         layer_surface.set_size(width as u32, height as u32);
-        layer_surface.set_anchor(anchor);
-        layer_surface.set_exclusive_zone(exclusive_zone);
+        layer_surface.set_anchor(options.anchor);
+        layer_surface.set_exclusive_zone(options.exclusive_zone as i32);
 
         let layer = WindowLayer::LayerShell(layer_surface);
 
@@ -122,7 +148,6 @@ impl Window {
 
             can_draw: false,
             display_ptr,
-            gpu_surface
         }
     }
 
@@ -135,9 +160,9 @@ impl Window {
         id: WindowId,
         width: i32,
         height: i32,
+        options: DesktopOptions,
 
         display_ptr: NonNull<c_void>,
-        gpu_surface: Surface<'static>
     ) -> Self {
         let surface = compositor.create_surface(qh, id.clone());
         let pool = ShmPool::new((width as u64 * 4) * height as u64, &id, shm, qh);
@@ -165,7 +190,6 @@ impl Window {
 
             can_draw: false,
             display_ptr,
-            gpu_surface
         }
     }
 
@@ -238,11 +262,5 @@ impl wgpu::rwh::HasWindowHandle for Window {
     }
 }
 
-
 unsafe impl Send for Window {}
 unsafe impl Sync for Window {}
-//impl<'window> Into<SurfaceTarget<'window>> for Window {
-//    fn into(self) -> SurfaceTarget<'window> {
-//        SurfaceTarget::Window(Box::new(self))
-//    }
-//}

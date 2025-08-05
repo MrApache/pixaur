@@ -66,7 +66,7 @@ use wayland_protocols::xdg::shell::client::{
     }
 };
 
-use crate::window::{Window, WindowId};
+use crate::window::{DesktopOptions, SpecialOptions, Window, WindowId};
 use crate::window::ShmPool;
 
 
@@ -111,13 +111,10 @@ impl WlClient {
         width: u32,
         height: u32,
         layer: Layer,
-        anchor: Anchor,
-        exclusive_zone: u32,
-        gpu_surface: Surface<'static>
+        options: SpecialOptions,
     ) -> Arc<Mutex<Window>> {
         let width = width as i32;
         let height = height as i32;
-        let exclusive_zone = exclusive_zone as i32;
 
         let id = id.into();
         let arc_id = Arc::new(id.clone());
@@ -137,10 +134,8 @@ impl WlClient {
                         width,
                         height,
                         layer,
-                        anchor,
-                        exclusive_zone,
+                        options,
                         display_ptr,
-                        gpu_surface
                     )
                 )
             );
@@ -156,9 +151,7 @@ impl WlClient {
         id: impl Into<String>,
         width: u32,
         height: u32,
-        resizable: bool,
-        decorations: bool,
-        gpu_surface: Surface<'static>
+        options: DesktopOptions,
     ) -> Arc<Mutex<Window>> {
         let width = width as i32;
         let height = height as i32;
@@ -174,8 +167,8 @@ impl WlClient {
                         Arc::new(id.clone()),
                         width,
                         height,
+                        options,
                         display_ptr,
-                        gpu_surface
                     )
                 )
             );

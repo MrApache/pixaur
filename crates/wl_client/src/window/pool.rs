@@ -2,9 +2,17 @@ use std::fs::File;
 use std::os::fd::AsFd;
 use memmap2::MmapMut;
 
-use rayon::{iter::ParallelIterator, slice::ParallelSliceMut};
+use rayon::{
+    iter::ParallelIterator,
+    slice::ParallelSliceMut
+};
+
 use wayland_client::{
-    protocol::{wl_buffer::WlBuffer, wl_shm::{Format, WlShm}, wl_shm_pool::WlShmPool},
+    protocol::{
+        wl_buffer::WlBuffer,
+        wl_shm_pool::WlShmPool,
+        wl_shm::{Format, WlShm},
+    },
     QueueHandle,
 };
 

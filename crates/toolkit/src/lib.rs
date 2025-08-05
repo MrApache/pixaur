@@ -5,18 +5,26 @@ mod color;
 pub mod widget;
 pub mod window;
 
-use ab_glyph::{point, Font};
 pub use color::*;
 pub use error::*;
 pub use wl_client::Anchor;
 
-use std::{ffi::c_void, ptr::NonNull, sync::Arc};
+use crate::{
+    content::Content,
+    renderer::GPU,
+    widget::{Container, Rect},
+    window::{Window, WindowRequest}
+};
+
+use ab_glyph::{point, Font};
+use std::{
+    ffi::c_void,
+    ptr::NonNull,
+    sync::Arc
+};
+
 use wayland_client::{Connection, EventQueue, Proxy};
 use wl_client::{Layer, WlClient};
-
-use crate::{
-    content::Content, renderer::GPU, widget::{Container, Rect}, window::{Window, WindowRequest}
-};
 
 pub const DEFAULT_FONT: &str = "Ubuntu Regular";
 
@@ -192,8 +200,7 @@ impl<T: GUI> EventLoop<T> {
                     &request.id,
                     request.width,
                     request.height,
-                    default_options.resizable,
-                    default_options.decorations
+                    default_options,
                 ),
                 window::WindowLayer::Top(special_options) => self.client.special_window(
                     self.display_ptr,
@@ -202,8 +209,7 @@ impl<T: GUI> EventLoop<T> {
                     request.width,
                     request.height,
                     Layer::Top,
-                    special_options.anchor,
-                    special_options.exclusive_zone
+                    special_options
                 ),
                 window::WindowLayer::Bottom(special_options) => self.client.special_window(
                     self.display_ptr,
@@ -212,8 +218,7 @@ impl<T: GUI> EventLoop<T> {
                     request.width,
                     request.height,
                     Layer::Bottom,
-                    special_options.anchor,
-                    special_options.exclusive_zone
+                    special_options
                 ),
                 window::WindowLayer::Overlay(special_options) => self.client.special_window(
                     self.display_ptr,
@@ -222,8 +227,7 @@ impl<T: GUI> EventLoop<T> {
                     request.width,
                     request.height,
                     Layer::Overlay,
-                    special_options.anchor,
-                    special_options.exclusive_zone
+                    special_options
                 ),
                 window::WindowLayer::Background(special_options) => self.client.special_window(
                     self.display_ptr,
@@ -232,8 +236,7 @@ impl<T: GUI> EventLoop<T> {
                     request.width,
                     request.height,
                     Layer::Overlay,
-                    special_options.anchor,
-                    special_options.exclusive_zone
+                    special_options,
                 ),
             };
 
@@ -279,7 +282,6 @@ pub struct FpsCounter {
 }
 
 impl FpsCounter {
-    /// Создаёт новый счётчик FPS с фиксированным количеством сэмплов для усреднения.
     pub fn new(max_samples: usize) -> Self {
         Self {
             last_frame_time: Instant::now(),
@@ -288,21 +290,17 @@ impl FpsCounter {
         }
     }
 
-    /// Обновляет счётчик и возвращает текущий FPS.
     pub fn tick(&mut self) -> f64 {
         let now = Instant::now();
         let delta = now - self.last_frame_time;
         self.last_frame_time = now;
 
-        // Добавляем время кадра в буфер
         self.frame_times.push(delta);
 
-        // Удаляем старые сэмплы, если превышен лимит
         if self.frame_times.len() > self.max_samples {
             self.frame_times.remove(0);
         }
 
-        // Считаем среднее время кадра и преобразуем в FPS
         let avg_duration: Duration = self.frame_times.iter().sum::<Duration>() / self.frame_times.len() as u32;
         1.0 / avg_duration.as_secs_f64()
     }

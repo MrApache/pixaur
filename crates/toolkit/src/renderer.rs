@@ -48,34 +48,3 @@ impl GPU {
         Ok(surface)
     }
 }
-
-fn start(window: &Window) -> Result<(), Error> {
-    // 3. Создание цветного рендера
-    let frame = surface.get_current_texture()?;
-    let view = frame.texture.create_view(&TextureViewDescriptor::default());
-
-    let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-        label: Some("Render Encoder"),
-    });
-
-    {
-        let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("Clear Pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &view,
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Clear(Argb8888::BLACK.into()),
-                    store: wgpu::StoreOp::Store,
-                },
-                depth_slice: None,
-            })],
-            ..Default::default()
-        });
-    }
-
-    queue.submit(Some(encoder.finish()));
-    frame.present();
-
-    Ok(())
-}

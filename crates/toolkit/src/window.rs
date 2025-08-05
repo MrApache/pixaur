@@ -1,22 +1,11 @@
 use wl_client::{Anchor, WindowHandle};
+use wl_client::window::{DesktopOptions, SpecialOptions};
 
 use crate::widget::{Container, Widget};
 
 #[derive(Clone, Copy)]
-pub(crate) struct DefaultOptions {
-    pub resizable: bool,
-    pub decorations: bool,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) struct SpecialOptions {
-    pub anchor: Anchor,
-    pub exclusive_zone: u32,
-}
-
-#[derive(Clone, Copy)]
 pub(crate) enum WindowLayer {
-    Desktop(DefaultOptions),
+    Desktop(DesktopOptions),
     Top(SpecialOptions),
     Bottom(SpecialOptions),
     Overlay(SpecialOptions),
@@ -41,7 +30,7 @@ impl WindowRequest {
     ) ->Self {
         Self {
             id: id.into(),
-            layer: WindowLayer::Desktop(DefaultOptions {
+            layer: WindowLayer::Desktop(DesktopOptions {
                 resizable,
                 decorations,
             }),

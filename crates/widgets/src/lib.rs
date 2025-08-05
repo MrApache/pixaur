@@ -1,4 +1,14 @@
-use toolkit::{widget::{Size, Spacing, Widget}, Argb8888, Color, DrawCommand, DEFAULT_FONT};
+use toolkit::{
+    widget::{
+        Size,
+        Spacing,
+        Widget
+    },
+    DrawCommand,
+    Argb8888,
+    Color,
+    DEFAULT_FONT
+};
 
 
 pub struct Text {
@@ -73,7 +83,8 @@ mod tests {
 
     #[test]
     fn example() {
-        EventLoop::new(App).run();
+        let mut event_loop = EventLoop::new(App).unwrap();
+        event_loop.run().unwrap();
     }
 
     #[derive(Default)]
