@@ -399,15 +399,8 @@ impl Dispatch<WlCallback, WindowId> for WlClient {
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
-        let mut window = state.windows.get_mut(id.as_str());
-        if window.is_none() {
-            println!("Window '{id}' does not exists");
-        }
-        else {
-            //let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
-            let mut window = window.unwrap().lock().unwrap();
-            window.can_draw = true;
-        }
+        let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+        window.can_draw = true;
     }
 }
 
