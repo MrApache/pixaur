@@ -192,7 +192,6 @@ impl Dispatch<WlOutput, WindowId> for WlClient {
             WlOutputEvent::Name { name } => {
                 let id = output.id().to_string();
                 let output = state.outputs.remove(&id).unwrap();
-                println!("Output name: {name}");
                 state.outputs.insert(name, output);
             },
             WlOutputEvent::Description { description } => {},
@@ -210,7 +209,6 @@ impl Dispatch<WlCompositor, WindowId> for WlClient {
         _: &Connection,
         _: &QueueHandle<WlClient>,
     ) {
-        println!("Dispatch compositor");
     }
 }
 
@@ -324,11 +322,20 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
     ) {
         match event {
             XdgTopLevelEvent::Configure { mut width, mut height, states } => {
+                let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+                if let WindowLayer::Desktop(opts) = &window.layer {
+                    if !opts.resizable {
+                        return;
+                    }
+                }
+                else {
+                    unreachable!();
+                }
+
                 if width == 0 || height == 0 {
                     width = DESKTOP_DEFAULT_WIDTH;
                     height = DESKTOP_DEFAULT_HEIGHT;
                 }
-                let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
                 window.width = width;
                 window.height = height;
             },
