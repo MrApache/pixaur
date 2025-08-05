@@ -3,6 +3,7 @@ use wayland_client::{
     WEnum
 };
 
+#[derive(Debug)]
 pub enum Transform {
     Normal0,
     Normal90,

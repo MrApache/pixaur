@@ -4,9 +4,7 @@ pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::clien
 
 use std::{
     collections::HashMap,
-    ffi::c_void,
     process::exit,
-    ptr::NonNull,
     sync::{Arc, Mutex}
 };
 
@@ -107,7 +105,6 @@ impl WlClient {
 
     pub fn create_window_backend(
         &mut self,
-        display_ptr: NonNull<c_void>,
         qh: QueueHandle<WlClient>,
         id: impl Into<String>,
         width: u32,
@@ -132,7 +129,6 @@ impl WlClient {
                         surface,
                         pool,
                         buffer,
-                        display_ptr,
                         width,
                         height,
                         layer
@@ -143,6 +139,16 @@ impl WlClient {
 
         self.windows.insert(id, window.clone());
         window
+    }
+
+    pub fn destroy_window_backend(&mut self, window_id: &str) {
+        let window = self.windows.remove(window_id).unwrap();
+        let window = Arc::try_unwrap(window)
+            .expect("Arc has other references")
+            .into_inner()
+            .expect("Mutex poisoned");
+
+        window.destroy();
     }
 }
 
@@ -336,6 +342,7 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
                     width = DESKTOP_DEFAULT_WIDTH;
                     height = DESKTOP_DEFAULT_HEIGHT;
                 }
+
                 window.width = width;
                 window.height = height;
             },
@@ -366,7 +373,7 @@ impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
         event: ZwlrLayerSurfaceV1Event,
         id: &WindowId,
         _: &Connection,
-        qh: &QueueHandle<WlClient>,
+        _: &QueueHandle<WlClient>,
     ) {
         match event {
             ZwlrLayerSurfaceV1Event::Configure { serial, width, height } => {
@@ -392,8 +399,15 @@ impl Dispatch<WlCallback, WindowId> for WlClient {
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
-        let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
-        window.can_draw = true;
+        let mut window = state.windows.get_mut(id.as_str());
+        if window.is_none() {
+            println!("Window '{id}' does not exists");
+        }
+        else {
+            //let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+            let mut window = window.unwrap().lock().unwrap();
+            window.can_draw = true;
+        }
     }
 }
 

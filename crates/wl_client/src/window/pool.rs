@@ -23,6 +23,7 @@ use crate::{
 
 pub const DEFAULT_FILE_SIZE: u64 = (1920 * 4) * 1080;
 
+#[derive(Debug)]
 struct Mmap {
     file_size: u64,
     file: File,
@@ -48,6 +49,7 @@ impl Default for Mmap {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct ShmPool {
     mmap: Mmap,
     inner: WlShmPool,
@@ -70,6 +72,10 @@ impl ShmPool {
             pool_size: size as i32,
             inner: pool,
         }
+    }
+
+    pub fn destroy(self) {
+        self.inner.destroy();
     }
 
     pub fn need_resize(&self, new_size: u64) -> bool {

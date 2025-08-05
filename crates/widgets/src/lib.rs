@@ -77,7 +77,7 @@ impl Widget for Text {
 mod tests {
     use std::any::Any;
 
-    use toolkit::{widget::{Container, Rect}, window::{Window, WindowRequest}, Anchor, CommandBuffer, DesktopOptions, EventLoop, UserWindow, GUI};
+    use toolkit::{widget::{Container, Rect}, window::{Window, WindowRequest}, Anchor, CommandBuffer, Context, DesktopOptions, EventLoop, UserWindow, GUI};
 
     use crate::*;
 
@@ -163,7 +163,7 @@ mod tests {
             WindowRequest::new("desktop")
                 .desktop(DesktopOptions {
                     title: "Test application".into(),
-                    resizable: false,
+                    resizable: true,
                     decorations: false,
                 })
         }
@@ -177,12 +177,9 @@ mod tests {
             Box::new(panel)
         }
 
-        fn signals(&self, _gui: &mut App, _window: &Window) {
-        }
-
-        fn update(&mut self, _gui: &mut App, window: &mut Window) {
+    fn update<'ctx>(&mut self, _gui: &mut App, context: &'ctx mut Context<'ctx>) {
             self.value += 1;
-            let text = window.get_mut_by_id::<Text>("label").unwrap();
+            let text = context.get_mut_by_id::<Text>("label").unwrap();
             text.value = format!("Count: {}", self.value);
 
         }

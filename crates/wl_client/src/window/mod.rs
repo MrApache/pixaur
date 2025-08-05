@@ -5,23 +5,16 @@ use crate::WlClient;
 use transform::Transform;
 pub(crate) use pool::ShmPool;
 
-use std::{
-    ffi::c_void,
-    ptr::NonNull,
-    sync::Arc
-};
-
+use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{
     protocol::{
         wl_buffer::WlBuffer,
         wl_surface::WlSurface
-    },
-    Proxy,
-    QueueHandle
+    }, Proxy, QueueHandle
 };
 
 use wayland_protocols::xdg::shell::client::{
-    xdg_wm_base::XdgWmBase,
+    xdg_surface::XdgSurface, xdg_toplevel::XdgToplevel, xdg_wm_base::XdgWmBase
 };
 
 use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
@@ -30,35 +23,27 @@ use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
         ZwlrLayerShellV1,
     },
     zwlr_layer_surface_v1::{
-        Anchor,
+        Anchor, ZwlrLayerSurfaceV1,
     }
 };
 
-use wgpu::rwh::{
-    DisplayHandle,
-    WaylandDisplayHandle,
-    WaylandWindowHandle,
-    WindowHandle
-};
-
-
 pub type WindowId = Arc<String>;
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct DesktopOptions {
     pub title: String,
     pub resizable: bool,
     pub decorations: bool,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SpecialOptions {
     pub anchor: Anchor,
     pub exclusive_zone: u32,
     pub target: TargetMonitor
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum WindowLayer {
     Desktop(DesktopOptions),
     Top(SpecialOptions),
@@ -73,7 +58,7 @@ impl Default for WindowLayer {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub enum TargetMonitor {
     #[default]
     Primary,
@@ -82,6 +67,14 @@ pub enum TargetMonitor {
     All,
 }
 
+#[derive(Debug, Default)]
+struct Unused {
+    layer_surface: Option<ZwlrLayerSurfaceV1>,
+    xdg_surface: Option<XdgSurface>,
+    xdg_toplevel: Option<XdgToplevel>
+}
+
+#[derive(Debug)]
 pub struct Window {
     surface: WlSurface,
     buffer: WlBuffer,
@@ -100,12 +93,30 @@ pub struct Window {
     pub transform: Transform,
 
     pub(crate) can_draw: bool,
-    pub(crate) display_ptr: NonNull<c_void>,
+
+    _unused: Unused,
 }
 
 impl Window {
     pub fn resize_buffer(&mut self) {
         self.buffer = self.pool.create_buffer(0, self.width, self.height, &self.qh, &self.id);
+    }
+
+    pub fn destroy(self) {
+        self.buffer.destroy();
+        self.pool.destroy();
+        self.surface.destroy();
+        if let Some(surface) = self._unused.layer_surface {
+            surface.destroy();
+        }
+
+        if let Some(surface) = self._unused.xdg_surface {
+            surface.destroy();
+        }
+
+        if let Some(xdg_toplevel) = self._unused.xdg_toplevel {
+            xdg_toplevel.destroy();
+        }
     }
 
     pub fn new(
@@ -118,8 +129,6 @@ impl Window {
         surface: WlSurface,
         pool: ShmPool,
         buffer: WlBuffer,
-
-        display_ptr: NonNull<c_void>,
 
         width: i32,
         height: i32,
@@ -137,7 +146,7 @@ impl Window {
             scale: 1,
             transform: Transform::Normal0,
             can_draw: false,
-            display_ptr,
+            _unused: Unused::default(),
         };
 
         instance.init(ls, xdg_wm_base);
@@ -146,11 +155,11 @@ impl Window {
         instance
     }
 
-    fn init(&self,
+    fn init(&mut self,
         ls: Option<&ZwlrLayerShellV1>,
         xdg_wm_base: Option<&XdgWmBase>,
-        ) {
-        match &self.layer {
+    ) {
+        match self.layer.clone() {
             WindowLayer::Desktop(_) => self.init_desktop(xdg_wm_base.unwrap()),
             WindowLayer::Top(options) => self.init_layer_shell(ls.unwrap(), Layer::Top, options),
             WindowLayer::Bottom(options) => self.init_layer_shell(ls.unwrap(), Layer::Bottom, options),
@@ -160,10 +169,10 @@ impl Window {
     }
 
     fn init_layer_shell(
-        &self,
+        &mut self,
         ls: &ZwlrLayerShellV1,
         layer: Layer,
-        options: &SpecialOptions,
+        options: SpecialOptions,
     ) {
         let layer_surface = ls.get_layer_surface(
             &self.surface,
@@ -177,14 +186,15 @@ impl Window {
         layer_surface.set_size(self.width as u32, self.height as u32);
         layer_surface.set_anchor(options.anchor);
         layer_surface.set_exclusive_zone(options.exclusive_zone as i32);
+
+        self._unused.layer_surface = Some(layer_surface);
     }
 
-    fn init_desktop(
-        &self,
-        xdg_wm_base: &XdgWmBase,
-    ) {
+    fn init_desktop(&mut self, xdg_wm_base: &XdgWmBase) {
         let xdg_surface = xdg_wm_base.get_xdg_surface(&self.surface, &self.qh, self.id.clone());
-        let _xdg_toplevel = xdg_surface.get_toplevel(&self.qh, self.id.clone());
+        let xdg_toplevel = xdg_surface.get_toplevel(&self.qh, self.id.clone());
+        self._unused.xdg_surface = Some(xdg_surface);
+        self._unused.xdg_toplevel = Some(xdg_toplevel);
     }
 
     pub fn can_draw(&self) -> bool {
@@ -224,37 +234,8 @@ impl Window {
     pub fn draw_text_at(&mut self, x: usize, y: usize, coverage: f32) {
         self.pool.draw_text_at(x, y, self.width as usize, self.height as usize, coverage);
     }
-}
 
-impl wgpu::rwh::HasDisplayHandle for Window {
-    fn display_handle(&self) -> Result<wgpu::rwh::DisplayHandle<'_>, wgpu::rwh::HandleError> {
-        unsafe {
-            Ok(
-                DisplayHandle::borrow_raw(
-                    wgpu::rwh::RawDisplayHandle::Wayland(
-                        WaylandDisplayHandle::new(self.display_ptr)
-                    )
-                )
-            )
-        }
+    pub fn as_ptr(&self) -> NonNull<c_void> {
+        NonNull::new(self.surface.id().as_ptr() as *mut c_void).unwrap()
     }
 }
-
-impl wgpu::rwh::HasWindowHandle for Window {
-    fn window_handle(&self) -> Result<wgpu::rwh::WindowHandle<'_>, wgpu::rwh::HandleError> {
-        let proxy_ptr = self.surface.id().as_ptr() as *mut c_void;
-        let ptr = NonNull::new(proxy_ptr).unwrap();
-        unsafe {
-            Ok(
-                WindowHandle::borrow_raw(
-                    wgpu::rwh::RawWindowHandle::Wayland(
-                        WaylandWindowHandle::new(ptr)
-                    )
-                )
-            )
-        }
-    }
-}
-
-unsafe impl Send for Window {}
-unsafe impl Sync for Window {}
