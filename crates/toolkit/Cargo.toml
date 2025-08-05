@@ -1,0 +1,14 @@
+[package]
+name = "toolkit"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wayland-client.workspace = true
+wayland-backend.workspace = true
+wl_client.workspace = true
+ab_glyph.workspace = true
+ttf-parser.workspace = true
+wgpu.workspace = true
+pollster.workspace = true
+thiserror.workspace = true

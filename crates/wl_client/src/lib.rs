@@ -1,0 +1,434 @@
+pub mod window;
+pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::Anchor;
+pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer;
+use wgpu::Surface;
+
+use std::{
+    collections::HashMap, ffi::c_void, process::exit, ptr::NonNull, sync::{Arc, Mutex}
+};
+
+use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
+        zwlr_layer_shell_v1::{
+            ZwlrLayerShellV1,
+            Event as ZwlrLayerShellV1Event,
+        },
+        zwlr_layer_surface_v1::{
+            ZwlrLayerSurfaceV1,
+            Event as ZwlrLayerSurfaceV1Event,
+        }
+    };
+
+use wayland_client::{
+    protocol::{
+        wl_buffer::{
+            Event as WlBufferEvent, WlBuffer
+        },
+        wl_callback::{
+            Event as WlCallbackEvent, WlCallback
+        },
+        wl_compositor::{
+            Event as WlCompositorEvent, WlCompositor
+        },
+        wl_output::{
+            Event as WlOutputEvent, WlOutput
+        },
+        wl_registry::{
+            Event as WlRegistryEvent, WlRegistry
+        },
+        wl_shm::{
+            Event as WlShmEvent, WlShm
+        },
+        wl_shm_pool::{
+            Event as WlShmPoolEvent, WlShmPool
+        },
+        wl_surface::{
+            Event as WlSurfaceEvent, WlSurface
+        }
+    },
+    QueueHandle,
+    Connection,
+    Dispatch,
+    Proxy,
+};
+
+use wayland_protocols::xdg::shell::client::{
+    xdg_surface::{
+        XdgSurface,
+        Event as XdgSurfaceEvent,
+    },
+    xdg_toplevel::{
+        XdgToplevel,
+        Event as XdgTopLevelEvent,
+    },
+    xdg_wm_base::{
+        XdgWmBase,
+        Event as XdgWmBaseEvent,
+    }
+};
+
+use crate::window::{Window, WindowId};
+use crate::window::ShmPool;
+
+
+const DESKTOP_DEFAULT_WIDTH: i32 = 600;
+const DESKTOP_DEFAULT_HEIGHT: i32 = 400;
+
+#[derive(Default)]
+pub struct WlClient {
+    compositor: Option<WlCompositor>,
+    xdg_wm_base: Option<XdgWmBase>,
+    layer_shell: Option<ZwlrLayerShellV1>,
+    shm: Option<WlShm>,
+
+    outputs: HashMap<String, WlOutput>,
+    windows: HashMap<String, Arc<Mutex<Window>>>,
+}
+
+
+impl WlClient {
+    fn create_surface(
+        &mut self,
+        qh: &QueueHandle<WlClient>,
+        id: &Arc<String>,
+        width: i32,
+        height: i32,
+    ) -> (WlSurface, ShmPool, WlBuffer) {
+        let compositor = self.compositor.as_ref().expect("unreachable");
+        let shm = self.shm.as_ref().expect("unreachable");
+
+        let surface = compositor.create_surface(qh, id.clone());
+        let pool = ShmPool::new((width as u64 * 4) * height as u64, id, shm, qh);
+        let buffer = pool.create_buffer(0, width, height, qh, id);
+
+        (surface, pool, buffer)
+    }
+
+    pub fn special_window(
+        &mut self,
+        display_ptr: NonNull<c_void>,
+        qh: &QueueHandle<WlClient>,
+        id: impl Into<String>,
+        width: u32,
+        height: u32,
+        layer: Layer,
+        anchor: Anchor,
+        exclusive_zone: u32,
+        gpu_surface: Surface<'static>
+    ) -> Arc<Mutex<Window>> {
+        let width = width as i32;
+        let height = height as i32;
+        let exclusive_zone = exclusive_zone as i32;
+
+        let id = id.into();
+        let arc_id = Arc::new(id.clone());
+        let (surface, pool, buffer) = self.create_surface(qh, &arc_id, width, height);
+        let output = Some(self.outputs.get("HDMI-A-4").unwrap());
+        let window = 
+            Arc::new(
+                Mutex::new(
+                    Window::layer_shell(
+                        self.layer_shell.as_ref().expect("unreachable"),
+                        qh,
+                        arc_id,
+                        surface,
+                        pool,
+                        buffer,
+                        output,
+                        width,
+                        height,
+                        layer,
+                        anchor,
+                        exclusive_zone,
+                        display_ptr,
+                        gpu_surface
+                    )
+                )
+            );
+
+        self.windows.insert(id, window.clone());
+        window
+    }
+
+    pub fn desktop_window(
+        &mut self,
+        display_ptr: NonNull<c_void>,
+        qh: &QueueHandle<WlClient>,
+        id: impl Into<String>,
+        width: u32,
+        height: u32,
+        resizable: bool,
+        decorations: bool,
+        gpu_surface: Surface<'static>
+    ) -> Arc<Mutex<Window>> {
+        let width = width as i32;
+        let height = height as i32;
+        let id = id.into();
+        let window = 
+            Arc::new(
+                Mutex::new(
+                    Window::desktop_window(
+                        self.compositor.as_ref().expect("unreachable"),
+                        self.shm.as_ref().expect("unreachable"),
+                        self.xdg_wm_base.as_ref().expect("unreachable"),
+                        qh,
+                        Arc::new(id.clone()),
+                        width,
+                        height,
+                        display_ptr,
+                        gpu_surface
+                    )
+                )
+            );
+
+        self.windows.insert(id, window.clone());
+        window
+    }
+}
+
+impl Dispatch<WlRegistry, WindowId> for WlClient {
+    fn event(
+        state: &mut Self,
+        registry: &WlRegistry,
+        event: WlRegistryEvent,
+        id: &WindowId,
+        _: &Connection,
+        qh: &QueueHandle<WlClient>,
+    ) {
+        if let WlRegistryEvent::Global { name, interface, version } = event {
+            //println!("[{name}] {interface} (v{version})");
+
+            match interface.as_ref() {
+                "wl_compositor" => state.compositor = Some(registry.bind::<WlCompositor, _, _>(name, version, qh, id.clone())),
+                "wl_shm" => state.shm = Some(registry.bind::<WlShm, _, _>(name, version, qh, id.clone())),
+                "xdg_wm_base" => state.xdg_wm_base = Some(registry.bind::<XdgWmBase, _, _>(name, version, qh, id.clone())),
+                "zwlr_layer_shell_v1" => state.layer_shell = Some(registry.bind::<ZwlrLayerShellV1, _, _>(name, version, qh, id.clone())),
+                "wl_output" => {
+                    let output = registry.bind::<WlOutput, _, _>(name, version, qh, id.clone());
+                    state.outputs.insert(output.id().to_string(), output);
+                },
+                _ => {}
+            }
+        }
+
+    }
+}
+
+#[allow(unused)]
+impl Dispatch<WlOutput, WindowId> for WlClient {
+    fn event(
+        state: &mut Self,
+        output: &WlOutput,
+        event: WlOutputEvent,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        match event {
+            WlOutputEvent::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => {},
+            WlOutputEvent::Mode { flags, width, height, refresh } => {},
+            WlOutputEvent::Done => {},
+            WlOutputEvent::Scale { factor } => {},
+            WlOutputEvent::Name { name } => {
+                let id = output.id().to_string();
+                let output = state.outputs.remove(&id).unwrap();
+                println!("Output name: {name}");
+                state.outputs.insert(name, output);
+            },
+            WlOutputEvent::Description { description } => {},
+            _ => {},
+        }
+    }
+}
+
+impl Dispatch<WlCompositor, WindowId> for WlClient {
+    fn event(
+        _: &mut Self,
+        _: &WlCompositor,
+        _: WlCompositorEvent,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<WlClient>,
+    ) {
+        println!("Dispatch compositor");
+    }
+}
+
+
+impl Dispatch<WlSurface, WindowId> for WlClient {
+    fn event(
+        state: &mut Self,
+        _: &WlSurface,
+        event: WlSurfaceEvent,
+        id: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        match event {
+            WlSurfaceEvent::Enter { output: _ } => println!("Enter"),
+            WlSurfaceEvent::Leave { output: _ } => println!("Leave"),
+
+            WlSurfaceEvent::PreferredBufferScale { factor } => {
+                let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+                window.scale = factor
+            }
+
+            WlSurfaceEvent::PreferredBufferTransform { transform } => {
+                let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+                window.transform = transform.into();
+            }
+
+            _ => {},
+        }
+    }
+}
+
+impl Dispatch<WlShmPool, WindowId> for WlClient {
+    fn event(
+        _: &mut Self,
+        _: &WlShmPool,
+        _: WlShmPoolEvent,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlShm, WindowId> for WlClient {
+    fn event(
+        _: &mut Self,
+        _: &WlShm,
+        _: WlShmEvent,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlBuffer, WindowId> for WlClient {
+    fn event(
+        _: &mut Self,
+        _: &WlBuffer,
+        _: WlBufferEvent,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<XdgWmBase, WindowId> for WlClient {
+    fn event(
+        _: &mut Self,
+        xdg_wm_base: &XdgWmBase,
+        event: XdgWmBaseEvent,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        if let XdgWmBaseEvent::Ping { serial } = event {
+            xdg_wm_base.pong(serial);
+        }
+    }
+}
+
+impl Dispatch<XdgSurface, WindowId> for WlClient {
+    fn event(
+        state: &mut Self,
+        surface: &XdgSurface,
+        event: XdgSurfaceEvent,
+        id: &WindowId,
+        _: &Connection,
+        qh: &QueueHandle<Self>,
+    ) {
+        if let XdgSurfaceEvent::Configure { serial } = event {
+            surface.ack_configure(serial);
+            let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+            window.resize_pool_if_needed();
+            window.resize_buffer(id, qh);
+            window.draw();
+        }
+    }
+}
+
+impl Dispatch<XdgToplevel, WindowId> for WlClient {
+    fn event(
+        state: &mut Self,
+        _: &XdgToplevel,
+        event: XdgTopLevelEvent,
+        id: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        match event {
+            XdgTopLevelEvent::Configure { mut width, mut height, states } => {
+                if width == 0 || height == 0 {
+                    width = DESKTOP_DEFAULT_WIDTH;
+                    height = DESKTOP_DEFAULT_HEIGHT;
+                }
+                let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+                window.width = width;
+                window.height = height;
+            },
+            XdgTopLevelEvent::Close => exit(0),
+            //XdgTopLevelEvent::ConfigureBounds { width, height } => todo!(),
+            //XdgTopLevelEvent::WmCapabilities { capabilities } => todo!(),
+            _ => {},
+        }
+    }
+}
+
+impl Dispatch<ZwlrLayerShellV1, WindowId> for WlClient {
+    fn event(
+        _: &mut Self,
+        _: &ZwlrLayerShellV1,
+        _: ZwlrLayerShellV1Event,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
+    fn event(
+        state: &mut Self,
+        surface: &ZwlrLayerSurfaceV1,
+        event: ZwlrLayerSurfaceV1Event,
+        id: &WindowId,
+        _: &Connection,
+        qh: &QueueHandle<WlClient>,
+    ) {
+        match event {
+            ZwlrLayerSurfaceV1Event::Configure { serial, width, height } => {
+                surface.ack_configure(serial);
+                let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+                window.resize_buffer(id, qh);
+                window.draw();
+            },
+            ZwlrLayerSurfaceV1Event::Closed => {
+                println!("Layer surface event 'closed'");
+            },
+            _ => {},
+        }
+    }
+}
+
+impl Dispatch<WlCallback, WindowId> for WlClient {
+    fn event(
+        state: &mut Self,
+        _: &WlCallback,
+        _: WlCallbackEvent,
+        id: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
+        window.can_draw = true;
+        //window.frame(qh, id.clone());
+        //window.draw();
+    }
+}
+
+pub type WindowHandle = Arc<Mutex<Window>>;

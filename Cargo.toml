@@ -1,0 +1,28 @@
+[workspace]
+default-members = ["crates/toolkit"]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.dependencies]
+wl_client = {path = "crates/wl_client"}
+toolkit = {path = "crates/toolkit"}
+widgets = {path = "crates/widgets"}
+
+smithay-client-toolkit = "0.19.2"
+wayland-client = "0.31.11"
+wayland-backend = { version = "0.3.11", features=["client_system", "rwh_06"] }
+wayland-protocols = { version = "0.32.9", features = ["client"] }
+tempfile = "3.20.0"
+memmap2 = "0.9.7"
+
+uuid = { version = "1.17.0", features = ["v4"]}
+
+#GUI
+ab_glyph = "0.2.31"
+ttf-parser = "0.25.1"
+
+thiserror = "2.0.12"
+
+rayon = "1.10.0"
+wgpu = "26.0.1"
+pollster = "0.4.0"
