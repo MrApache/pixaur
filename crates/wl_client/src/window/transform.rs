@@ -16,9 +16,9 @@ pub enum Transform {
     Custom(u32),
 }
 
-impl Into<Transform> for WEnum<WTransform> {
-    fn into(self) -> Transform {
-        match self {
+impl From<WEnum<WTransform>> for Transform {
+    fn from(value: WEnum<WTransform>) -> Self {
+        match value {
             WEnum::Value(t) => match t {
                 WTransform::Normal => Transform::Normal0,
                 WTransform::_90 => Transform::Normal90,
