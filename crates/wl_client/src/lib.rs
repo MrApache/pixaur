@@ -1,10 +1,13 @@
 pub mod window;
 pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::Anchor;
 pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer;
-use wgpu::Surface;
 
 use std::{
-    collections::HashMap, ffi::c_void, process::exit, ptr::NonNull, sync::{Arc, Mutex}
+    collections::HashMap,
+    ffi::c_void,
+    process::exit,
+    ptr::NonNull,
+    sync::{Arc, Mutex}
 };
 
 use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
@@ -424,4 +427,4 @@ impl Dispatch<WlCallback, WindowId> for WlClient {
     }
 }
 
-pub type WindowHandle = Arc<Mutex<Window>>;
+pub type WindowBackend = Arc<Mutex<Window>>;

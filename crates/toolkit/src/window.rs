@@ -1,4 +1,4 @@
-use wl_client::{Anchor, WindowHandle};
+use wl_client::{Anchor, WindowBackend};
 use wl_client::window::{DesktopOptions, SpecialOptions};
 
 use crate::widget::{Container, Widget};
@@ -118,13 +118,13 @@ impl WindowRequest {
 
 pub struct Window {
     pub(crate) root:   Box<dyn Container>,
-    pub(crate) handle: WindowHandle,
+    pub(crate) handle: WindowBackend,
 }
 
 impl Window {
     pub(crate) fn new(
         root: Box<dyn Container>,
-        handle: WindowHandle,
+        handle: WindowBackend,
     ) -> Self {
         Self {
             root,
