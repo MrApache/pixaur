@@ -93,12 +93,13 @@ pub struct Window {
     pub transform: Transform,
 
     pub(crate) can_draw: bool,
+    pub(crate) can_resize: bool,
 
     _unused: Unused,
 }
 
 impl Window {
-    pub fn resize_buffer(&mut self) {
+    pub fn resize_buffer_if_needed(&mut self) {
         self.buffer = self.pool.create_buffer(0, self.width, self.height, &self.qh, &self.id);
     }
 
@@ -146,6 +147,7 @@ impl Window {
             scale: 1,
             transform: Transform::Normal0,
             can_draw: false,
+            can_resize: false,
             _unused: Unused::default(),
         };
 
@@ -205,6 +207,11 @@ impl Window {
         self.surface.frame(&self.qh, self.id.clone());
     }
 
+    pub fn damage_buffer(&mut self) {
+        self.surface.damage_buffer(0, 0, self.width, self.height);
+    }
+
+
     pub fn commit(&mut self) {
         self.surface.damage_buffer(0, 0, self.width, self.height);
         self.surface.commit();
@@ -237,5 +244,13 @@ impl Window {
 
     pub fn as_ptr(&self) -> NonNull<c_void> {
         NonNull::new(self.surface.id().as_ptr() as *mut c_void).unwrap()
+    }
+
+    pub fn can_resize(&self) -> bool {
+        self.can_resize
+    }
+
+    pub fn set_resized(&mut self) {
+        self.can_resize = false;
     }
 }

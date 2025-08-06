@@ -2,12 +2,13 @@ mod error;
 mod renderer;
 mod content;
 mod color;
+mod rendering;
 pub mod widget;
 pub mod window;
 
 pub use color::*;
 pub use error::*;
-use wgpu::{naga::back, Surface};
+use wgpu::naga::back;
 pub use wl_client::{Anchor, window::{DesktopOptions, SpecialOptions}};
 
 use crate::{
@@ -146,60 +147,66 @@ impl<T: GUI> EventLoop<T> {
             println!("FPS: {fps:.1}");
 
             windows.iter_mut().for_each(|window| {
-                let mut cm_buffer = CommandBuffer::default();
+                let mut backend = window.backend.lock().unwrap();
+                if backend.can_resize() {
+                    window.configuration.width = backend.width as u32;
+                    window.configuration.height = backend.height as u32;
+                    self.gpu.confugure_surface(&window.surface, &window.configuration);
+                    backend.set_resized();
+                }
+
                 let mut context = Context {
                     root: &mut window.frontend
                 };
 
                 window.handle.update(&mut self.gui, &mut context);
 
-                let mut window_handle = window.backend.lock().unwrap();
-                window_handle.frame();
-                if !window_handle.can_draw() {
+                backend.frame();
+                if !backend.can_draw() {
                     return;
                 }
 
-                window_handle.clear();
-
+                let mut cm_buffer = CommandBuffer::default();
                 window.frontend.draw(&mut cm_buffer);
+
+                self.gpu.render(&window.surface);
                 while let Some(command) = cm_buffer.pop() {
                     #[allow(unused)]
                     match command {
                         DrawCommand::Rect { rect, color } => todo!(),
                         DrawCommand::Text { size, font, content, color } => {
-                            let font = self.content.get_font(font);
-                            
-                            let units_per_em = font.units_per_em().unwrap();
-                            let scale = size / units_per_em;
-                            
-                            let ascent = font.ascent_unscaled();
-                            let base_y = ascent * scale;
-                            
-                            let mut pen_x = 0.0;
-                            
-                            for ch in content.chars() {
-                                let glyph = font.glyph_id(ch).with_scale_and_position(size, point(pen_x, base_y));
-                                let pos_x = glyph.position.x;
-                                let pos_y = glyph.position.y;
-                                let h_advance = font.h_advance_unscaled(glyph.id);
-                                
-                                if let Some(outlined) = font.outline_glyph(glyph) {
-                                    outlined.draw(|x, y, c| {
-                                        let draw_x = pos_x + x as f32;
-                                        let draw_y = pos_y + y as f32;
-                                        window_handle.draw_text_at(draw_x as usize, draw_y as usize, c);
-                                        //self.client.draw_text(&window.id, draw_x as u32, draw_y as u32, c);
-                                    });
-                                }
-                            
-                                pen_x += h_advance as f32 * scale;
-                            }
+                            //let font = self.content.get_font(font);
+                            //
+                            //let units_per_em = font.units_per_em().unwrap();
+                            //let scale = size / units_per_em;
+                            //
+                            //let ascent = font.ascent_unscaled();
+                            //let base_y = ascent * scale;
+                            //
+                            //let mut pen_x = 0.0;
+                            //
+                            //for ch in content.chars() {
+                            //    let glyph = font.glyph_id(ch).with_scale_and_position(size, point(pen_x, base_y));
+                            //    let pos_x = glyph.position.x;
+                            //    let pos_y = glyph.position.y;
+                            //    let h_advance = font.h_advance_unscaled(glyph.id);
+                            //    
+                            //    if let Some(outlined) = font.outline_glyph(glyph) {
+                            //        outlined.draw(|x, y, c| {
+                            //            let draw_x = pos_x + x as f32;
+                            //            let draw_y = pos_y + y as f32;
+                            //            window_handle.draw_text_at(draw_x as usize, draw_y as usize, c);
+                            //            //self.client.draw_text(&window.id, draw_x as u32, draw_y as u32, c);
+                            //        });
+                            //    }
+                            //
+                            //    pen_x += h_advance as f32 * scale;
+                            //}
                         }
                     }
                 }
 
-                window_handle.commit();
-                window_handle.draw();
+                backend.commit();
             });
 
 
@@ -224,9 +231,9 @@ impl<T: GUI> EventLoop<T> {
             };
         
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
-            let surface = self.gpu.create_surface(window_ptr, width, height)?;
+            let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
             let frontend = handle.setup(&mut self.gui);
-            let window = Window::new(frontend, backend, surface, handle);
+            let window = Window::new(frontend, backend, surface, configuration, handle);
         
             backends.push(window);
         

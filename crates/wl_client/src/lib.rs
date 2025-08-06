@@ -311,8 +311,8 @@ impl Dispatch<XdgSurface, WindowId> for WlClient {
             surface.ack_configure(serial);
             let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
             window.resize_pool_if_needed();
-            window.resize_buffer();
-            window.draw();
+            window.resize_buffer_if_needed();
+            window.commit();
         }
     }
 }
@@ -345,6 +345,8 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
 
                 window.width = width;
                 window.height = height;
+
+                window.can_resize = true;
             },
             XdgTopLevelEvent::Close => exit(0),
             //XdgTopLevelEvent::ConfigureBounds { width, height } => todo!(),
@@ -379,7 +381,7 @@ impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
             ZwlrLayerSurfaceV1Event::Configure { serial, width, height } => {
                 surface.ack_configure(serial);
                 let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
-                window.resize_buffer();
+                window.resize_buffer_if_needed();
                 window.draw();
             },
             ZwlrLayerSurfaceV1Event::Closed => {
@@ -399,8 +401,11 @@ impl Dispatch<WlCallback, WindowId> for WlClient {
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
-        let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
-        window.can_draw = true;
+        let result = state.windows.get_mut(id.as_str());
+        if let Some(window) = result {
+            let mut window = window.lock().unwrap();
+            window.can_draw = true;
+        }
     }
 }
 

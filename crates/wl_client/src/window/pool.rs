@@ -141,10 +141,14 @@ impl ShmPool {
 
     pub fn clear(&mut self) {
         let buffer = &mut self.mmap.inner;
-        let b = 0x2E;
-        let g = 0x1E;
-        let r = 0x1E;
-        let a = 0xFF;
+        //let b = 0x2E;
+        //let g = 0x1E;
+        //let r = 0x1E;
+        //let a = 0xFF;
+        let b = 0;
+        let g = 0;
+        let r = 0;
+        let a = 0;
         buffer.par_chunks_exact_mut(4).for_each(|chunk| {
             chunk.copy_from_slice(&[b, g, r, a]);
         });

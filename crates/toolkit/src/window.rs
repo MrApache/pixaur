@@ -2,17 +2,10 @@ use std::ffi::c_void;
 use std::ptr::NonNull;
 
 use wgpu::rwh::{
-    DisplayHandle,
-    HasDisplayHandle,
-    HasWindowHandle,
-    RawDisplayHandle,
-    RawWindowHandle,
-    WaylandDisplayHandle,
-    WaylandWindowHandle,
-    WindowHandle
+    DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle, WindowHandle
 };
 
-use wgpu::Surface;
+use wgpu::{Surface, SurfaceConfiguration};
 use wl_client::WindowBackend;
 use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 
@@ -71,16 +64,17 @@ impl WindowRequest {
 pub struct Window<T: GUI> {
     pub(crate) frontend: Box<dyn Container>,
     pub(crate) backend:  WindowBackend,
-    pub(crate) handle: Box<dyn UserWindow<T>>,
     pub(crate) surface: Surface<'static>,
+    pub(crate) configuration: SurfaceConfiguration,
+    pub(crate) handle: Box<dyn UserWindow<T>>,
 }
 
-//Crate API
 impl<T: GUI> Window<T> {
     pub(crate) const fn new(
         frontend: Box<dyn Container>,
         backend: WindowBackend,
         surface: Surface<'static>,
+        configuration: SurfaceConfiguration,
         handle: Box<dyn UserWindow<T>>,
 
     ) -> Self {
@@ -89,46 +83,8 @@ impl<T: GUI> Window<T> {
             backend,
             handle,
             surface,
+            configuration,
         }
-    }
-}
-
-//Public API
-impl<T: GUI> Window<T> {
-    fn internal_get_by_id<'a, W: Widget>(container: &'a dyn Container, id: &str) -> Option<&'a W> {
-        for w in container.children() {
-            if w.id().eq(id) {
-                return w.as_any().downcast_ref::<W>();
-            }
-
-            if let Some(container) = w.as_container() {
-                return Self::internal_get_by_id(container, id);
-            }
-        }
-
-        None
-    }
-
-    fn internal_get_mut_by_id<'a, W: Widget>(container: &'a mut dyn Container, id: &str) -> Option<&'a mut W> {
-        for w in container.children_mut() {
-            if w.id().eq(id) {
-                return w.as_any_mut().downcast_mut::<W>();
-            }
-
-            if let Some(container) = w.as_container_mut() {
-                return Self::internal_get_mut_by_id(container, id);
-            }
-        }
-
-        None
-    }
-
-    pub fn get_by_id<W: Widget>(&self, id: &str) -> Option<&W> {
-        Self::internal_get_by_id(self.frontend.as_ref(), id)
-    }
-
-    pub fn get_mut_by_id<W: Widget>(&mut self, id: &str) -> Option<&mut W> {
-        Self::internal_get_mut_by_id(self.frontend.as_mut(), id)
     }
 }
 
@@ -147,7 +103,7 @@ impl WindowPointer {
 }
 
 impl HasDisplayHandle for WindowPointer {
-    fn display_handle(&self) -> Result<wgpu::rwh::DisplayHandle<'_>, wgpu::rwh::HandleError> {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
         unsafe {
             Ok(
                 DisplayHandle::borrow_raw(
@@ -161,7 +117,7 @@ impl HasDisplayHandle for WindowPointer {
 }
 
 impl HasWindowHandle for WindowPointer {
-    fn window_handle(&self) -> Result<wgpu::rwh::WindowHandle<'_>, wgpu::rwh::HandleError> {
+    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
         unsafe {
             Ok(
                 WindowHandle::borrow_raw(
