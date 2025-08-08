@@ -15,7 +15,7 @@ use crate::window::WindowPointer;
 use crate::{Argb8888, DrawCommand};
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     position: Vec3,
     uv: Vec2
@@ -39,9 +39,6 @@ impl Vertex {
         }
     }
 }
-
-unsafe impl bytemuck::Pod for Vertex {}
-unsafe impl bytemuck::Zeroable for Vertex {}
 
 pub struct Gpu {
     instance: Instance,
