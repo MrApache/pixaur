@@ -1,3 +1,5 @@
+use glam::Vec4;
+
 #[derive(Debug, Clone)]
 pub enum Color {
     Simple(Argb8888),
@@ -65,10 +67,22 @@ impl From<Argb8888> for wgpu::Color {
     }
 }
 
+impl From<Argb8888> for Vec4 {
+    fn from(value: Argb8888) -> Self {
+        Vec4::from(&value)
+    }
+}
+
+impl From<&Argb8888> for Vec4 {
+    fn from(value: &Argb8888) -> Self {
+        Vec4::new(value.r as f32 / 255.0, value.g as f32 / 255.0, value.b as f32 / 255.0, value.a as f32 / 255.0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LinearGradient {
-    from: Argb8888,
-    to: Argb8888,
+    pub from: Argb8888,
+    pub to: Argb8888,
 }
 
 impl LinearGradient {

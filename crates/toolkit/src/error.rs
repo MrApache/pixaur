@@ -1,3 +1,4 @@
+use image::ImageError;
 use thiserror::Error;
 use wgpu::{CreateSurfaceError, RequestAdapterError, RequestDeviceError, SurfaceError};
 
@@ -11,4 +12,10 @@ pub enum Error {
     RequestDevice(#[from] RequestDeviceError),
     #[error("{0}")]
     Surface(#[from] SurfaceError),
+
+    #[error("{0}")]
+    Image(#[from] ImageError),
+
+    #[error("{0}")]
+    IO(#[from] std::io::Error),
 }

@@ -9,8 +9,9 @@ use wgpu::{Surface, SurfaceConfiguration};
 use wl_client::WindowBackend;
 use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 
+use crate::rendering::Renderer;
 use crate::widget::{Container, Widget};
-use crate::{UserWindow, GUI};
+use crate::{renderer, UserWindow, GUI};
 
 pub struct WindowRequest {
     pub(crate) id: String,
@@ -67,6 +68,7 @@ pub struct Window<T: GUI> {
     pub(crate) surface: Surface<'static>,
     pub(crate) configuration: SurfaceConfiguration,
     pub(crate) handle: Box<dyn UserWindow<T>>,
+    pub(crate) renderer: Renderer,
 }
 
 impl<T: GUI> Window<T> {
@@ -76,6 +78,7 @@ impl<T: GUI> Window<T> {
         surface: Surface<'static>,
         configuration: SurfaceConfiguration,
         handle: Box<dyn UserWindow<T>>,
+        renderer: Renderer,
 
     ) -> Self {
         Self {
@@ -84,6 +87,7 @@ impl<T: GUI> Window<T> {
             handle,
             surface,
             configuration,
+            renderer,
         }
     }
 }

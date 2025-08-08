@@ -3,23 +3,21 @@ mod renderer;
 mod content;
 mod color;
 mod rendering;
+
+pub use glam;
 pub mod widget;
 pub mod window;
 
 pub use color::*;
 pub use error::*;
-use wgpu::naga::back;
 pub use wl_client::{Anchor, window::{DesktopOptions, SpecialOptions}};
 
 use crate::{
-    content::Content,
-    renderer::GPU,
-    widget::{Container, Rect, Widget},
-    window::{Window, WindowPointer, WindowRequest}
+    content::Content, rendering::Gpu, widget::{Container, Rect, Widget}, window::{Window, WindowPointer, WindowRequest}
 };
 
 use wl_client::{window::WindowLayer, WlClient};
-use ab_glyph::{point, Font};
+//use ab_glyph::{point, Font};
 use std::{
     ffi::c_void,
     ptr::NonNull,
@@ -77,7 +75,7 @@ pub struct EventLoop<T: GUI> {
     event_queue: EventQueue<WlClient>,
     display_ptr: NonNull<c_void>,
 
-    gpu: GPU,
+    gpu: Gpu,
 }
 
 impl<T: GUI> EventLoop<T> {
@@ -115,7 +113,7 @@ impl<T: GUI> EventLoop<T> {
             
             let dummy_ptr = dummy.lock().unwrap().as_ptr();
             let ptr = WindowPointer::new(display_ptr, dummy_ptr);
-            let gpu = GPU::new(ptr)?;
+            let gpu = Gpu::new(ptr)?;
 
             drop(dummy);
 
@@ -166,50 +164,11 @@ impl<T: GUI> EventLoop<T> {
                     return;
                 }
 
-                let mut cm_buffer = CommandBuffer::default();
-                window.frontend.draw(&mut cm_buffer);
-
-                self.gpu.render(&window.surface);
-                while let Some(command) = cm_buffer.pop() {
-                    #[allow(unused)]
-                    match command {
-                        DrawCommand::Rect { rect, color } => todo!(),
-                        DrawCommand::Text { size, font, content, color } => {
-                            //let font = self.content.get_font(font);
-                            //
-                            //let units_per_em = font.units_per_em().unwrap();
-                            //let scale = size / units_per_em;
-                            //
-                            //let ascent = font.ascent_unscaled();
-                            //let base_y = ascent * scale;
-                            //
-                            //let mut pen_x = 0.0;
-                            //
-                            //for ch in content.chars() {
-                            //    let glyph = font.glyph_id(ch).with_scale_and_position(size, point(pen_x, base_y));
-                            //    let pos_x = glyph.position.x;
-                            //    let pos_y = glyph.position.y;
-                            //    let h_advance = font.h_advance_unscaled(glyph.id);
-                            //    
-                            //    if let Some(outlined) = font.outline_glyph(glyph) {
-                            //        outlined.draw(|x, y, c| {
-                            //            let draw_x = pos_x + x as f32;
-                            //            let draw_y = pos_y + y as f32;
-                            //            window_handle.draw_text_at(draw_x as usize, draw_y as usize, c);
-                            //            //self.client.draw_text(&window.id, draw_x as u32, draw_y as u32, c);
-                            //        });
-                            //    }
-                            //
-                            //    pen_x += h_advance as f32 * scale;
-                            //}
-                        }
-                    }
-                }
-
+                let mut commands = CommandBuffer::default();
+                window.frontend.draw(&mut commands);
+                window.renderer.render(&self.gpu, &window.surface, &commands.storage, window.configuration.width as f32, window.configuration.height as f32);
                 backend.commit();
             });
-
-
             self.event_queue.blocking_dispatch(&mut self.client).unwrap();
         }
     }
@@ -233,7 +192,8 @@ impl<T: GUI> EventLoop<T> {
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
             let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
             let frontend = handle.setup(&mut self.gui);
-            let window = Window::new(frontend, backend, surface, configuration, handle);
+            let renderer = self.gpu.new_renderer(None, &surface)?;
+            let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
         
             backends.push(window);
         

@@ -10,14 +10,16 @@ use toolkit::{
     DEFAULT_FONT
 };
 
+pub mod panel;
+
 
 pub struct Text {
     id: String,
 
-    value: String,
+    pub value: String,
 
     font: String,
-    size: f32,
+    pub size: f32,
 }
 
 impl Text {
@@ -163,7 +165,7 @@ mod tests {
             WindowRequest::new("desktop")
                 .desktop(DesktopOptions {
                     title: "Test application".into(),
-                    resizable: true,
+                    resizable: false,
                     decorations: false,
                 })
         }

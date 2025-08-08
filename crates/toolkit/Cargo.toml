@@ -13,3 +13,5 @@ wgpu.workspace = true
 pollster.workspace = true
 thiserror.workspace = true
 bytemuck.workspace = true
+image.workspace = true
+glam.workspace = true

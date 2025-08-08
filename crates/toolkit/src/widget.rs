@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use glam::Vec2;
+
 use crate::CommandBuffer;
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -32,21 +34,21 @@ pub struct Spacing {
 
 #[derive(Default, Debug, Clone)]
 pub struct Rect {
-    pub min: Point,
-    pub max: Point,
+    pub min: Vec2,
+    pub max: Vec2,
 }
 
 impl Rect {
-    pub const fn new(position: Point, size: Point) -> Self {
+    pub fn new(position: Vec2, size: Vec2) -> Self {
         Self {
             min: position,
-            max: Point::new(position.x + size.x, position.y + size.y),
+            max: position + size,
         }
     }
 
-    pub const fn from_size(size: Point) -> Self {
+    pub const fn from_size(size: Vec2) -> Self {
         Self {
-            min: Point::ZERO,
+            min: Vec2::ZERO,
             max: size,
         }
     }
