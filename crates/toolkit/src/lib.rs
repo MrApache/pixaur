@@ -21,7 +21,7 @@ pub use wl_client::{
 use crate::{
     debug::FpsCounter,
     rendering::{Gpu, Renderer},
-    style::{BackgroundStyle, Texture},
+    style::Texture,
     widget::{Container, Rect, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
@@ -103,14 +103,15 @@ impl<T: GUI> EventLoop<T> {
         event_queue.roundtrip(&mut client).unwrap(); //Register outputs
 
         let mut content = ContentManager::default();
-        content.include_font(include_bytes!("../../../assets/Ubuntu-Regular.ttf"));
-        content.include_font(include_bytes!("../../../assets/Ubuntu-Light.ttf"));
-        content.include_font(include_bytes!("../../../assets/Ubuntu-LightItalic.ttf"));
-        content.include_font(include_bytes!("../../../assets/Ubuntu-Bold.ttf"));
-        content.include_font(include_bytes!("../../../assets/Ubuntu-BoldItalic.ttf"));
-        content.include_font(include_bytes!("../../../assets/Ubuntu-Italic.ttf"));
-        content.include_font(include_bytes!("../../../assets/Ubuntu-Medium.ttf"));
-        content.include_font(include_bytes!("../../../assets/Ubuntu-MediumItalic.ttf"));
+
+        content.include_font(include_asset!("Ubuntu-Regular.ttf"));
+        content.include_font(include_asset!("Ubuntu-Light.ttf"));
+        content.include_font(include_asset!("Ubuntu-LightItalic.ttf"));
+        content.include_font(include_asset!("Ubuntu-Bold.ttf"));
+        content.include_font(include_asset!("Ubuntu-BoldItalic.ttf"));
+        content.include_font(include_asset!("Ubuntu-Italic.ttf"));
+        content.include_font(include_asset!("Ubuntu-Medium.ttf"));
+        content.include_font(include_asset!("Ubuntu-MediumItalic.ttf"));
 
         //Fix egl error: BadDisplay
         let (display_ptr, gpu) = {

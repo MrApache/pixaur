@@ -114,9 +114,21 @@ macro_rules! include_asset {
     };
 }
 
-fn load_asset(path: &str) -> Result<Vec<u8>, Error> {
+#[macro_export]
+macro_rules! include_asset_content {
+    ($path:expr) => {
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/", $path))
+    };
+}
+
+pub fn load_asset(path: &str) -> Result<Vec<u8>, Error> {
     let asset_path = get_asset_path().join(path);
     Ok(fs::read(asset_path)?)
+}
+
+pub fn load_asset_str(path: &str) -> Result<String, Error> {
+    let asset_path = get_asset_path().join(path);
+    Ok(fs::read_to_string(asset_path)?)
 }
 
 fn get_asset_path() -> PathBuf {

@@ -15,7 +15,7 @@ use crate::rendering::bind_group_layout::BindGroupLayoutBuilder;
 use crate::rendering::instance::InstanceData;
 use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
-use crate::{ContentManager, DrawCommand};
+use crate::{include_asset_content, load_asset_str, ContentManager, DrawCommand};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -55,12 +55,12 @@ impl Renderer {
 
         let (shader, shader_label) = if let Some(shader) = shader {
             (
-                std::fs::read_to_string(format!("../../../../assets/{shader}.wgsl"))?,
+                load_asset_str(shader)?,
                 shader,
             )
         } else {
             (
-                include_str!("../../../../assets/shader.wgsl").to_string(),
+                include_asset_content!("shader.wgsl").to_string(),
                 "Default",
             )
         };
