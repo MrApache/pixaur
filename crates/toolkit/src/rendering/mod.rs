@@ -191,8 +191,8 @@ impl Renderer {
 
             commands.iter().for_each(|command| {
                 match command {
-                    DrawCommand::Text { size, font, content, color } => {},
                     DrawCommand::Rect { rect, color } => self.instances.push(InstanceData::new(rect.min, rect.max, color, proj)),
+                    DrawCommand::Text { size, font, content, color } => {},
                 }
             });
 

@@ -1,7 +1,18 @@
+use widgets::panel::{Panel, TestPanelLayoutWidget};
 use toolkit::{
-    glam::Vec4, widget::Container, window::WindowRequest, Anchor, Argb8888, Color, Context, DesktopOptions, EventLoop, LinearGradient, SpecialOptions, UserWindow, GUI
+    glam::{Vec2, Vec4},
+    widget::Container,
+    window::WindowRequest,
+    Anchor,
+    Argb8888,
+    Color,
+    Context,
+    DesktopOptions,
+    EventLoop,
+    SpecialOptions,
+    UserWindow, 
+    GUI
 };
-use widgets::panel::Panel;
 
 struct App;
 impl GUI for App {
@@ -30,7 +41,15 @@ impl UserWindow<App> for MainWindow {
 
     fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
         let mut panel = Panel::new("Panel");
-        panel.background = Color::LinearGradient(LinearGradient::new(Argb8888::RED, Argb8888::YELLOW));
+        panel.background = Color::Simple(Argb8888::RED);
+
+        let mut subpanel = Panel::new("Subpanel");
+        subpanel.background = Color::Simple(Argb8888::GREEN);
+        panel.add_child(Box::new(subpanel));
+
+        let mut subpanel = Panel::new("Subpanel");
+        subpanel.background = Color::Simple(Argb8888::BLUE);
+        panel.add_child(Box::new(subpanel));
 
         Box::new(panel)
     }
@@ -60,11 +79,20 @@ impl UserWindow<App> for SmartPanel {
     fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
         let mut panel = Panel::new("Panel");
         panel.background = Color::Simple(Argb8888::BLUE);
-        //panel.padding = Vec4::new(10.0, 10.0, 10.0, 10.0);
+        panel.padding = Vec4::new(10.0, 10.0, 10.0, 10.0);
 
         let mut child_panel = Panel::new("panel1");
-        child_panel.background = Color::LinearGradient(LinearGradient::new(Argb8888::BROWN, Argb8888::BLUE));
+        child_panel.background = Color::Simple(Argb8888::RED);
         panel.add_child(Box::new(child_panel));
+
+        let mut test_layout_widget = TestPanelLayoutWidget::default();
+        test_layout_widget.min = Vec2::new(10.0, 100.0);
+        panel.add_child(Box::new(test_layout_widget));
+
+        let mut child_panel = Panel::new("panel1");
+        child_panel.background = Color::Simple(Argb8888::GREEN);
+        panel.add_child(Box::new(child_panel));
+
         Box::new(panel)
     }
 

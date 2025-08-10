@@ -48,14 +48,14 @@ impl Rect {
     }
 }
 
-pub enum Size {
-    Value(Vec2),
+pub enum DesiredSize {
+    Min(Vec2),
+    Fill,
 }
 
 pub trait Widget: Any {
     fn id(&self) -> &str;
-    fn desired_size(&self) -> Vec2;
-    fn spacing(&self) -> Spacing;
+    fn desired_size(&self) -> DesiredSize;
     fn as_container(&self) -> Option<&dyn Container> { None }
     fn as_container_mut(&mut self) -> Option<&mut dyn Container> { None }
     fn as_any(&self) -> &dyn Any;

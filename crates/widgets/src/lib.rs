@@ -1,8 +1,10 @@
 use toolkit::{
-    glam::Vec2, widget::{
-        Spacing,
-        Widget
-    }, Argb8888, Color, DrawCommand, DEFAULT_FONT
+    glam::Vec2,
+    widget::{DesiredSize, Widget},
+    Argb8888,
+    Color,
+    DrawCommand,
+    DEFAULT_FONT
 };
 
 pub mod panel;
@@ -42,12 +44,8 @@ impl Widget for Text {
         &self.id
     }
 
-    fn desired_size(&self) -> Vec2 {
-        Vec2::default()
-    }
-
-    fn spacing(&self) -> Spacing {
-        Spacing::default()
+    fn desired_size(&self) -> DesiredSize {
+        DesiredSize::Min(Vec2::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -115,12 +113,8 @@ mod tests {
             ""
         }
     
-        fn desired_size(&self) -> Vec2 {
-            Vec2::default()
-        }
-    
-        fn spacing(&self) -> Spacing {
-            Spacing::default()
+        fn desired_size(&self) -> DesiredSize {
+            DesiredSize::Min(Vec2::default())
         }
     
         fn as_container(&self) -> Option<&dyn Container> {
