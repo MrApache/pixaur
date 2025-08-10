@@ -162,7 +162,7 @@ impl<T: GUI> EventLoop<T> {
             let fps = counter.tick();
             println!("FPS: {fps:.1}");
 
-            windows.iter_mut().for_each(|window| {
+            windows.iter_mut().try_for_each(|window| -> Result<(), Error> {
                 let mut backend = window.backend.lock().unwrap();
                 if backend.can_resize() {
                     window.configuration.width = backend.width as u32;
@@ -179,14 +179,16 @@ impl<T: GUI> EventLoop<T> {
 
                 backend.frame();
                 if !backend.can_draw() {
-                    return;
+                    return Ok(());
                 }
 
                 let mut commands = CommandBuffer::default();
                 window.frontend.draw(&mut commands);
-                window.renderer.render(&self.gpu, &window.surface, &commands.storage, window.configuration.width as f32, window.configuration.height as f32);
+                window.renderer.render(&self.gpu, &window.surface, &commands.storage, window.configuration.width as f32, window.configuration.height as f32)?;
                 backend.commit();
-            });
+
+                Ok(())
+            })?;
             self.event_queue.blocking_dispatch(&mut self.client).unwrap();
         }
     }
