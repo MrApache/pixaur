@@ -3,6 +3,9 @@ pub mod bind_group;
 pub mod bind_group_layout;
 pub mod material;
 mod instance;
+mod gpu;
+
+pub use gpu::Gpu;
 
 use wgpu::*;
 use glam::{Mat4, Vec2, Vec3};
@@ -12,7 +15,6 @@ use crate::rendering::bind_group_layout::BindGroupLayoutBuilder;
 use crate::rendering::instance::InstanceData;
 use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
-use crate::window::WindowPointer;
 use crate::DrawCommand;
 
 #[repr(C)]
@@ -41,75 +43,6 @@ impl Vertex {
     }
 }
 
-pub struct Gpu {
-    instance: Instance,
-    adapter: Adapter,
-    device: Device,
-    queue: Queue,
-}
-
-impl Gpu {
-    pub fn new(dummy: WindowPointer) -> Result<Self, Error> {
-        let instance = Instance::new(&InstanceDescriptor::default());
-        let surface = instance.create_surface(dummy)?;
-        let adapter = pollster::block_on(instance.request_adapter(&RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            force_fallback_adapter: false,
-            compatible_surface: Some(&surface),
-        }))?;
-        let (device, queue) = pollster::block_on(adapter.request_device(&DeviceDescriptor::default()))?;
-
-        Ok(Self {
-            instance,
-            adapter,
-            device,
-            queue,
-        })
-    }
-
-    pub fn new_renderer(
-        &self,
-        shader: Option<&str>,
-        surface: &Surface
-    ) -> Result<Renderer, Error> {
-
-        let mut builder = BindGroupLayoutBuilder::new(&self.device);
-        builder.add_material();
-        let layout = builder.build("Default");
-
-        Renderer::new(self, shader, &[&layout], surface)
-    }
-
-    pub fn create_surface<'window>(&self, ptr: WindowPointer, width: u32, height: u32) -> Result<(Surface<'window>, SurfaceConfiguration), Error> {
-        let surface = self.instance.create_surface(ptr)?;
-        let surface_caps = surface.get_capabilities(&self.adapter);
-        let format = surface_caps.formats.iter()
-            .copied()
-            .find(|f| f.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
-
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format,
-            width,
-            height,
-            present_mode: PresentMode::Fifo,
-            desired_maximum_frame_latency: 2,
-            alpha_mode: surface_caps.alpha_modes[0],
-            view_formats: vec![],
-        };
-
-    
-        self.confugure_surface(&surface, &config);
-
-        Ok((surface, config))
-    }
-
-    pub fn confugure_surface(&self, surface: &Surface<'_>, configuration: &SurfaceConfiguration) {
-        surface.configure(&self.device, configuration);
-    }
-}
-
 pub struct Renderer {
     render_pipeline: RenderPipeline,
     mesh: QuadMesh,
@@ -121,7 +54,11 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    fn new(gpu: &Gpu, shader: Option<&str>, layouts: &[&BindGroupLayout], surface: &Surface) -> Result<Self, Error> {
+    pub fn new(gpu: &Gpu, shader: Option<&str>, surface: &Surface) -> Result<Self, Error> {
+        let mut builder = BindGroupLayoutBuilder::new(&gpu.device);
+        builder.add_material();
+        let layout = builder.build("Default");
+
         let (shader, shader_label) = if let Some(shader) = shader {
             (std::fs::read_to_string(format!("../../../../assets/{shader}.wgsl"))?, shader)
         }
@@ -139,7 +76,7 @@ impl Renderer {
         let pipeline_layout = gpu.device.create_pipeline_layout(
             &PipelineLayoutDescriptor {
                 label: Some("Pipeline Layout"),
-                bind_group_layouts: layouts,
+                bind_group_layouts: &[&layout],
                 push_constant_ranges: &[],
             }
         );

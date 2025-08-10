@@ -21,19 +21,15 @@ pub use wl_client::{
 };
 
 use crate::{
-    content::Content,
-    rendering::Gpu,
-    widget::{
+    content::Content, debug::FpsCounter, rendering::{Gpu, Renderer}, widget::{
         Container,
         Rect,
         Widget
-    },
-    window::{
+    }, window::{
         Window,
         WindowPointer,
         WindowRequest
-    },
-    debug::FpsCounter
+    }
 };
 
 use wl_client::{window::WindowLayer, WlClient};
@@ -214,7 +210,7 @@ impl<T: GUI> EventLoop<T> {
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
             let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
             let frontend = handle.setup(&mut self.gui);
-            let renderer = self.gpu.new_renderer(None, &surface)?;
+            let renderer = Renderer::new(&self.gpu, None, &surface)?;
             let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
         
             backends.push(window);
