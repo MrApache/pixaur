@@ -1,4 +1,4 @@
-use crate::{rendering::Gpu, Argb8888};
+use crate::{Argb8888, rendering::Gpu};
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use wgpu::*;
 

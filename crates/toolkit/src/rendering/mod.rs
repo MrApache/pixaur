@@ -15,7 +15,7 @@ use crate::rendering::bind_group_layout::BindGroupLayoutBuilder;
 use crate::rendering::instance::{InstanceData, InstancingPool};
 use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
-use crate::{include_asset_content, load_asset_str, ContentManager, DrawCommand};
+use crate::{ContentManager, DrawCommand, include_asset_content, load_asset_str};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -54,15 +54,9 @@ impl Renderer {
         let layout = builder.build("Default");
 
         let (shader, shader_label) = if let Some(shader) = shader {
-            (
-                load_asset_str(shader)?,
-                shader,
-            )
+            (load_asset_str(shader)?, shader)
         } else {
-            (
-                include_asset_content!("shader.wgsl").to_string(),
-                "Default",
-            )
+            (include_asset_content!("shader.wgsl").to_string(), "Default")
         };
 
         let shader = gpu.device.create_shader_module(ShaderModuleDescriptor {
