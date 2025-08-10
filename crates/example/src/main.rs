@@ -5,7 +5,7 @@ use toolkit::{
     LinearGradient, SpecialOptions, TextureHandle, UserWindow,
     glam::{Vec2, Vec4},
     include_asset,
-    style::{BackgroundStyle, Texture},
+    style::Texture,
     widget::Container,
     window::WindowRequest,
 };

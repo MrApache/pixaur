@@ -1,4 +1,4 @@
-use crate::Argb8888;
+use crate::{rendering::Gpu, Argb8888};
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use wgpu::*;
 
@@ -81,5 +81,116 @@ impl InstanceData {
                 },
             ],
         }
+    }
+}
+
+struct InstanceBuffer {
+    instances: Vec<InstanceData>,
+    instance_buffer: Buffer,
+    instance_buffer_len: usize,
+}
+
+impl InstanceBuffer {
+    pub fn new(gpu: &Gpu, instance_buffer_size: usize) -> Self {
+        let instance_buffer = gpu.device.create_buffer(&BufferDescriptor {
+            label: Some("Instance buffer"),
+            size: (instance_buffer_size * std::mem::size_of::<InstanceData>()) as u64,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        Self {
+            instances: Vec::with_capacity(instance_buffer_size),
+            instance_buffer,
+            instance_buffer_len: instance_buffer_size,
+        }
+    }
+
+    fn create_instance_buffer(&mut self, gpu: &Gpu, size: usize) {
+        let instance_buffer = gpu.device.create_buffer(&BufferDescriptor {
+            label: Some("Instance buffer"),
+            size: (size * std::mem::size_of::<InstanceData>()) as u64,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        self.instance_buffer = instance_buffer;
+        self.instance_buffer_len = size;
+    }
+
+    fn resize_buffer_if_needed(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
+        if self.instances.capacity() > self.instance_buffer_len {
+            self.create_instance_buffer(gpu, self.instances.capacity());
+            renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        }
+    }
+
+    fn write_instance_buffer(&self, gpu: &Gpu) {
+        gpu.queue.write_buffer(
+            &self.instance_buffer,
+            0,
+            bytemuck::cast_slice(&self.instances),
+        );
+    }
+
+    fn draw_instances(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
+        self.resize_buffer_if_needed(gpu, renderpass);
+        self.write_instance_buffer(gpu);
+        renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        renderpass.draw_indexed(0..6, 0, 0..self.instances.len() as u32);
+    }
+
+    fn clear(&mut self) {
+        self.instances.clear();
+    }
+}
+
+pub struct InstancingPool {
+    available: Vec<InstanceBuffer>,
+    in_use: Vec<InstanceBuffer>,
+    current: Option<InstanceBuffer>,
+}
+
+const INSTANCE_BUFFER_SIZE: usize = 2;
+impl InstancingPool {
+    pub fn new(gpu: &Gpu) -> Self {
+        Self {
+            available: vec![],
+            in_use: vec![],
+            current: Some(InstanceBuffer::new(gpu, INSTANCE_BUFFER_SIZE)),
+        }
+    }
+
+    fn take(&mut self, gpu: &Gpu) {
+        if self.available.is_empty() {
+            self.current = Some(InstanceBuffer::new(gpu, INSTANCE_BUFFER_SIZE));
+        } else {
+            self.current = self.available.pop();
+        }
+    }
+
+    fn complete(&mut self) {
+        let buffer = self.current.take().unwrap();
+        self.in_use.push(buffer);
+    }
+
+    pub fn clear(&mut self) {
+        self.in_use.iter_mut().for_each(|buffer| {
+            buffer.clear();
+        });
+
+        self.available.append(&mut self.in_use);
+    }
+
+    pub fn push(&mut self, data: InstanceData) {
+        let buffer = self.current.as_mut().unwrap();
+        buffer.instances.push(data);
+    }
+
+    pub fn draw_instances(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
+        let buffer = self.current.as_mut().unwrap();
+        buffer.draw_instances(gpu, renderpass);
+        self.complete();
+        self.take(gpu);
     }
 }
