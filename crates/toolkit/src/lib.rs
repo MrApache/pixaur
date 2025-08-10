@@ -1,5 +1,4 @@
 mod error;
-mod renderer;
 mod content;
 mod color;
 mod rendering;
@@ -21,11 +20,15 @@ pub use wl_client::{
 };
 
 use crate::{
-    content::Content, debug::FpsCounter, rendering::{Gpu, Renderer}, widget::{
+    content::Content,
+    debug::FpsCounter,
+    rendering::{Gpu, Renderer},
+    widget::{
         Container,
         Rect,
         Widget
-    }, window::{
+    },
+    window::{
         Window,
         WindowPointer,
         WindowRequest

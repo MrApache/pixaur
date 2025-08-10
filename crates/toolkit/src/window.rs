@@ -2,7 +2,15 @@ use std::ffi::c_void;
 use std::ptr::NonNull;
 
 use wgpu::rwh::{
-    DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle, WindowHandle
+    DisplayHandle,
+    HandleError,
+    HasDisplayHandle,
+    HasWindowHandle,
+    RawDisplayHandle,
+    RawWindowHandle,
+    WaylandDisplayHandle,
+    WaylandWindowHandle,
+    WindowHandle
 };
 
 use wgpu::{Surface, SurfaceConfiguration};
@@ -10,8 +18,8 @@ use wl_client::WindowBackend;
 use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 
 use crate::rendering::Renderer;
-use crate::widget::{Container, Widget};
-use crate::{renderer, UserWindow, GUI};
+use crate::widget::Container;
+use crate::{UserWindow, GUI};
 
 pub struct WindowRequest {
     pub(crate) id: String,
