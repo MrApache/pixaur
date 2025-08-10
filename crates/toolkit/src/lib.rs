@@ -89,7 +89,7 @@ pub struct EventLoop<T: GUI> {
 
 impl<T: GUI> EventLoop<T> {
     pub fn new(app: T) -> Result<Self, Error> {
-        let conn = Connection::connect_to_env().expect("Failed to connect to the Wayland server.");
+        let conn = Connection::connect_to_env()?;
 
         let display = conn.display();
         let mut event_queue = conn.new_event_queue();
@@ -99,8 +99,8 @@ impl<T: GUI> EventLoop<T> {
 
         let mut client = WlClient::default();
 
-        event_queue.roundtrip(&mut client).unwrap(); //Register objects
-        event_queue.roundtrip(&mut client).unwrap(); //Register outputs
+        event_queue.roundtrip(&mut client)?; //Register objects
+        event_queue.roundtrip(&mut client)?; //Register outputs
 
         let mut content = ContentManager::default();
 
@@ -117,7 +117,7 @@ impl<T: GUI> EventLoop<T> {
         let (display_ptr, gpu) = {
             let display_ptr = NonNull::new(display.id().as_ptr() as *mut c_void).unwrap();
             let dummy = client.create_window_backend(qh, "dummy", 1, 1, WindowLayer::default());
-            event_queue.roundtrip(&mut client).unwrap(); //Init dummy
+            event_queue.roundtrip(&mut client)?; //Init dummy
 
             let dummy_ptr = dummy.lock().unwrap().as_ptr();
             let ptr = WindowPointer::new(display_ptr, dummy_ptr);
@@ -126,7 +126,7 @@ impl<T: GUI> EventLoop<T> {
             drop(dummy);
 
             client.destroy_window_backend("dummy");
-            event_queue.roundtrip(&mut client).unwrap(); //Destroy dummy
+            event_queue.roundtrip(&mut client)?; //Destroy dummy
 
             (display_ptr, gpu)
         };
@@ -198,9 +198,7 @@ impl<T: GUI> EventLoop<T> {
 
                     Ok(())
                 })?;
-            self.event_queue
-                .blocking_dispatch(&mut self.client)
-                .unwrap();
+            self.event_queue.blocking_dispatch(&mut self.client)?;
         }
     }
 
