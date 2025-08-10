@@ -1,18 +1,21 @@
-use std::any::Any;
-use toolkit::{widget::{Container, Rect, Size, Spacing, Widget}, window::{Window, WindowRequest}, Anchor, Argb8888, Color, CommandBuffer, Context, DesktopOptions, EventLoop, LinearGradient, UserWindow, GUI};
-use widgets::{panel::Panel, Text};
+use toolkit::{
+    glam::Vec4, widget::Container, window::WindowRequest, Anchor, Argb8888, Color, Context, DesktopOptions, EventLoop, LinearGradient, SpecialOptions, UserWindow, GUI
+};
+use widgets::panel::Panel;
 
 struct App;
 impl GUI for App {
     fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<App>>> {
-        vec![Box::new(MainWindow::default())]
+        vec![
+            Box::new(MainWindow::default()),
+            Box::new(SmartPanel),
+        ]
     }
 }
 
-
 #[derive(Default)]
 struct MainWindow {
-    value: u64,
+    _value: u64,
 }
 
 impl UserWindow<App> for MainWindow {
@@ -32,7 +35,7 @@ impl UserWindow<App> for MainWindow {
         Box::new(panel)
     }
 
-    fn update<'ctx>(&mut self, _gui: &mut App, context: &'ctx mut Context<'ctx>) {
+    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut Context<'ctx>) {
     }
 }
 
@@ -42,3 +45,29 @@ fn main() {
     event_loop.run().unwrap();
 }
 
+struct SmartPanel;
+impl UserWindow<App> for SmartPanel {
+    fn request(&self) -> WindowRequest {
+        WindowRequest::new("smart_panel")
+            .bottom(SpecialOptions {
+                anchor: Anchor::Bottom,
+                exclusive_zone: 35,
+                target: Default::default(),
+            })
+            .with_size(1920, 35)
+    }
+
+    fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
+        let mut panel = Panel::new("Panel");
+        panel.background = Color::Simple(Argb8888::BLUE);
+        //panel.padding = Vec4::new(10.0, 10.0, 10.0, 10.0);
+
+        let mut child_panel = Panel::new("panel1");
+        child_panel.background = Color::LinearGradient(LinearGradient::new(Argb8888::BROWN, Argb8888::BLUE));
+        panel.add_child(Box::new(child_panel));
+        Box::new(panel)
+    }
+
+    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut Context<'ctx>) {
+    }
+}

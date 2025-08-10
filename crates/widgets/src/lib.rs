@@ -1,13 +1,8 @@
 use toolkit::{
-    widget::{
-        Size,
+    glam::Vec2, widget::{
         Spacing,
         Widget
-    },
-    DrawCommand,
-    Argb8888,
-    Color,
-    DEFAULT_FONT
+    }, Argb8888, Color, DrawCommand, DEFAULT_FONT
 };
 
 pub mod panel;
@@ -47,8 +42,8 @@ impl Widget for Text {
         &self.id
     }
 
-    fn desired_size(&self) -> Size {
-        Size::default()
+    fn desired_size(&self) -> Vec2 {
+        Vec2::default()
     }
 
     fn spacing(&self) -> Spacing {
@@ -70,6 +65,10 @@ impl Widget for Text {
             size: self.size,
             color: Color::Simple(Argb8888::RED),
         });
+    }
+
+    fn layout(&mut self, bounds: toolkit::widget::Rect) {
+        todo!()
     }
 }
 
@@ -98,10 +97,7 @@ mod tests {
         fn add_child(&mut self, child: Box<dyn Widget>) {
             self.vec.push(child);
         }
-    
-        fn layout(&mut self, _bounds: Rect) {
-        }
-    
+     
         fn children(&self) -> &[Box<dyn Widget>] {
             &self.vec
         }
@@ -112,12 +108,15 @@ mod tests {
     }
     
     impl Widget for Panel {
+        fn layout(&mut self, _bounds: Rect) {
+        }
+
         fn id(&self) -> &str {
             ""
         }
     
-        fn desired_size(&self) -> Size {
-            Size::default()
+        fn desired_size(&self) -> Vec2 {
+            Vec2::default()
         }
     
         fn spacing(&self) -> Spacing {

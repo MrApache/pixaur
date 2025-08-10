@@ -11,6 +11,7 @@ pub mod window;
 
 pub use color::*;
 pub use error::*;
+use glam::Vec2;
 pub use wl_client::{
     Anchor,
     window::{
@@ -183,6 +184,7 @@ impl<T: GUI> EventLoop<T> {
                 }
 
                 let mut commands = CommandBuffer::default();
+                window.frontend.layout(Rect::new(Vec2::ZERO, Vec2::new(window.configuration.width as f32, window.configuration.height as f32)));
                 window.frontend.draw(&mut commands);
                 window.renderer.render(&self.gpu, &window.surface, &commands.storage, window.configuration.width as f32, window.configuration.height as f32)?;
                 backend.commit();

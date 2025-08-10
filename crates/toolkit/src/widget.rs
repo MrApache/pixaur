@@ -19,12 +19,6 @@ impl Point {
 }
 
 #[derive(Default)]
-pub struct Size {
-    pub width: f32,
-    pub height: f32,
-}
-
-#[derive(Default)]
 pub struct Spacing {
     pub top: f32,
     pub right: f32,
@@ -54,20 +48,24 @@ impl Rect {
     }
 }
 
+pub enum Size {
+    Value(Vec2),
+}
+
 pub trait Widget: Any {
     fn id(&self) -> &str;
-    fn desired_size(&self) -> Size;
+    fn desired_size(&self) -> Vec2;
     fn spacing(&self) -> Spacing;
     fn as_container(&self) -> Option<&dyn Container> { None }
     fn as_container_mut(&mut self) -> Option<&mut dyn Container> { None }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);
+    fn layout(&mut self, bounds: Rect);
 }
 
 pub trait Container: Widget {
     fn add_child(&mut self, child: Box<dyn Widget>);
-    fn layout(&mut self, bounds: Rect);
     fn children(&self) -> &[Box<dyn Widget>];
     fn children_mut(&mut self) -> &mut [Box<dyn Widget>];
 }
