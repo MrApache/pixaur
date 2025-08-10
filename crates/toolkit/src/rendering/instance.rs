@@ -1,6 +1,6 @@
-use wgpu::*;
-use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use crate::Argb8888;
+use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
+use wgpu::*;
 
 #[repr(C)]
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -9,15 +9,24 @@ pub struct InstanceData {
     color_start: Vec4,
     color_end: Vec4,
     use_gradient: u32,
-    _padding: [u32; 3]
+    _padding: [u32; 3],
 }
 
 impl InstanceData {
     pub fn new(position: Vec2, size: Vec2, color: &crate::Color, proj: Mat4) -> Self {
-        let model = proj * Mat4::from_scale_rotation_translation(Vec3::new(size.x, size.y, 0.0), Quat::IDENTITY, Vec3::new(position.x, position.y, 0.0));
-        let (color_start, color_end, use_gradient) : (Vec4, Vec4, u32) = match color {
+        let model = proj
+            * Mat4::from_scale_rotation_translation(
+                Vec3::new(size.x, size.y, 0.0),
+                Quat::IDENTITY,
+                Vec3::new(position.x, position.y, 0.0),
+            );
+        let (color_start, color_end, use_gradient): (Vec4, Vec4, u32) = match color {
             crate::Color::Simple(argb8888) => (argb8888.into(), Argb8888::TRANSPARENT.into(), 0),
-            crate::Color::LinearGradient(linear_gradient) => ((&linear_gradient.from).into(), (&linear_gradient.to).into(), 1),
+            crate::Color::LinearGradient(linear_gradient) => (
+                (&linear_gradient.from).into(),
+                (&linear_gradient.to).into(),
+                1,
+            ),
         };
 
         Self {
@@ -55,7 +64,6 @@ impl InstanceData {
                     shader_location: 8,
                     format: VertexFormat::Float32x4,
                 },
-
                 VertexAttribute {
                     offset: mem::size_of::<[f32; 16]>() as BufferAddress,
                     shader_location: 9,

@@ -1,7 +1,13 @@
 use widgets::panel::{Panel, TestPanelLayoutWidget};
 
 use toolkit::{
-    glam::{Vec2, Vec4}, include_asset, style::{BackgroundStyle, Texture}, widget::Container, window::WindowRequest, Anchor, Argb8888, Color, ContentManager, Context, DesktopOptions, EventLoop, LinearGradient, SpecialOptions, TextureHandle, UserWindow, GUI
+    Anchor, Argb8888, Color, ContentManager, Context, DesktopOptions, EventLoop, GUI,
+    LinearGradient, SpecialOptions, TextureHandle, UserWindow,
+    glam::{Vec2, Vec4},
+    include_asset,
+    style::{BackgroundStyle, Texture},
+    widget::Container,
+    window::WindowRequest,
 };
 
 #[derive(Default)]
@@ -42,7 +48,12 @@ impl UserWindow<App> for MainWindow {
 
         let mut subpanel = Panel::new("Subpanel");
         //subpanel.background = Color::Simple(Argb8888::GREEN).into();
-        subpanel.background = Texture::new(gui.texture).with_color(Color::LinearGradient(LinearGradient::new(Argb8888::WHITE, Argb8888::YELLOW))).into();
+        subpanel.background = Texture::new(gui.texture)
+            .with_color(Color::LinearGradient(LinearGradient::new(
+                Argb8888::WHITE,
+                Argb8888::YELLOW,
+            )))
+            .into();
         panel.add_child(Box::new(subpanel));
 
         let mut subpanel = Panel::new("Subpanel");

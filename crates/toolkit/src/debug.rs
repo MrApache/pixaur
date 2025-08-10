@@ -1,4 +1,4 @@
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 pub struct FpsCounter {
     last_frame_time: Instant,
@@ -26,7 +26,8 @@ impl FpsCounter {
             self.frame_times.remove(0);
         }
 
-        let avg_duration: Duration = self.frame_times.iter().sum::<Duration>() / self.frame_times.len() as u32;
+        let avg_duration: Duration =
+            self.frame_times.iter().sum::<Duration>() / self.frame_times.len() as u32;
         1.0 / avg_duration.as_secs_f64()
     }
 }

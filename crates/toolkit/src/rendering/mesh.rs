@@ -1,6 +1,6 @@
 use glam::{Vec2, Vec3};
+use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
-use wgpu::{util::BufferInitDescriptor};
 use wgpu::*;
 
 use crate::rendering::Vertex;

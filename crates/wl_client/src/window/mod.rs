@@ -1,30 +1,23 @@
-mod transform;
 mod pool;
+mod transform;
 
 use crate::WlClient;
-use transform::Transform;
 pub(crate) use pool::ShmPool;
+use transform::Transform;
 
 use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{
-    protocol::{
-        wl_buffer::WlBuffer,
-        wl_surface::WlSurface
-    }, Proxy, QueueHandle
+    Proxy, QueueHandle,
+    protocol::{wl_buffer::WlBuffer, wl_surface::WlSurface},
 };
 
 use wayland_protocols::xdg::shell::client::{
-    xdg_surface::XdgSurface, xdg_toplevel::XdgToplevel, xdg_wm_base::XdgWmBase
+    xdg_surface::XdgSurface, xdg_toplevel::XdgToplevel, xdg_wm_base::XdgWmBase,
 };
 
 use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
-    zwlr_layer_shell_v1::{
-        Layer,
-        ZwlrLayerShellV1,
-    },
-    zwlr_layer_surface_v1::{
-        Anchor, ZwlrLayerSurfaceV1,
-    }
+    zwlr_layer_shell_v1::{Layer, ZwlrLayerShellV1},
+    zwlr_layer_surface_v1::{Anchor, ZwlrLayerSurfaceV1},
 };
 
 pub type WindowId = Arc<String>;
@@ -40,7 +33,7 @@ pub struct DesktopOptions {
 pub struct SpecialOptions {
     pub anchor: Anchor,
     pub exclusive_zone: u32,
-    pub target: TargetMonitor
+    pub target: TargetMonitor,
 }
 
 #[derive(Debug, Clone)]
@@ -49,7 +42,7 @@ pub enum WindowLayer {
     Top(SpecialOptions),
     Bottom(SpecialOptions),
     Overlay(SpecialOptions),
-    Background(SpecialOptions)
+    Background(SpecialOptions),
 }
 
 impl Default for WindowLayer {
@@ -71,7 +64,7 @@ pub enum TargetMonitor {
 struct Unused {
     layer_surface: Option<ZwlrLayerSurfaceV1>,
     xdg_surface: Option<XdgSurface>,
-    xdg_toplevel: Option<XdgToplevel>
+    xdg_toplevel: Option<XdgToplevel>,
 }
 
 #[derive(Debug)]
@@ -100,7 +93,9 @@ pub struct Window {
 
 impl Window {
     pub fn resize_buffer_if_needed(&mut self) {
-        self.buffer = self.pool.create_buffer(0, self.width, self.height, &self.qh, &self.id);
+        self.buffer = self
+            .pool
+            .create_buffer(0, self.width, self.height, &self.qh, &self.id);
     }
 
     pub fn destroy(self) {
@@ -157,32 +152,30 @@ impl Window {
         instance
     }
 
-    fn init(&mut self,
-        ls: Option<&ZwlrLayerShellV1>,
-        xdg_wm_base: Option<&XdgWmBase>,
-    ) {
+    fn init(&mut self, ls: Option<&ZwlrLayerShellV1>, xdg_wm_base: Option<&XdgWmBase>) {
         match self.layer.clone() {
             WindowLayer::Desktop(_) => self.init_desktop(xdg_wm_base.unwrap()),
             WindowLayer::Top(options) => self.init_layer_shell(ls.unwrap(), Layer::Top, options),
-            WindowLayer::Bottom(options) => self.init_layer_shell(ls.unwrap(), Layer::Bottom, options),
-            WindowLayer::Overlay(options) => self.init_layer_shell(ls.unwrap(), Layer::Overlay, options),
-            WindowLayer::Background(options) => self.init_layer_shell(ls.unwrap(), Layer::Background, options),
+            WindowLayer::Bottom(options) => {
+                self.init_layer_shell(ls.unwrap(), Layer::Bottom, options)
+            }
+            WindowLayer::Overlay(options) => {
+                self.init_layer_shell(ls.unwrap(), Layer::Overlay, options)
+            }
+            WindowLayer::Background(options) => {
+                self.init_layer_shell(ls.unwrap(), Layer::Background, options)
+            }
         };
     }
 
-    fn init_layer_shell(
-        &mut self,
-        ls: &ZwlrLayerShellV1,
-        layer: Layer,
-        options: SpecialOptions,
-    ) {
+    fn init_layer_shell(&mut self, ls: &ZwlrLayerShellV1, layer: Layer, options: SpecialOptions) {
         let layer_surface = ls.get_layer_surface(
             &self.surface,
             None, //TODO fix
             layer,
             self.id.as_ref().into(),
             &self.qh,
-            self.id.clone()
+            self.id.clone(),
         );
 
         layer_surface.set_size(self.width as u32, self.height as u32);
@@ -211,7 +204,6 @@ impl Window {
         self.surface.damage_buffer(0, 0, self.width, self.height);
     }
 
-
     pub fn commit(&mut self) {
         self.surface.damage_buffer(0, 0, self.width, self.height);
         self.surface.commit();
@@ -226,7 +218,7 @@ impl Window {
     pub fn resize_pool_if_needed(&mut self) {
         let size = (self.width as u64 * 4) * self.height as u64;
         if self.pool.need_resize(size) {
-            self.pool.resize(size); 
+            self.pool.resize(size);
         }
     }
 
@@ -239,7 +231,8 @@ impl Window {
     }
 
     pub fn draw_text_at(&mut self, x: usize, y: usize, coverage: f32) {
-        self.pool.draw_text_at(x, y, self.width as usize, self.height as usize, coverage);
+        self.pool
+            .draw_text_at(x, y, self.width as usize, self.height as usize, coverage);
     }
 
     pub fn as_ptr(&self) -> NonNull<c_void> {

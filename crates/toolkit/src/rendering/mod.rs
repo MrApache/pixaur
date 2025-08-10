@@ -1,39 +1,32 @@
-pub mod mesh;
 pub mod bind_group;
 pub mod bind_group_layout;
-pub mod material;
-mod instance;
 mod gpu;
-
-use std::collections::HashMap;
+mod instance;
+pub mod material;
+pub mod mesh;
 
 pub use gpu::Gpu;
 
-use wgpu::*;
-use glam::{Mat4, Vec2, Vec3};
 use crate::error::Error;
+use glam::{Mat4, Vec2, Vec3};
+use wgpu::*;
 
 use crate::rendering::bind_group_layout::BindGroupLayoutBuilder;
 use crate::rendering::instance::InstanceData;
 use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
-use crate::style::{BackgroundStyle, Texture};
-use crate::widget::Rect;
 use crate::{ContentManager, DrawCommand};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     position: Vec3,
-    uv: Vec2
+    uv: Vec2,
 }
 
 impl Vertex {
     pub fn new(position: Vec3, uv: Vec2) -> Vertex {
-        Self {
-            position,
-            uv,
-        }
+        Self { position, uv }
     }
 
     pub fn get_layout() -> VertexBufferLayout<'static> {
@@ -42,7 +35,7 @@ impl Vertex {
         VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as u64,
             step_mode: VertexStepMode::Vertex,
-            attributes: &ATTRIBUTES
+            attributes: &ATTRIBUTES,
         }
     }
 }
@@ -61,29 +54,33 @@ impl Renderer {
         let layout = builder.build("Default");
 
         let (shader, shader_label) = if let Some(shader) = shader {
-            (std::fs::read_to_string(format!("../../../../assets/{shader}.wgsl"))?, shader)
-        }
-        else {
-            (include_str!("../../../../assets/shader.wgsl").to_string(), "Default")
+            (
+                std::fs::read_to_string(format!("../../../../assets/{shader}.wgsl"))?,
+                shader,
+            )
+        } else {
+            (
+                include_str!("../../../../assets/shader.wgsl").to_string(),
+                "Default",
+            )
         };
 
-        let shader = gpu.device.create_shader_module(
-            ShaderModuleDescriptor {
-                label: Some(shader_label),
-                source: ShaderSource::Wgsl(shader.into())
-            }
-        );
+        let shader = gpu.device.create_shader_module(ShaderModuleDescriptor {
+            label: Some(shader_label),
+            source: ShaderSource::Wgsl(shader.into()),
+        });
 
-        let pipeline_layout = gpu.device.create_pipeline_layout(
-            &PipelineLayoutDescriptor {
+        let pipeline_layout = gpu
+            .device
+            .create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Some("Pipeline Layout"),
                 bind_group_layouts: &[&layout],
                 push_constant_ranges: &[],
-            }
-        );
+            });
 
-        let render_pipeline = gpu.device.create_render_pipeline(
-            &RenderPipelineDescriptor {
+        let render_pipeline = gpu
+            .device
+            .create_render_pipeline(&RenderPipelineDescriptor {
                 label: Some("Render Pipeline"),
                 layout: Some(&pipeline_layout),
                 vertex: VertexState {
@@ -113,14 +110,13 @@ impl Renderer {
                 multisample: MultisampleState::default(),
                 multiview: None,
                 cache: None,
-            }
-        );
+            });
 
         Ok(Self {
             render_pipeline,
             mesh: QuadMesh::new(&gpu.device),
             material: Material::default(&gpu.device, &gpu.queue),
-            buffer_pool: BufferPool::new(gpu)
+            buffer_pool: BufferPool::new(gpu),
         })
     }
 
@@ -131,10 +127,12 @@ impl Renderer {
         commands: &mut Vec<DrawCommand>,
         content: &ContentManager,
         window_width: f32,
-        window_height: f32
-        )-> Result<(), Error> {
+        window_height: f32,
+    ) -> Result<(), Error> {
         let texture = surface.get_current_texture()?;
-        let image_view = texture.texture.create_view(&TextureViewDescriptor::default());
+        let image_view = texture
+            .texture
+            .create_view(&TextureViewDescriptor::default());
 
         let color_attachment = RenderPassColorAttachment {
             view: &image_view,
@@ -144,7 +142,7 @@ impl Renderer {
                     r: 1.0,
                     g: 1.0,
                     b: 1.0,
-                    a: 1.0
+                    a: 1.0,
                 }),
                 store: StoreOp::Store,
             },
@@ -156,12 +154,14 @@ impl Renderer {
             color_attachments: &[Some(color_attachment)],
             depth_stencil_attachment: None,
             occlusion_query_set: None,
-            timestamp_writes: None
+            timestamp_writes: None,
         };
 
-        let mut command_encoder = gpu.device.create_command_encoder(&CommandEncoderDescriptor {
-            label: Some("Render Encoder")
-        });
+        let mut command_encoder = gpu
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         let proj = Mat4::orthographic_rh_gl(0.0, window_width, 0.0, window_height, -1.0, 1.0);
 
@@ -177,14 +177,21 @@ impl Renderer {
 
             commands.iter().for_each(|command| {
                 match command {
-                    DrawCommand::Rect { rect, color } => self.buffer_pool.push(InstanceData::new(rect.min, rect.max, color, proj)),
+                    DrawCommand::Rect { rect, color } => self
+                        .buffer_pool
+                        .push(InstanceData::new(rect.min, rect.max, color, proj)),
                     DrawCommand::Texture { rect, texture } => {
                         {
                             renderpass.set_bind_group(0, &self.material.bind_group, &[]);
                             self.buffer_pool.draw_instances(gpu, &mut renderpass);
                         }
 
-                        self.buffer_pool.push(InstanceData::new(rect.min, rect.max, &texture.color, proj));
+                        self.buffer_pool.push(InstanceData::new(
+                            rect.min,
+                            rect.max,
+                            &texture.color,
+                            proj,
+                        ));
 
                         let material = content.get_texture(texture.handle);
                         renderpass.set_bind_group(0, &material.bind_group, &[]);
@@ -192,13 +199,17 @@ impl Renderer {
                         self.buffer_pool.draw_instances(gpu, &mut renderpass);
                         return;
                     }
-                    DrawCommand::Text { size, font, content, color } => {},
+                    DrawCommand::Text {
+                        size,
+                        font,
+                        content,
+                        color,
+                    } => {}
                 }
 
                 renderpass.set_bind_group(0, &self.material.bind_group, &[]);
                 self.buffer_pool.draw_instances(gpu, &mut renderpass);
             });
-
         }
 
         gpu.queue.submit(std::iter::once(command_encoder.finish()));
@@ -250,7 +261,11 @@ impl InstanceBuffer {
     }
 
     fn write_instance_buffer(&self, gpu: &Gpu) {
-        gpu.queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&self.instances));
+        gpu.queue.write_buffer(
+            &self.instance_buffer,
+            0,
+            bytemuck::cast_slice(&self.instances),
+        );
     }
 
     fn draw_instances(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
@@ -302,7 +317,7 @@ impl BufferPool {
 
         self.available.append(&mut self.in_use);
     }
-    
+
     fn push(&mut self, data: InstanceData) {
         let buffer = self.current.as_mut().unwrap();
         buffer.instances.push(data);

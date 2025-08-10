@@ -1,11 +1,8 @@
 use std::env::current_dir;
 
+use crate::{error::Error, rendering::bind_group::BindGroupBuilder};
 use image::GenericImageView;
 use wgpu::*;
-use crate::{
-    error::Error,
-    rendering::bind_group::BindGroupBuilder
-};
 
 pub struct Material {
     pub bind_group: BindGroup, //Texture + Sampler
@@ -17,7 +14,7 @@ impl Material {
         pixels: &[u8],
         size: (u32, u32),
         device: &Device,
-        queue: &Queue
+        queue: &Queue,
     ) -> Self {
         let texture_size = Extent3d {
             width: size.0,
@@ -67,25 +64,24 @@ impl Material {
 
         let layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Material"),
-            entries: 
-                &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            sample_type: TextureSampleType::Float { filterable: true },
-                            view_dimension: TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
                     },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ]
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
         });
 
         let mut builder = BindGroupBuilder::new(device);
@@ -113,7 +109,8 @@ impl Material {
         let image = image::load_from_memory(bytes)?;
         let converted = image.to_rgba8();
         let size = image.dimensions();
-        Ok(Self::from_rgba_pixels("texture", &converted, size, device, queue))
+        Ok(Self::from_rgba_pixels(
+            "texture", &converted, size, device, queue,
+        ))
     }
 }
-

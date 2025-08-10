@@ -2,11 +2,11 @@ use wgpu::*;
 
 pub struct BindGroupLayoutBuilder<'a> {
     entries: Vec<BindGroupLayoutEntry>,
-    device: &'a Device
+    device: &'a Device,
 }
 
 impl<'a> BindGroupLayoutBuilder<'a> {
-    pub fn new(device: &'a Device) -> Self{
+    pub fn new(device: &'a Device) -> Self {
         Self {
             entries: vec![],
             device,
@@ -24,7 +24,7 @@ impl<'a> BindGroupLayoutBuilder<'a> {
             ty: BindingType::Texture {
                 sample_type: TextureSampleType::Float { filterable: true },
                 view_dimension: TextureViewDimension::D2,
-                multisampled: false
+                multisampled: false,
             },
             count: None,
         });
@@ -38,10 +38,12 @@ impl<'a> BindGroupLayoutBuilder<'a> {
     }
 
     pub fn build(&mut self, label: &'static str) -> BindGroupLayout {
-        let layout = self.device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some(label),
-            entries: &self.entries
-        });
+        let layout = self
+            .device
+            .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some(label),
+                entries: &self.entries,
+            });
 
         self.reset();
         layout

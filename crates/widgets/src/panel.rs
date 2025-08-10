@@ -1,10 +1,8 @@
 use toolkit::{
-    glam::{Vec2, Vec4}, style::BackgroundStyle, widget::{
-        Container,
-        DesiredSize,
-        Rect,
-        Widget
-    }, Argb8888, Color, DrawCommand 
+    Argb8888, Color, DrawCommand,
+    glam::{Vec2, Vec4},
+    style::BackgroundStyle,
+    widget::{Container, DesiredSize, Rect, Widget},
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -60,13 +58,12 @@ impl Widget for Panel {
         let command = match &self.background {
             BackgroundStyle::Color(color) => DrawCommand::Rect {
                 rect: self.rect.clone(),
-                color: color.clone()
+                color: color.clone(),
             },
             BackgroundStyle::Texture(texture) => DrawCommand::Texture {
                 rect: self.rect.clone(),
-                texture: texture.clone()
-            }
-
+                texture: texture.clone(),
+            },
         };
 
         out.push(command);
@@ -78,29 +75,29 @@ impl Widget for Panel {
 
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
-    
+
         // Учитываем padding с обеих сторон для вычисления внутренних границ
         let min_x = self.rect.min.x + self.padding.x; // left
         let min_y = self.rect.min.y + self.padding.y; // bottom
         let max_x = self.rect.max.x - self.padding.z; // right
         let max_y = self.rect.max.y - self.padding.w; // top
-        
+
         let mut cursor_x = min_x;
         let available_height = max_y - min_y;
-    
+
         let len = self.content.len();
-    
+
         // 1. Считаем суммарную ширину Min-виджетов и количество Fill-виджетов
         let mut total_min_width = 0.0;
         let mut fill_count = 0;
 
-        self.content.iter().for_each(|widget| {
-            match widget.desired_size() {
+        self.content
+            .iter()
+            .for_each(|widget| match widget.desired_size() {
                 DesiredSize::Min(size) => total_min_width += size.x,
                 DesiredSize::Fill => fill_count += 1,
-            }
-        });
-    
+            });
+
         // Общая ширина, занятная spacing (между элементами, их len-1)
         let total_spacing = self.spacing * (len.saturating_sub(1)) as f32;
         // Вычисляем доступное пространство для Fill-виджетов, учитывая padding и spacing
@@ -113,21 +110,21 @@ impl Widget for Panel {
                 DesiredSize::Min(vec2) => (vec2.x, vec2.y.min(available_height)),
                 DesiredSize::Fill => (fill_width, available_height),
             };
-    
+
             let child_bounds = Rect {
                 min: Vec2::new(cursor_x, min_y),
                 max: Vec2::new(width, height),
             };
-    
+
             child.layout(child_bounds);
-    
+
             cursor_x += width;
-    
+
             // Добавляем spacing после элемента, кроме последнего
             if i != len - 1 {
                 cursor_x += self.spacing;
             }
-    
+
             // Если вышли за границы — прекращаем
             if cursor_x >= max_x {
                 break;
@@ -176,7 +173,7 @@ impl Widget for TestPanelLayoutWidget {
     fn draw<'frame>(&'frame self, out: &mut toolkit::CommandBuffer<'frame>) {
         out.push(toolkit::DrawCommand::Rect {
             rect: self.rect.clone(),
-            color: Color::Simple(Argb8888::CYAN)
+            color: Color::Simple(Argb8888::CYAN),
         });
     }
 

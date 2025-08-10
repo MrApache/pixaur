@@ -1,7 +1,4 @@
-use wayland_client::{
-    protocol::wl_output::Transform as WTransform,
-    WEnum
-};
+use wayland_client::{WEnum, protocol::wl_output::Transform as WTransform};
 
 #[derive(Debug)]
 pub enum Transform {
@@ -29,8 +26,8 @@ impl From<WEnum<WTransform>> for Transform {
                 WTransform::Flipped180 => Transform::Flipped180,
                 WTransform::Flipped270 => Transform::Flipped270,
                 _ => Transform::Normal0,
-            }
-            WEnum::Unknown(v) => Transform::Custom(v)
+            },
+            WEnum::Unknown(v) => Transform::Custom(v),
         }
     }
 }

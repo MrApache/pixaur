@@ -1,25 +1,19 @@
+use memmap2::MmapMut;
 use std::fs::File;
 use std::os::fd::AsFd;
-use memmap2::MmapMut;
 
-use rayon::{
-    iter::ParallelIterator,
-    slice::ParallelSliceMut
-};
+use rayon::{iter::ParallelIterator, slice::ParallelSliceMut};
 
 use wayland_client::{
+    QueueHandle,
     protocol::{
         wl_buffer::WlBuffer,
-        wl_shm_pool::WlShmPool,
         wl_shm::{Format, WlShm},
+        wl_shm_pool::WlShmPool,
     },
-    QueueHandle,
 };
 
-use crate::{
-    window::WindowId,
-    WlClient
-};
+use crate::{WlClient, window::WindowId};
 
 pub const DEFAULT_FILE_SIZE: u64 = (1920 * 4) * 1080;
 
@@ -27,7 +21,7 @@ pub const DEFAULT_FILE_SIZE: u64 = (1920 * 4) * 1080;
 struct Mmap {
     file_size: u64,
     file: File,
-    inner: MmapMut
+    inner: MmapMut,
 }
 
 impl Mmap {
@@ -40,7 +34,6 @@ impl Mmap {
             file: tmp,
         }
     }
-
 }
 
 impl Default for Mmap {
@@ -97,32 +90,47 @@ impl ShmPool {
         }
     }
 
-    pub fn create_buffer(&self, offset: i32, width: i32, height: i32, qh: &QueueHandle<WlClient>, id: &WindowId) -> WlBuffer {
-        self.inner.create_buffer(offset, width, height, width * 4, Format::Argb8888, qh, id.clone())
+    pub fn create_buffer(
+        &self,
+        offset: i32,
+        width: i32,
+        height: i32,
+        qh: &QueueHandle<WlClient>,
+        id: &WindowId,
+    ) -> WlBuffer {
+        self.inner.create_buffer(
+            offset,
+            width,
+            height,
+            width * 4,
+            Format::Argb8888,
+            qh,
+            id.clone(),
+        )
     }
 
     pub fn draw_text_at(&mut self, x: usize, y: usize, width: usize, height: usize, coverage: f32) {
         let buffer = &mut self.mmap.inner;
-    
+
         if x >= width || y >= height {
             return;
         }
-    
+
         let offset = (y * width + x) * 4;
-    
+
         let src_r = 255;
         let src_g = 255;
         let src_b = 255;
         let src_a = (coverage * 255.0) as u8;
-    
+
         let dst_r = buffer[offset];
         let dst_g = buffer[offset + 1];
         let dst_b = buffer[offset + 2];
         let dst_a = buffer[offset + 3];
-    
+
         let alpha = src_a as f32 / 255.0;
         let inv_alpha = 1.0 - alpha;
-    
+
         buffer[offset] = (src_r as f32 * alpha + dst_r as f32 * inv_alpha) as u8;
         buffer[offset + 1] = (src_g as f32 * alpha + dst_g as f32 * inv_alpha) as u8;
         buffer[offset + 2] = (src_b as f32 * alpha + dst_b as f32 * inv_alpha) as u8;
@@ -133,10 +141,10 @@ impl ShmPool {
         let buffer = &mut self.mmap.inner;
         let offset = (y * width + x) * 4;
 
-        buffer[offset] =  pixel.0;
-        buffer[offset + 1] =  pixel.1;
-        buffer[offset + 2] =  pixel.2;
-        buffer[offset + 3] =  pixel.3;
+        buffer[offset] = pixel.0;
+        buffer[offset + 1] = pixel.1;
+        buffer[offset + 2] = pixel.2;
+        buffer[offset + 3] = pixel.3;
     }
 
     pub fn clear(&mut self) {

@@ -14,7 +14,7 @@ impl Point {
     pub const ZERO: Self = Self::new(0.0, 0.0);
 
     pub const fn new(x: f32, y: f32) -> Self {
-        Self {x, y}
+        Self { x, y }
     }
 }
 
@@ -56,8 +56,12 @@ pub enum DesiredSize {
 pub trait Widget: Any {
     fn id(&self) -> &str;
     fn desired_size(&self) -> DesiredSize;
-    fn as_container(&self) -> Option<&dyn Container> { None }
-    fn as_container_mut(&mut self) -> Option<&mut dyn Container> { None }
+    fn as_container(&self) -> Option<&dyn Container> {
+        None
+    }
+    fn as_container_mut(&mut self) -> Option<&mut dyn Container> {
+        None
+    }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);

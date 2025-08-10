@@ -3,7 +3,7 @@ use crate::{Argb8888, Color, TextureHandle};
 #[derive(Debug, Clone)]
 pub struct Texture {
     pub color: Color,
-    pub handle: TextureHandle
+    pub handle: TextureHandle,
 }
 
 impl Texture {
@@ -23,7 +23,7 @@ impl Texture {
 #[derive(Debug, Clone)]
 pub enum BackgroundStyle {
     Color(Color),
-    Texture(Texture)
+    Texture(Texture),
 }
 
 impl From<Color> for BackgroundStyle {

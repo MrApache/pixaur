@@ -1,10 +1,16 @@
-use std::{
-    collections::HashMap, fs, path::PathBuf, sync::atomic::{AtomicUsize, Ordering}
-};
 use ab_glyph::FontRef;
+use std::{
+    collections::HashMap,
+    fs,
+    path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 use ttf_parser::Face;
 
-use crate::{rendering::{material::Material, Gpu}, Error};
+use crate::{
+    Error,
+    rendering::{Gpu, material::Material},
+};
 
 static HANDLE_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -21,16 +27,15 @@ pub struct TextureHandle {
 pub struct ContentManager {
     static_font: HashMap<String, FontRef<'static>>,
     //dynamic_font: HashMap<String, FontRef<'static>>,
-
     static_textures: Vec<Material>,
 
-    queue: Vec<TextureRequest>
+    queue: Vec<TextureRequest>,
 }
 
 pub(crate) struct TextureRequest {
     is_static: bool,
     handle_id: usize,
-    bytes: &'static [u8]
+    bytes: &'static [u8],
 }
 
 impl ContentManager {
@@ -59,9 +64,7 @@ impl ContentManager {
             is_static: true,
         });
 
-        TextureHandle {
-            id: handle_id,
-        }
+        TextureHandle { id: handle_id }
     }
 
     pub fn static_load_texture(&mut self, path: &str) -> Result<TextureHandle, Error> {
@@ -70,7 +73,7 @@ impl ContentManager {
             bytes: Box::leak(load_asset(path)?.into_boxed_slice()),
             is_static: true,
         };
-        
+
         let result = Ok(TextureHandle {
             id: request.handle_id,
         });
@@ -80,19 +83,20 @@ impl ContentManager {
     }
 
     pub(crate) fn dispath_queue(&mut self, gpu: &Gpu) -> Result<(), Error> {
-        self.queue.drain(..).try_for_each(|request| -> Result<(), Error> {
-            let material = Material::from_bytes(request.bytes, &gpu.device, &gpu.queue)?;
-            if request.is_static {
-                self.static_textures.push(material);
-            }
-            Ok(())
-        })
+        self.queue
+            .drain(..)
+            .try_for_each(|request| -> Result<(), Error> {
+                let material = Material::from_bytes(request.bytes, &gpu.device, &gpu.queue)?;
+                if request.is_static {
+                    self.static_textures.push(material);
+                }
+                Ok(())
+            })
     }
 
     pub(crate) fn get_texture(&self, handle: TextureHandle) -> &Material {
         self.static_textures.get(handle.id).unwrap()
     }
-
 }
 
 fn font_name(data: &[u8]) -> Option<String> {

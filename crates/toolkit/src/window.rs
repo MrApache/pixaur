@@ -2,15 +2,8 @@ use std::ffi::c_void;
 use std::ptr::NonNull;
 
 use wgpu::rwh::{
-    DisplayHandle,
-    HandleError,
-    HasDisplayHandle,
-    HasWindowHandle,
-    RawDisplayHandle,
-    RawWindowHandle,
-    WaylandDisplayHandle,
-    WaylandWindowHandle,
-    WindowHandle
+    DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, RawDisplayHandle,
+    RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle, WindowHandle,
 };
 
 use wgpu::{Surface, SurfaceConfiguration};
@@ -19,7 +12,7 @@ use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 
 use crate::rendering::Renderer;
 use crate::widget::Container;
-use crate::{UserWindow, GUI};
+use crate::{GUI, UserWindow};
 
 pub struct WindowRequest {
     pub(crate) id: String,
@@ -72,7 +65,7 @@ impl WindowRequest {
 
 pub struct Window<T: GUI> {
     pub(crate) frontend: Box<dyn Container>,
-    pub(crate) backend:  WindowBackend,
+    pub(crate) backend: WindowBackend,
     pub(crate) surface: Surface<'static>,
     pub(crate) configuration: SurfaceConfiguration,
     pub(crate) handle: Box<dyn UserWindow<T>>,
@@ -87,7 +80,6 @@ impl<T: GUI> Window<T> {
         configuration: SurfaceConfiguration,
         handle: Box<dyn UserWindow<T>>,
         renderer: Renderer,
-
     ) -> Self {
         Self {
             frontend,
@@ -117,13 +109,9 @@ impl WindowPointer {
 impl HasDisplayHandle for WindowPointer {
     fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
         unsafe {
-            Ok(
-                DisplayHandle::borrow_raw(
-                    RawDisplayHandle::Wayland(
-                        WaylandDisplayHandle::new(self.display_ptr)
-                    )
-                )
-            )
+            Ok(DisplayHandle::borrow_raw(RawDisplayHandle::Wayland(
+                WaylandDisplayHandle::new(self.display_ptr),
+            )))
         }
     }
 }
@@ -131,13 +119,9 @@ impl HasDisplayHandle for WindowPointer {
 impl HasWindowHandle for WindowPointer {
     fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
         unsafe {
-            Ok(
-                WindowHandle::borrow_raw(
-                    RawWindowHandle::Wayland(
-                        WaylandWindowHandle::new(self.surface_ptr)
-                    )
-                )
-            )
+            Ok(WindowHandle::borrow_raw(RawWindowHandle::Wayland(
+                WaylandWindowHandle::new(self.surface_ptr),
+            )))
         }
     }
 }

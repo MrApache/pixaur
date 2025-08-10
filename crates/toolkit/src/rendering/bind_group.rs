@@ -3,11 +3,11 @@ use wgpu::*;
 pub struct BindGroupBuilder<'a> {
     entries: Vec<BindGroupEntry<'a>>,
     layout: Option<&'a BindGroupLayout>,
-    device: &'a Device
+    device: &'a Device,
 }
 
 impl<'a> BindGroupBuilder<'a> {
-    pub fn new(device: &'a Device) -> Self{
+    pub fn new(device: &'a Device) -> Self {
         Self {
             entries: vec![],
             layout: None,
@@ -26,12 +26,12 @@ impl<'a> BindGroupBuilder<'a> {
     pub fn add_material(&mut self, view: &'a TextureView, sampler: &'a Sampler) {
         self.entries.push(BindGroupEntry {
             binding: self.entries.len() as u32,
-            resource: BindingResource::TextureView(view)
+            resource: BindingResource::TextureView(view),
         });
 
         self.entries.push(BindGroupEntry {
             binding: self.entries.len() as u32,
-            resource: BindingResource::Sampler(sampler)
+            resource: BindingResource::Sampler(sampler),
         });
     }
 

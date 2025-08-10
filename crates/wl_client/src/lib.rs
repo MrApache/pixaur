@@ -5,70 +5,35 @@ pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::clien
 use std::{
     collections::HashMap,
     process::exit,
-    sync::{Arc, Mutex}
+    sync::{Arc, Mutex},
 };
 
 use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
-        zwlr_layer_shell_v1::{
-            ZwlrLayerShellV1,
-            Event as ZwlrLayerShellV1Event,
-        },
-        zwlr_layer_surface_v1::{
-            ZwlrLayerSurfaceV1,
-            Event as ZwlrLayerSurfaceV1Event,
-        }
-    };
+    zwlr_layer_shell_v1::{Event as ZwlrLayerShellV1Event, ZwlrLayerShellV1},
+    zwlr_layer_surface_v1::{Event as ZwlrLayerSurfaceV1Event, ZwlrLayerSurfaceV1},
+};
 
 use wayland_client::{
+    Connection, Dispatch, Proxy, QueueHandle,
     protocol::{
-        wl_buffer::{
-            Event as WlBufferEvent, WlBuffer
-        },
-        wl_callback::{
-            Event as WlCallbackEvent, WlCallback
-        },
-        wl_compositor::{
-            Event as WlCompositorEvent, WlCompositor
-        },
-        wl_output::{
-            Event as WlOutputEvent, WlOutput
-        },
-        wl_registry::{
-            Event as WlRegistryEvent, WlRegistry
-        },
-        wl_shm::{
-            Event as WlShmEvent, WlShm
-        },
-        wl_shm_pool::{
-            Event as WlShmPoolEvent, WlShmPool
-        },
-        wl_surface::{
-            Event as WlSurfaceEvent, WlSurface
-        }
+        wl_buffer::{Event as WlBufferEvent, WlBuffer},
+        wl_callback::{Event as WlCallbackEvent, WlCallback},
+        wl_compositor::{Event as WlCompositorEvent, WlCompositor},
+        wl_output::{Event as WlOutputEvent, WlOutput},
+        wl_registry::{Event as WlRegistryEvent, WlRegistry},
+        wl_shm::{Event as WlShmEvent, WlShm},
+        wl_shm_pool::{Event as WlShmPoolEvent, WlShmPool},
+        wl_surface::{Event as WlSurfaceEvent, WlSurface},
     },
-    QueueHandle,
-    Connection,
-    Dispatch,
-    Proxy,
 };
 
 use wayland_protocols::xdg::shell::client::{
-    xdg_surface::{
-        XdgSurface,
-        Event as XdgSurfaceEvent,
-    },
-    xdg_toplevel::{
-        XdgToplevel,
-        Event as XdgTopLevelEvent,
-    },
-    xdg_wm_base::{
-        XdgWmBase,
-        Event as XdgWmBaseEvent,
-    }
+    xdg_surface::{Event as XdgSurfaceEvent, XdgSurface},
+    xdg_toplevel::{Event as XdgTopLevelEvent, XdgToplevel},
+    xdg_wm_base::{Event as XdgWmBaseEvent, XdgWmBase},
 };
 
 use crate::window::{ShmPool, Window, WindowId, WindowLayer};
-
 
 const DESKTOP_DEFAULT_WIDTH: i32 = 600;
 const DESKTOP_DEFAULT_HEIGHT: i32 = 400;
@@ -83,7 +48,6 @@ pub struct WlClient {
     outputs: HashMap<String, WlOutput>,
     windows: HashMap<String, WindowBackend>,
 }
-
 
 impl WlClient {
     fn create_surface(
@@ -118,24 +82,18 @@ impl WlClient {
         let arc_id = Arc::new(id.clone());
         let (surface, pool, buffer) = self.create_surface(&qh, &arc_id, width, height);
 
-        let window = 
-            Arc::new(
-                Mutex::new(
-                    Window::new(
-                        Some(self.layer_shell.as_ref().expect("unreachable")),
-                        Some(self.xdg_wm_base.as_ref().expect("unreachable")),
-                        qh,
-                        arc_id,
-                        surface,
-                        pool,
-                        buffer,
-                        width,
-                        height,
-                        layer
-                    )
-                )
-            );
-
+        let window = Arc::new(Mutex::new(Window::new(
+            Some(self.layer_shell.as_ref().expect("unreachable")),
+            Some(self.xdg_wm_base.as_ref().expect("unreachable")),
+            qh,
+            arc_id,
+            surface,
+            pool,
+            buffer,
+            width,
+            height,
+            layer,
+        )));
 
         self.windows.insert(id, window.clone());
         window
@@ -161,22 +119,37 @@ impl Dispatch<WlRegistry, WindowId> for WlClient {
         _: &Connection,
         qh: &QueueHandle<WlClient>,
     ) {
-        if let WlRegistryEvent::Global { name, interface, version } = event {
+        if let WlRegistryEvent::Global {
+            name,
+            interface,
+            version,
+        } = event
+        {
             //println!("[{name}] {interface} (v{version})");
 
             match interface.as_ref() {
-                "wl_compositor" => state.compositor = Some(registry.bind::<WlCompositor, _, _>(name, version, qh, id.clone())),
-                "wl_shm" => state.shm = Some(registry.bind::<WlShm, _, _>(name, version, qh, id.clone())),
-                "xdg_wm_base" => state.xdg_wm_base = Some(registry.bind::<XdgWmBase, _, _>(name, version, qh, id.clone())),
-                "zwlr_layer_shell_v1" => state.layer_shell = Some(registry.bind::<ZwlrLayerShellV1, _, _>(name, version, qh, id.clone())),
+                "wl_compositor" => {
+                    state.compositor =
+                        Some(registry.bind::<WlCompositor, _, _>(name, version, qh, id.clone()))
+                }
+                "wl_shm" => {
+                    state.shm = Some(registry.bind::<WlShm, _, _>(name, version, qh, id.clone()))
+                }
+                "xdg_wm_base" => {
+                    state.xdg_wm_base =
+                        Some(registry.bind::<XdgWmBase, _, _>(name, version, qh, id.clone()))
+                }
+                "zwlr_layer_shell_v1" => {
+                    state.layer_shell =
+                        Some(registry.bind::<ZwlrLayerShellV1, _, _>(name, version, qh, id.clone()))
+                }
                 "wl_output" => {
                     let output = registry.bind::<WlOutput, _, _>(name, version, qh, id.clone());
                     state.outputs.insert(output.id().to_string(), output);
-                },
+                }
                 _ => {}
             }
         }
-
     }
 }
 
@@ -191,17 +164,31 @@ impl Dispatch<WlOutput, WindowId> for WlClient {
         _: &QueueHandle<Self>,
     ) {
         match event {
-            WlOutputEvent::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => {},
-            WlOutputEvent::Mode { flags, width, height, refresh } => {},
-            WlOutputEvent::Done => {},
-            WlOutputEvent::Scale { factor } => {},
+            WlOutputEvent::Geometry {
+                x,
+                y,
+                physical_width,
+                physical_height,
+                subpixel,
+                make,
+                model,
+                transform,
+            } => {}
+            WlOutputEvent::Mode {
+                flags,
+                width,
+                height,
+                refresh,
+            } => {}
+            WlOutputEvent::Done => {}
+            WlOutputEvent::Scale { factor } => {}
             WlOutputEvent::Name { name } => {
                 let id = output.id().to_string();
                 let output = state.outputs.remove(&id).unwrap();
                 state.outputs.insert(name, output);
-            },
-            WlOutputEvent::Description { description } => {},
-            _ => {},
+            }
+            WlOutputEvent::Description { description } => {}
+            _ => {}
         }
     }
 }
@@ -217,7 +204,6 @@ impl Dispatch<WlCompositor, WindowId> for WlClient {
     ) {
     }
 }
-
 
 impl Dispatch<WlSurface, WindowId> for WlClient {
     fn event(
@@ -242,7 +228,7 @@ impl Dispatch<WlSurface, WindowId> for WlClient {
                 window.transform = transform.into();
             }
 
-            _ => {},
+            _ => {}
         }
     }
 }
@@ -327,14 +313,17 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
         _: &QueueHandle<Self>,
     ) {
         match event {
-            XdgTopLevelEvent::Configure { mut width, mut height, states } => {
+            XdgTopLevelEvent::Configure {
+                mut width,
+                mut height,
+                states,
+            } => {
                 let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
                 if let WindowLayer::Desktop(opts) = &window.layer {
                     if !opts.resizable {
                         return;
                     }
-                }
-                else {
+                } else {
                     unreachable!();
                 }
 
@@ -347,11 +336,11 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
                 window.height = height;
 
                 window.can_resize = true;
-            },
+            }
             XdgTopLevelEvent::Close => exit(0),
             //XdgTopLevelEvent::ConfigureBounds { width, height } => todo!(),
             //XdgTopLevelEvent::WmCapabilities { capabilities } => todo!(),
-            _ => {},
+            _ => {}
         }
     }
 }
@@ -378,16 +367,20 @@ impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
         _: &QueueHandle<WlClient>,
     ) {
         match event {
-            ZwlrLayerSurfaceV1Event::Configure { serial, width, height } => {
+            ZwlrLayerSurfaceV1Event::Configure {
+                serial,
+                width,
+                height,
+            } => {
                 surface.ack_configure(serial);
                 let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
                 window.resize_buffer_if_needed();
                 window.draw();
-            },
+            }
             ZwlrLayerSurfaceV1Event::Closed => {
                 println!("Layer surface event 'closed'");
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }

@@ -1,7 +1,7 @@
 use wgpu::*;
 
-use crate::window::WindowPointer;
 use crate::Error;
+use crate::window::WindowPointer;
 
 pub struct Gpu {
     pub instance: Instance,
@@ -19,7 +19,8 @@ impl Gpu {
             force_fallback_adapter: false,
             compatible_surface: Some(&surface),
         }))?;
-        let (device, queue) = pollster::block_on(adapter.request_device(&DeviceDescriptor::default()))?;
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&DeviceDescriptor::default()))?;
 
         Ok(Self {
             instance,
@@ -29,10 +30,17 @@ impl Gpu {
         })
     }
 
-    pub fn create_surface<'window>(&self, ptr: WindowPointer, width: u32, height: u32) -> Result<(Surface<'window>, SurfaceConfiguration), Error> {
+    pub fn create_surface<'window>(
+        &self,
+        ptr: WindowPointer,
+        width: u32,
+        height: u32,
+    ) -> Result<(Surface<'window>, SurfaceConfiguration), Error> {
         let surface = self.instance.create_surface(ptr)?;
         let surface_caps = surface.get_capabilities(&self.adapter);
-        let format = surface_caps.formats.iter()
+        let format = surface_caps
+            .formats
+            .iter()
             .copied()
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
@@ -48,7 +56,6 @@ impl Gpu {
             view_formats: vec![],
         };
 
-    
         self.confugure_surface(&surface, &config);
 
         Ok((surface, config))

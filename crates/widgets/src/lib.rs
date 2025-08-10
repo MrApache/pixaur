@@ -1,14 +1,10 @@
 use toolkit::{
+    Argb8888, Color, DEFAULT_FONT, DrawCommand,
     glam::Vec2,
     widget::{DesiredSize, Widget},
-    Argb8888,
-    Color,
-    DrawCommand,
-    DEFAULT_FONT
 };
 
 pub mod panel;
-
 
 pub struct Text {
     id: String,
@@ -70,13 +66,15 @@ impl Widget for Text {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use std::any::Any;
 
-    use toolkit::{widget::{Container, Rect}, window::{Window, WindowRequest}, Anchor, CommandBuffer, Context, DesktopOptions, EventLoop, UserWindow, GUI};
+    use toolkit::{
+        Anchor, CommandBuffer, Context, DesktopOptions, EventLoop, GUI, UserWindow,
+        widget::{Container, Rect},
+        window::{Window, WindowRequest},
+    };
 
     use crate::*;
 
@@ -95,40 +93,39 @@ mod tests {
         fn add_child(&mut self, child: Box<dyn Widget>) {
             self.vec.push(child);
         }
-     
+
         fn children(&self) -> &[Box<dyn Widget>] {
             &self.vec
         }
-    
+
         fn children_mut(&mut self) -> &mut [Box<dyn Widget>] {
             &mut self.vec
         }
     }
-    
+
     impl Widget for Panel {
-        fn layout(&mut self, _bounds: Rect) {
-        }
+        fn layout(&mut self, _bounds: Rect) {}
 
         fn id(&self) -> &str {
             ""
         }
-    
+
         fn desired_size(&self) -> DesiredSize {
             DesiredSize::Min(Vec2::default())
         }
-    
+
         fn as_container(&self) -> Option<&dyn Container> {
             None
         }
-    
+
         fn as_container_mut(&mut self) -> Option<&mut dyn Container> {
             None
         }
-    
+
         fn as_any(&self) -> &dyn Any {
             self
         }
-    
+
         fn as_any_mut(&mut self) -> &mut dyn Any {
             self
         }
@@ -139,14 +136,13 @@ mod tests {
             }
         }
     }
-    
+
     struct App;
     impl GUI for App {
         fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<App>>> {
             vec![Box::new(MainWindow::default())]
         }
     }
-
 
     #[derive(Default)]
     struct MainWindow {
@@ -155,12 +151,11 @@ mod tests {
 
     impl UserWindow<App> for MainWindow {
         fn request(&self) -> WindowRequest {
-            WindowRequest::new("desktop")
-                .desktop(DesktopOptions {
-                    title: "Test application".into(),
-                    resizable: false,
-                    decorations: false,
-                })
+            WindowRequest::new("desktop").desktop(DesktopOptions {
+                title: "Test application".into(),
+                resizable: false,
+                decorations: false,
+            })
         }
 
         fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
@@ -172,11 +167,10 @@ mod tests {
             Box::new(panel)
         }
 
-    fn update<'ctx>(&mut self, _gui: &mut App, context: &'ctx mut Context<'ctx>) {
+        fn update<'ctx>(&mut self, _gui: &mut App, context: &'ctx mut Context<'ctx>) {
             self.value += 1;
             let text = context.get_mut_by_id::<Text>("label").unwrap();
             text.value = format!("Count: {}", self.value);
-
         }
     }
 }
