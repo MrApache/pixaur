@@ -1,26 +1,24 @@
 use widgets::panel::{Panel, TestPanelLayoutWidget};
+
 use toolkit::{
-    glam::{Vec2, Vec4},
-    widget::Container,
-    window::WindowRequest,
-    Anchor,
-    Argb8888,
-    Color,
-    Context,
-    DesktopOptions,
-    EventLoop,
-    SpecialOptions,
-    UserWindow, 
-    GUI
+    glam::{Vec2, Vec4}, include_asset, style::{BackgroundStyle, Texture}, widget::Container, window::WindowRequest, Anchor, Argb8888, Color, ContentManager, Context, DesktopOptions, EventLoop, LinearGradient, SpecialOptions, TextureHandle, UserWindow, GUI
 };
 
-struct App;
+#[derive(Default)]
+struct App {
+    texture: TextureHandle,
+}
+
 impl GUI for App {
     fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<App>>> {
         vec![
             Box::new(MainWindow::default()),
-            Box::new(SmartPanel),
+            //Box::new(SmartPanel)
         ]
+    }
+
+    fn load_content(&mut self, content: &mut ContentManager) {
+        self.texture = content.include_texture(include_asset!("billy.jpg"));
     }
 }
 
@@ -31,36 +29,34 @@ struct MainWindow {
 
 impl UserWindow<App> for MainWindow {
     fn request(&self) -> WindowRequest {
-        WindowRequest::new("desktop")
-            .desktop(DesktopOptions {
-                title: "Test application".into(),
-                resizable: true,
-                decorations: false,
-            })
+        WindowRequest::new("desktop").desktop(DesktopOptions {
+            title: "Test application".into(),
+            resizable: true,
+            decorations: false,
+        })
     }
 
-    fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
+    fn setup(&self, gui: &mut App) -> Box<dyn Container> {
         let mut panel = Panel::new("Panel");
-        panel.background = Color::Simple(Argb8888::RED);
+        panel.background = Color::Simple(Argb8888::RED).into();
 
         let mut subpanel = Panel::new("Subpanel");
-        subpanel.background = Color::Simple(Argb8888::GREEN);
+        //subpanel.background = Color::Simple(Argb8888::GREEN).into();
+        subpanel.background = Texture::new(gui.texture).with_color(Color::LinearGradient(LinearGradient::new(Argb8888::WHITE, Argb8888::YELLOW))).into();
         panel.add_child(Box::new(subpanel));
 
         let mut subpanel = Panel::new("Subpanel");
-        subpanel.background = Color::Simple(Argb8888::BLUE);
+        subpanel.background = Color::Simple(Argb8888::GREEN).into();
         panel.add_child(Box::new(subpanel));
 
         Box::new(panel)
     }
 
-    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut Context<'ctx>) {
-    }
+    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut Context<'ctx>) {}
 }
 
-
 fn main() {
-    let mut event_loop = EventLoop::new(App).unwrap();
+    let mut event_loop = EventLoop::new(App::default()).unwrap();
     event_loop.run().unwrap();
 }
 
@@ -78,11 +74,11 @@ impl UserWindow<App> for SmartPanel {
 
     fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
         let mut panel = Panel::new("Panel");
-        panel.background = Color::Simple(Argb8888::BLUE);
+        panel.background = Color::Simple(Argb8888::BLUE).into();
         panel.padding = Vec4::new(10.0, 10.0, 10.0, 10.0);
 
         let mut child_panel = Panel::new("panel1");
-        child_panel.background = Color::Simple(Argb8888::RED);
+        child_panel.background = Color::Simple(Argb8888::RED).into();
         panel.add_child(Box::new(child_panel));
 
         let mut test_layout_widget = TestPanelLayoutWidget::default();
@@ -90,12 +86,11 @@ impl UserWindow<App> for SmartPanel {
         panel.add_child(Box::new(test_layout_widget));
 
         let mut child_panel = Panel::new("panel1");
-        child_panel.background = Color::Simple(Argb8888::GREEN);
+        child_panel.background = Color::Simple(Argb8888::GREEN).into();
         panel.add_child(Box::new(child_panel));
 
         Box::new(panel)
     }
 
-    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut Context<'ctx>) {
-    }
+    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut Context<'ctx>) {}
 }

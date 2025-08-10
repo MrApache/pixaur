@@ -5,6 +5,8 @@ pub mod material;
 mod instance;
 mod gpu;
 
+use std::collections::HashMap;
+
 pub use gpu::Gpu;
 
 use wgpu::*;
@@ -15,7 +17,9 @@ use crate::rendering::bind_group_layout::BindGroupLayoutBuilder;
 use crate::rendering::instance::InstanceData;
 use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
-use crate::DrawCommand;
+use crate::style::{BackgroundStyle, Texture};
+use crate::widget::Rect;
+use crate::{ContentManager, DrawCommand};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -47,10 +51,7 @@ pub struct Renderer {
     render_pipeline: RenderPipeline,
     mesh: QuadMesh,
     material: Material,
-
-    instances: Vec<InstanceData>,
-    instance_buffer: Buffer,
-    instance_buffer_len: usize,
+    buffer_pool: BufferPool,
 }
 
 impl Renderer {
@@ -115,38 +116,23 @@ impl Renderer {
             }
         );
 
-        const INSTANCE_BUFFER_SIZE: usize = 256;
-
-        let instance_buffer = gpu.device.create_buffer(&BufferDescriptor {
-            label: Some("Instance buffer"),
-            size: (INSTANCE_BUFFER_SIZE * std::mem::size_of::<InstanceData>()) as u64,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
         Ok(Self {
             render_pipeline,
             mesh: QuadMesh::new(&gpu.device),
             material: Material::default(&gpu.device, &gpu.queue),
-            instances: Vec::with_capacity(INSTANCE_BUFFER_SIZE),
-            instance_buffer,
-            instance_buffer_len: INSTANCE_BUFFER_SIZE,
+            buffer_pool: BufferPool::new(gpu)
         })
     }
 
-    fn create_instance_buffer(&mut self, gpu: &Gpu, size: usize) {
-        let instance_buffer = gpu.device.create_buffer(&BufferDescriptor {
-            label: Some("Instance buffer"),
-            size: (size * std::mem::size_of::<InstanceData>()) as u64,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        self.instance_buffer = instance_buffer;
-        self.instance_buffer_len = size;
-    }
-
-    pub fn render(&mut self, gpu: &Gpu, surface: &Surface, commands: &[DrawCommand], window_width: f32, window_height: f32)-> Result<(), Error> {
+    pub fn render(
+        &mut self,
+        gpu: &Gpu,
+        surface: &Surface,
+        commands: &mut Vec<DrawCommand>,
+        content: &ContentManager,
+        window_width: f32,
+        window_height: f32
+        )-> Result<(), Error> {
         let texture = surface.get_current_texture()?;
         let image_view = texture.texture.create_view(&TextureViewDescriptor::default());
 
@@ -180,34 +166,152 @@ impl Renderer {
         let proj = Mat4::orthographic_rh_gl(0.0, window_width, 0.0, window_height, -1.0, 1.0);
 
         {
-            self.instances.clear();
+            self.buffer_pool.clear();
 
             let mut renderpass = command_encoder.begin_render_pass(&render_pass_descriptor);
             renderpass.set_pipeline(&self.render_pipeline);
             renderpass.set_bind_group(0, &self.material.bind_group, &[]);
             renderpass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
-            renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             renderpass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
+            self.buffer_pool.take(gpu);
 
             commands.iter().for_each(|command| {
                 match command {
-                    DrawCommand::Rect { rect, color } => self.instances.push(InstanceData::new(rect.min, rect.max, color, proj)),
+                    DrawCommand::Rect { rect, color } => self.buffer_pool.push(InstanceData::new(rect.min, rect.max, color, proj)),
+                    DrawCommand::Texture { rect, texture } => {
+                        {
+                            renderpass.set_bind_group(0, &self.material.bind_group, &[]);
+                            self.buffer_pool.draw_instances(gpu, &mut renderpass);
+                        }
+
+                        self.buffer_pool.push(InstanceData::new(rect.min, rect.max, &texture.color, proj));
+
+                        let material = content.get_texture(texture.handle);
+                        renderpass.set_bind_group(0, &material.bind_group, &[]);
+
+                        self.buffer_pool.draw_instances(gpu, &mut renderpass);
+                        return;
+                    }
                     DrawCommand::Text { size, font, content, color } => {},
                 }
+
+                renderpass.set_bind_group(0, &self.material.bind_group, &[]);
+                self.buffer_pool.draw_instances(gpu, &mut renderpass);
             });
 
-            if self.instances.capacity() > self.instance_buffer_len {
-                self.create_instance_buffer(gpu, self.instances.capacity());
-                renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            }
-
-            gpu.queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&self.instances));
-            renderpass.draw_indexed(0..6, 0, 0..self.instances.len() as u32);
         }
 
         gpu.queue.submit(std::iter::once(command_encoder.finish()));
         texture.present();
 
         Ok(())
+    }
+}
+
+struct InstanceBuffer {
+    instances: Vec<InstanceData>,
+    instance_buffer: Buffer,
+    instance_buffer_len: usize,
+}
+
+impl InstanceBuffer {
+    pub fn new(gpu: &Gpu, instance_buffer_size: usize) -> Self {
+        let instance_buffer = gpu.device.create_buffer(&BufferDescriptor {
+            label: Some("Instance buffer"),
+            size: (instance_buffer_size * std::mem::size_of::<InstanceData>()) as u64,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        Self {
+            instances: Vec::with_capacity(instance_buffer_size),
+            instance_buffer,
+            instance_buffer_len: instance_buffer_size,
+        }
+    }
+
+    fn create_instance_buffer(&mut self, gpu: &Gpu, size: usize) {
+        let instance_buffer = gpu.device.create_buffer(&BufferDescriptor {
+            label: Some("Instance buffer"),
+            size: (size * std::mem::size_of::<InstanceData>()) as u64,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        self.instance_buffer = instance_buffer;
+        self.instance_buffer_len = size;
+    }
+
+    fn resize_buffer_if_needed(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
+        if self.instances.capacity() > self.instance_buffer_len {
+            self.create_instance_buffer(gpu, self.instances.capacity());
+            renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        }
+    }
+
+    fn write_instance_buffer(&self, gpu: &Gpu) {
+        gpu.queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&self.instances));
+    }
+
+    fn draw_instances(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
+        self.resize_buffer_if_needed(gpu, renderpass);
+        self.write_instance_buffer(gpu);
+        renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        renderpass.draw_indexed(0..6, 0, 0..self.instances.len() as u32);
+    }
+
+    fn clear(&mut self) {
+        self.instances.clear();
+    }
+}
+
+pub struct BufferPool {
+    available: Vec<InstanceBuffer>,
+    in_use: Vec<InstanceBuffer>,
+    current: Option<InstanceBuffer>,
+}
+
+const INSTANCE_BUFFER_SIZE: usize = 2;
+impl BufferPool {
+    fn new(gpu: &Gpu) -> Self {
+        let buffer = InstanceBuffer::new(gpu, INSTANCE_BUFFER_SIZE);
+        Self {
+            available: vec![buffer],
+            in_use: vec![],
+            current: None,
+        }
+    }
+
+    fn take(&mut self, gpu: &Gpu) {
+        if self.available.is_empty() {
+            self.current = Some(InstanceBuffer::new(gpu, INSTANCE_BUFFER_SIZE));
+        } else {
+            self.current = self.available.pop();
+        }
+    }
+
+    fn complete(&mut self) {
+        let buffer = self.current.take().unwrap();
+        self.in_use.push(buffer);
+    }
+
+    fn clear(&mut self) {
+        self.in_use.iter_mut().for_each(|buffer| {
+            buffer.clear();
+        });
+
+        self.available.append(&mut self.in_use);
+    }
+    
+    fn push(&mut self, data: InstanceData) {
+        let buffer = self.current.as_mut().unwrap();
+        buffer.instances.push(data);
+    }
+
+    fn draw_instances(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
+        let buffer = self.current.as_mut().unwrap();
+        buffer.draw_instances(gpu, renderpass);
+        self.complete();
+        self.take(gpu);
     }
 }

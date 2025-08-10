@@ -2,14 +2,17 @@ use std::env::current_dir;
 
 use image::GenericImageView;
 use wgpu::*;
-use crate::{error::Error, rendering::bind_group::BindGroupBuilder};
+use crate::{
+    error::Error,
+    rendering::bind_group::BindGroupBuilder
+};
 
 pub struct Material {
     pub bind_group: BindGroup, //Texture + Sampler
 }
 
 impl Material {
-    fn from_rgba_pixels(
+    pub(crate) fn from_rgba_pixels(
         label: &'static str,
         pixels: &[u8],
         size: (u32, u32),
@@ -97,17 +100,20 @@ impl Material {
         Self::from_rgba_pixels("Default", &[255, 255, 255, 255], (1, 1), device, queue)
     }
 
-    pub fn new(filename: &'static str, device: &Device, queue: &Queue) -> Result<Self, Error> {
+    pub fn new(path: &'static str, device: &Device, queue: &Queue) -> Result<Self, Error> {
         let mut filepath = current_dir()?;
         filepath.push("/home/irisu/Storage/Projects/pixaur/assets/");
-        filepath.push(filename);
+        filepath.push(path);
 
         let bytes = std::fs::read(filepath)?;
-        let image = image::load_from_memory(&bytes)?;
+        Self::from_bytes(&bytes, device, queue)
+    }
+
+    pub fn from_bytes(bytes: &[u8], device: &Device, queue: &Queue) -> Result<Self, Error> {
+        let image = image::load_from_memory(bytes)?;
         let converted = image.to_rgba8();
         let size = image.dimensions();
-
-        Ok(Self::from_rgba_pixels(filename, &converted, size, device, queue))
+        Ok(Self::from_rgba_pixels("texture", &converted, size, device, queue))
     }
 }
 

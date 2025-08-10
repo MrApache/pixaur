@@ -1,61 +1,52 @@
-mod error;
-mod content;
 mod color;
-mod rendering;
+mod content;
 mod debug;
+mod error;
+mod rendering;
+pub mod style;
 
+pub use content::*;
 pub use glam;
+
 pub mod widget;
 pub mod window;
 
 pub use color::*;
 pub use error::*;
-use glam::Vec2;
 pub use wl_client::{
+    window::{DesktopOptions, SpecialOptions},
     Anchor,
-    window::{
-        DesktopOptions,
-        SpecialOptions
-    }
 };
 
 use crate::{
-    content::Content,
     debug::FpsCounter,
     rendering::{Gpu, Renderer},
-    widget::{
-        Container,
-        Rect,
-        Widget
-    },
-    window::{
-        Window,
-        WindowPointer,
-        WindowRequest
-    }
+    style::{BackgroundStyle, Texture},
+    widget::{Container, Rect, Widget},
+    window::{Window, WindowPointer, WindowRequest},
 };
 
-use wl_client::{window::WindowLayer, WlClient};
+use glam::Vec2;
+use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{Connection, EventQueue, Proxy};
-use std::{
-    ffi::c_void,
-    ptr::NonNull,
-    sync::Arc
-};
-
+use wl_client::{window::WindowLayer, WlClient};
 
 pub const DEFAULT_FONT: &str = "Ubuntu Regular";
 
 #[derive(Debug, Clone)]
-pub enum DrawCommand<'a> {
+pub enum DrawCommand<'frame> {
     Rect {
         rect: Rect,
         color: Color,
     },
+    Texture {
+        rect: Rect,
+        texture: Texture,
+    },
     Text {
         size: f32,
-        font: &'a str,
-        content: &'a str,
+        font: &'frame str,
+        content: &'frame str,
         color: Color,
     },
 }
@@ -81,13 +72,13 @@ impl<'frame> CommandBuffer<'frame> {
 
 #[allow(unused)]
 pub trait GUI {
-    fn load_content(&self, content: &mut Content) {}
+    fn load_content(&mut self, content: &mut ContentManager) {}
     fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<Self>>>;
 }
 
 pub struct EventLoop<T: GUI> {
     gui: T,
-    content: Content,
+    content: ContentManager,
 
     client: WlClient,
     event_queue: EventQueue<WlClient>,
@@ -98,9 +89,7 @@ pub struct EventLoop<T: GUI> {
 
 impl<T: GUI> EventLoop<T> {
     pub fn new(app: T) -> Result<Self, Error> {
-
-        let conn = Connection::connect_to_env()
-            .expect("Failed to connect to the Wayland server.");
+        let conn = Connection::connect_to_env().expect("Failed to connect to the Wayland server.");
 
         let display = conn.display();
         let mut event_queue = conn.new_event_queue();
@@ -113,7 +102,7 @@ impl<T: GUI> EventLoop<T> {
         event_queue.roundtrip(&mut client).unwrap(); //Register objects
         event_queue.roundtrip(&mut client).unwrap(); //Register outputs
 
-        let mut content = Content::default();
+        let mut content = ContentManager::default();
         content.include_font(include_bytes!("../../../assets/Ubuntu-Regular.ttf"));
         content.include_font(include_bytes!("../../../assets/Ubuntu-Light.ttf"));
         content.include_font(include_bytes!("../../../assets/Ubuntu-LightItalic.ttf"));
@@ -128,7 +117,7 @@ impl<T: GUI> EventLoop<T> {
             let display_ptr = NonNull::new(display.id().as_ptr() as *mut c_void).unwrap();
             let dummy = client.create_window_backend(qh, "dummy", 1, 1, WindowLayer::default());
             event_queue.roundtrip(&mut client).unwrap(); //Init dummy
-            
+
             let dummy_ptr = dummy.lock().unwrap().as_ptr();
             let ptr = WindowPointer::new(display_ptr, dummy_ptr);
             let gpu = Gpu::new(ptr)?;
@@ -149,48 +138,68 @@ impl<T: GUI> EventLoop<T> {
             event_queue,
             display_ptr,
 
-            gpu
+            gpu,
         })
     }
 
-    pub fn run(&mut self) -> Result<(), Error>{
+    pub fn run(&mut self) -> Result<(), Error> {
         self.gui.load_content(&mut self.content);
         let mut windows = self.init_windows_backends()?;
         let mut counter = FpsCounter::new(144);
 
         loop {
+            self.content.dispath_queue(&self.gpu)?;
+
             let fps = counter.tick();
             println!("FPS: {fps:.1}");
 
-            windows.iter_mut().try_for_each(|window| -> Result<(), Error> {
-                let mut backend = window.backend.lock().unwrap();
-                if backend.can_resize() {
-                    window.configuration.width = backend.width as u32;
-                    window.configuration.height = backend.height as u32;
-                    self.gpu.confugure_surface(&window.surface, &window.configuration);
-                    backend.set_resized();
-                }
+            windows
+                .iter_mut()
+                .try_for_each(|window| -> Result<(), Error> {
+                    let mut backend = window.backend.lock().unwrap();
+                    if backend.can_resize() {
+                        window.configuration.width = backend.width as u32;
+                        window.configuration.height = backend.height as u32;
+                        self.gpu
+                            .confugure_surface(&window.surface, &window.configuration);
+                        backend.set_resized();
+                    }
 
-                let mut context = Context {
-                    root: &mut window.frontend
-                };
+                    let mut context = Context {
+                        root: &mut window.frontend,
+                    };
 
-                window.handle.update(&mut self.gui, &mut context);
+                    window.handle.update(&mut self.gui, &mut context);
 
-                backend.frame();
-                if !backend.can_draw() {
-                    return Ok(());
-                }
+                    backend.frame();
+                    if !backend.can_draw() {
+                        return Ok(());
+                    }
 
-                let mut commands = CommandBuffer::default();
-                window.frontend.layout(Rect::new(Vec2::ZERO, Vec2::new(window.configuration.width as f32, window.configuration.height as f32)));
-                window.frontend.draw(&mut commands);
-                window.renderer.render(&self.gpu, &window.surface, &commands.storage, window.configuration.width as f32, window.configuration.height as f32)?;
-                backend.commit();
+                    let mut commands = CommandBuffer::default();
+                    window.frontend.layout(Rect::new(
+                        Vec2::ZERO,
+                        Vec2::new(
+                            window.configuration.width as f32,
+                            window.configuration.height as f32,
+                        ),
+                    ));
+                    window.frontend.draw(&mut commands);
+                    window.renderer.render(
+                        &self.gpu,
+                        &window.surface,
+                        &mut commands.storage,
+                        &self.content,
+                        window.configuration.width as f32,
+                        window.configuration.height as f32,
+                    )?;
+                    backend.commit();
 
-                Ok(())
-            })?;
-            self.event_queue.blocking_dispatch(&mut self.client).unwrap();
+                    Ok(())
+                })?;
+            self.event_queue
+                .blocking_dispatch(&mut self.client)
+                .unwrap();
         }
     }
 
@@ -201,26 +210,29 @@ impl<T: GUI> EventLoop<T> {
 
         user_windows.into_iter().try_for_each(|handle| {
             let request = handle.request();
-            let backend = self
-                .client
-                .create_window_backend(qh.clone(), request.id, request.width, request.height, request.layer);
-        
+            let backend = self.client.create_window_backend(
+                qh.clone(),
+                request.id,
+                request.width,
+                request.height,
+                request.layer,
+            );
+
             let (width, height, surface_ptr) = {
                 let guard = backend.lock().unwrap();
                 (guard.width as u32, guard.height as u32, guard.as_ptr())
             };
-        
+
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
             let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
             let frontend = handle.setup(&mut self.gui);
             let renderer = Renderer::new(&self.gpu, None, &surface)?;
             let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
-        
+
             backends.push(window);
-        
+
             Ok::<(), Error>(())
         })?;
-
 
         Ok(backends)
     }
@@ -251,7 +263,10 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn internal_get_mut_by_id<W: Widget>(container: &'a mut dyn Container, id: &str) -> Option<&'a mut W> {
+    fn internal_get_mut_by_id<W: Widget>(
+        container: &'a mut dyn Container,
+        id: &str,
+    ) -> Option<&'a mut W> {
         for w in container.children_mut() {
             if w.id().eq(id) {
                 return w.as_any_mut().downcast_mut::<W>();

@@ -1,13 +1,10 @@
 use toolkit::{
-    glam::{Vec2, Vec4},
-    widget::{
+    glam::{Vec2, Vec4}, style::BackgroundStyle, widget::{
         Container,
         DesiredSize,
         Rect,
         Widget
-    },
-    Argb8888,
-    Color
+    }, Argb8888, Color, DrawCommand 
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -19,12 +16,13 @@ pub enum LayoutMode {
 
 pub struct Panel {
     id: String,
-    content: Vec<Box<dyn Widget>>,
     rect: Rect,
-    pub background: Color,
-    pub padding: Vec4,  // (left, top, right, bottom)
+    content: Vec<Box<dyn Widget>>,
+    pub padding: Vec4,
     pub spacing: f32,
     pub mode: LayoutMode,
+
+    pub background: BackgroundStyle,
 }
 
 impl Panel {
@@ -33,7 +31,7 @@ impl Panel {
             id: id.into(),
             content: vec![],
             rect: Rect::default(),
-            background: Color::Simple(Argb8888::WHITE),
+            background: Color::Simple(Argb8888::WHITE).into(),
             padding: Vec4::new(2.0, 2.0, 2.0, 2.0),
             spacing: 2.0,
             mode: LayoutMode::Vertical,
@@ -41,42 +39,6 @@ impl Panel {
     }
 }
 
-
-/*
-
-
-0x0 - 1920x35
-
-10x10 - 1910x25
-
-spacing: 10
-widgets: 3
-1(Fill)
-2(Min(25x25))
-3(Fill)
-
-let total_spacing = spacing * (len.saturating_sub(1)) as f32;
-without spacing: 1890
-
-10x10 - 1865x25
-
-(1):
-10x10 - 932.5x25
-
-(spacing):
-+10
-
-(2):
-932.5x10 - 25x25
-
-(spacing):
-+10
-
-(3):
-967.5x10 - 932.5x25
-    
-
-*/
 impl Widget for Panel {
     fn id(&self) -> &str {
         &self.id
@@ -95,10 +57,19 @@ impl Widget for Panel {
     }
 
     fn draw<'frame>(&'frame self, out: &mut toolkit::CommandBuffer<'frame>) {
-        out.push(toolkit::DrawCommand::Rect {
-            rect: self.rect.clone(),
-            color: self.background.clone()
-        });
+        let command = match &self.background {
+            BackgroundStyle::Color(color) => DrawCommand::Rect {
+                rect: self.rect.clone(),
+                color: color.clone()
+            },
+            BackgroundStyle::Texture(texture) => DrawCommand::Texture {
+                rect: self.rect.clone(),
+                texture: texture.clone()
+            }
+
+        };
+
+        out.push(command);
 
         self.content.iter().for_each(|w| {
             w.draw(out);
