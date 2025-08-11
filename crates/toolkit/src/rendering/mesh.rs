@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3};
+use glam::Vec3;
 use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -13,12 +13,15 @@ pub struct QuadMesh {
 impl QuadMesh {
     pub fn new(device: &Device) -> Self {
         let vertices = [
-            Vertex::new(Vec3::new(0.0, 0.0, 0.0), Vec2::new(0.0, 0.0)), // левый верх
-            Vertex::new(Vec3::new(1.0, 0.0, 0.0), Vec2::new(1.0, 0.0)), // правый верх
-            Vertex::new(Vec3::new(1.0, 1.0, 0.0), Vec2::new(1.0, 1.0)), // правый низ
-            Vertex::new(Vec3::new(0.0, 1.0, 0.0), Vec2::new(0.0, 1.0)), // левый низ
+            Vertex::new(Vec3::new(0.0, 0.0, 0.0)), // левый верх
+            Vertex::new(Vec3::new(1.0, 0.0, 0.0)), // правый верх
+            Vertex::new(Vec3::new(1.0, 1.0, 0.0)), // правый низ
+            Vertex::new(Vec3::new(0.0, 1.0, 0.0)), // левый низ
         ];
-
+        //Vec2::new(0.0, 0.0)
+        //Vec2::new(1.0, 0.0)
+        //Vec2::new(1.0, 1.0)
+        //Vec2::new(0.0, 1.0)
         let vertex_buffer_descriptor = BufferInitDescriptor {
             label: Some("Quad vertex buffer"),
             contents: bytemuck::cast_slice(&vertices),

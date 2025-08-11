@@ -1,4 +1,4 @@
-use widgets::panel::{Panel, TestPanelLayoutWidget};
+use widgets::{panel::{Panel, TestPanelLayoutWidget}, text::Text};
 
 use toolkit::{
     Anchor, Argb8888, Color, ContentManager, Context, DesktopOptions, EventLoop, GUI,
@@ -49,15 +49,19 @@ impl UserWindow<App> for MainWindow {
         let mut subpanel = Panel::new("Subpanel");
         //subpanel.background = Color::Simple(Argb8888::GREEN).into();
         subpanel.background = Texture::new(gui.texture)
-            .with_color(Color::LinearGradient(LinearGradient::new(
-                Argb8888::WHITE,
-                Argb8888::YELLOW,
-            )))
+            //.with_color(Color::LinearGradient(LinearGradient::new(
+            //    Argb8888::WHITE,
+            //    Argb8888::YELLOW,
+            //)))
             .into();
         panel.add_child(Box::new(subpanel));
 
         let mut subpanel = Panel::new("Subpanel");
-        subpanel.background = Color::Simple(Argb8888::GREEN).into();
+        subpanel.background = Color::Simple(Argb8888::BLACK).into();
+        let mut text = Text::new("Hello, world!", "Label");
+        text.color = Color::Simple(Argb8888::BLUE);
+        text.size = 64.0;
+        subpanel.add_child(Box::new(text));
         panel.add_child(Box::new(subpanel));
 
         Box::new(panel)
