@@ -5,10 +5,15 @@ mod instance;
 pub mod material;
 pub mod mesh;
 
+use std::collections::HashMap;
+
+use fontdue::Font;
 pub use gpu::Gpu;
+use guillotiere::AtlasAllocator;
 
 use crate::error::Error;
-use glam::{Mat4, Vec2, Vec3};
+use crate::widget::Rect;
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use wgpu::*;
 
 use crate::rendering::bind_group_layout::BindGroupLayoutBuilder;
@@ -45,6 +50,7 @@ pub struct Renderer {
     mesh: QuadMesh,
     material: Material,
     buffer_pool: InstancingPool,
+    fonts: HashMap<String, FontAtlasSet>
 }
 
 impl Renderer {
@@ -111,6 +117,7 @@ impl Renderer {
             mesh: QuadMesh::new(&gpu.device),
             material: Material::default(&gpu.device, &gpu.queue),
             buffer_pool: InstancingPool::new(gpu),
+            fonts: HashMap::default(),
         })
     }
 
@@ -194,10 +201,18 @@ impl Renderer {
                     }
                     DrawCommand::Text {
                         size,
-                        font,
-                        content,
+                        font: font_name,
+                        text,
                         color,
-                    } => {}
+                    } => {
+                        let font = content.get_font(font_name);
+                        let set = self.fonts.entry(font_name.to_string()).or_insert(FontAtlasSet::default());
+                        let atlas = set.inner.entry(*size as u32).or_insert(FontAtlas::new());
+
+                        text.chars().for_each(|char| {
+                            let data = atlas.get_or_add_glyph(char, *size as u32, font);
+                        });
+                    }
                 }
 
                 renderpass.set_bind_group(0, &self.material.bind_group, &[]);
@@ -210,4 +225,70 @@ impl Renderer {
 
         Ok(())
     }
+}
+
+#[derive(Clone)]
+struct GlyphData {
+    uv: Vec4,
+}
+
+struct FontAtlas {
+    inner: HashMap<char, GlyphData>,
+    allocator: AtlasAllocator,
+    texture: Vec<u8>,
+    size: u32
+}
+
+impl FontAtlas {
+    fn new() -> Self {
+        Self {
+            inner: HashMap::new(),
+            allocator: AtlasAllocator::new((512, 512).into()),
+            texture: Vec::with_capacity(512 * 512),
+            size: 512
+        }
+    }
+
+    fn get_or_add_glyph(
+        &mut self,
+        char: char,
+        size: u32,
+        font: &Font
+    ) -> GlyphData {
+        if let Some(glyph) = self.inner.get(&char) {
+            return glyph.clone();
+        }
+
+        let (metrics, bitmap) = font.rasterize(char, size as f32);
+        let rectangle = self.allocator.allocate((metrics.width as i32, metrics.height as i32).into()).unwrap().rectangle;
+
+        for y in 0..metrics.height {
+            for x in 0..metrics.width {
+                let alpha = bitmap[y * metrics.width + x];
+                let dst_index = ((rectangle.min.x + x as i32) as u32
+                    + (rectangle.min.y + y as i32) as u32 * self.size) as usize;
+        
+                self.texture[dst_index] = alpha;
+            }
+        }
+
+        // Вычисляем UV
+        let u0 = rectangle.min.x as f32 / self.size as f32;
+        let v0 = rectangle.min.y as f32 / self.size as f32;
+        let u1 = rectangle.max.x as f32 / self.size as f32;
+        let v1 = rectangle.max.y as f32 / self.size as f32;
+
+        let data = GlyphData {
+            uv: Vec4::new(u0, v0, u1, v1),
+        };
+
+        self.inner.insert(char, data.clone());
+
+        data
+    }
+}
+
+#[derive(Default)]
+struct FontAtlasSet {
+    inner: HashMap<u32, FontAtlas>
 }

@@ -54,7 +54,7 @@ impl Widget for Text {
 
     fn draw<'frame>(&'frame self, out: &mut toolkit::CommandBuffer<'frame>) {
         out.push(DrawCommand::Text {
-            content: &self.value,
+            text: &self.value,
             font: &self.font,
             size: self.size,
             color: Color::Simple(Argb8888::RED),

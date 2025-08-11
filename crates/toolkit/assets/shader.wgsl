@@ -9,6 +9,7 @@ struct InstanceInput {
     @location(9) color_start: vec4<f32>,
     @location(10) color_end: vec4<f32>,
     @location(11) use_gradient: u32,
+    @location(12) uv: vec4<f32>, // (u_min, v_min, u_max, v_max)
 };
 
 struct Vertex {

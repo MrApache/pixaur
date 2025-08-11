@@ -46,7 +46,7 @@ pub enum DrawCommand<'frame> {
     Text {
         size: f32,
         font: &'frame str,
-        content: &'frame str,
+        text: &'frame str,
         color: Color,
     },
 }

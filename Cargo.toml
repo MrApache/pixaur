@@ -18,8 +18,9 @@ memmap2 = "0.9.7"
 uuid = { version = "1.17.0", features = ["v4"]}
 
 #GUI
-ab_glyph = "0.2.31"
+fontdue = "0.9.3"
 ttf-parser = "0.25.1"
+guillotiere = "0.6.2"
 
 thiserror = "2.0.12"
 
