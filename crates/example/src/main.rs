@@ -71,7 +71,7 @@ impl UserWindow<App> for MainWindow {
         text.value =
             "Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)".to_string();
         //text.value = "Hello, world!".to_string();
-        text.color = Color::Simple(Argb8888::WHITE);
+        text.color = Color::Simple(Argb8888::RED);
         //text.color = Color::LinearGradient(LinearGradient::new(Argb8888::RED, Argb8888::YELLOW));
         text.size = 16;
         subpanel.add_child(Box::new(text));

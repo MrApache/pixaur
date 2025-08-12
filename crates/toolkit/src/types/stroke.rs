@@ -1,7 +1,8 @@
-use super::{Argb8888, Color, Corners};
+use super::{Argb8888, Corners};
 
+#[derive(Clone)]
 pub struct Stroke {
-    pub color: Color,
+    pub color: Argb8888,
     pub width: f32,
     pub corners: Corners,
 }
@@ -9,7 +10,7 @@ pub struct Stroke {
 impl Default for Stroke {
     fn default() -> Self {
         Self {
-            color: Argb8888::GRAY.into(),
+            color: Argb8888::GRAY,
             width: 2.0,
             corners: Corners::default(),
         }

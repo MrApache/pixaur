@@ -60,10 +60,10 @@ impl Widget for Panel {
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
         match &self.background {
             BackgroundStyle::Color(color) => {
-                out.push(DrawRectCommand::new(self.rect.clone(), color.clone()))
+                out.push(DrawRectCommand::new(self.rect.clone(), color.clone(), self.stroke.clone()))
             }
             BackgroundStyle::Texture(texture) => {
-                out.push(DrawTextureCommand::new(self.rect.clone(), texture.clone()))
+                out.push(DrawTextureCommand::new(self.rect.clone(), texture.clone(), self.stroke.clone()))
             }
         }
 
@@ -150,6 +150,7 @@ impl Container for Panel {
 pub struct TestPanelLayoutWidget {
     pub min: Vec2,
     rect: Rect,
+    pub stroke: Stroke,
 }
 
 impl Widget for TestPanelLayoutWidget {
@@ -173,6 +174,7 @@ impl Widget for TestPanelLayoutWidget {
         out.push(DrawCommand::Rect(DrawRectCommand::new(
             self.rect.clone(),
             Argb8888::CYAN,
+            self.stroke.clone(),
         )));
     }
 

@@ -5,9 +5,7 @@ use std::slice::IterMut;
 use wgpu::RenderPass;
 
 use crate::{
-    ContentManager, FontHandle,
-    rendering::{Gpu, Renderer, instance::InstanceData},
-    types::{Color, Rect, Texture},
+    rendering::{instance::InstanceData, Gpu, Renderer}, types::{Color, Rect, Stroke, Texture}, ContentManager, FontHandle
 };
 
 #[enum_dispatch(DrawCommand)]
@@ -25,13 +23,15 @@ pub(crate) trait DrawDispatcher {
 pub struct DrawRectCommand {
     rect: Rect,
     color: Color,
+    stroke: Stroke,
 }
 
 impl DrawRectCommand {
-    pub fn new(rect: Rect, color: impl Into<Color>) -> Self {
+    pub fn new(rect: Rect, color: impl Into<Color>, stroke: Stroke) -> Self {
         Self {
             rect,
             color: color.into(),
+            stroke,
         }
     }
 }
@@ -59,6 +59,7 @@ impl DrawDispatcher for DrawRectCommand {
             self.rect.min,
             self.rect.max,
             &self.color,
+            Some(self.stroke.clone()),
             pipeline.projection,
         ));
     }
@@ -71,11 +72,12 @@ impl DrawDispatcher for DrawRectCommand {
 pub struct DrawTextureCommand {
     rect: Rect,
     texture: Texture,
+    stroke: Stroke,
 }
 
 impl DrawTextureCommand {
-    pub fn new(rect: Rect, texture: Texture) -> Self {
-        Self { rect, texture }
+    pub fn new(rect: Rect, texture: Texture, stroke: Stroke) -> Self {
+        Self { rect, texture, stroke }
     }
 }
 
@@ -103,6 +105,7 @@ impl DrawDispatcher for DrawTextureCommand {
             self.rect.min,
             self.rect.max,
             &self.texture.color,
+            Some(self.stroke.clone()),
             pipeline.projection,
         ));
     }
@@ -163,6 +166,7 @@ impl<'frame> DrawDispatcher for DrawTextCommand<'frame> {
                 Vec2::new(self.position.x + glyph.x, self.position.y + glyph.y),
                 Vec2::new(data.metrics.width as f32, data.metrics.height as f32),
                 &self.color,
+                None,
                 pipeline.projection,
             ));
         });

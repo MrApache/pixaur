@@ -1,8 +1,11 @@
+use glam::Vec4;
+
+#[derive(Clone)]
 pub struct Corners {
-    left_top: f32,
-    left_bottom: f32,
-    right_top: f32,
-    right_bottom: f32,
+    pub left_top: f32,
+    pub left_bottom: f32,
+    pub right_top: f32,
+    pub right_bottom: f32,
 }
 
 impl Default for Corners {
@@ -13,5 +16,11 @@ impl Default for Corners {
             right_top: 2.0,
             right_bottom: 2.0,
         }
+    }
+}
+
+impl From<Corners> for Vec4 {
+    fn from(value: Corners) -> Self {
+        Vec4::new(value.left_top, value.left_bottom, value.right_top, value.right_bottom)
     }
 }

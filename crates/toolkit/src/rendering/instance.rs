@@ -1,6 +1,6 @@
 use crate::{
     rendering::Gpu,
-    types::{self, Argb8888},
+    types::{self, Argb8888, Stroke},
 };
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use wgpu::*;
@@ -9,18 +9,22 @@ use wgpu::*;
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct InstanceData {
     uv: Vec4,
+    size: Vec2,
+    _padding0: [u32; 2],
 
     model: Mat4,
     color: Vec4,
 
-    //Style
+    stroke_color: Vec4,
+    stroke_width: f32,
+    _padding1: [u32; 3],
+    stroke_corners: Vec4,
 
-    //Gradient
     color_end: Vec4,
     degree: f32,
     use_gradient: u32,
-
-    _padding: [u32; 2],
+    support_stroke: u32,
+    _padding3: [u32; 1],
 }
 
 impl InstanceData {
@@ -29,6 +33,7 @@ impl InstanceData {
         position: Vec2,
         size: Vec2,
         color: &types::Color,
+        stroke: Option<Stroke>,
         proj: Mat4,
     ) -> Self {
         let model = proj
@@ -37,6 +42,7 @@ impl InstanceData {
                 Quat::IDENTITY,
                 Vec3::new(position.x, position.y, 0.0),
             );
+
         let (color, color_end, degree, use_gradient): (Vec4, Vec4, f32, u32) = match color {
             types::Color::Simple(argb8888) => {
                 (argb8888.into(), Argb8888::TRANSPARENT.into(), 0.0, 0)
@@ -49,16 +55,34 @@ impl InstanceData {
             ),
         };
 
+        let (stroke_color, stroke_width, stroke_corners, support_stroke) = {
+            if let Some(stroke) = stroke {
+                (stroke.color.into(), stroke.width, stroke.corners.into(), 1)
+            }
+            else {
+                Default::default()
+            }
+        };
+
         Self {
             uv,
+            size,
+
             model,
             color,
+
+            stroke_color,
+            stroke_width,
+            stroke_corners,
+            support_stroke,
 
             color_end,
             degree,
             use_gradient,
 
-            _padding: [0, 0],
+            _padding0: Default::default(),
+            _padding1: Default::default(),
+            _padding3: Default::default(),
         }
     }
 
@@ -70,6 +94,7 @@ impl InstanceData {
         position: Vec2,
         size: Vec2,
         color: &types::Color,
+        stroke: Option<Stroke>,
         proj: Mat4,
     ) -> Self {
         let u_min = uv0.x.min(uv1.x).min(uv2.x).min(uv3.x);
@@ -79,20 +104,29 @@ impl InstanceData {
 
         let uv_rect = Vec4::new(u_min, v_min, u_max, v_max);
 
-        Self::new_uv_4(uv_rect, position, size, color, proj)
+        Self::new_uv_4(uv_rect, position, size, color, stroke, proj)
     }
 
     pub fn get_layout() -> VertexBufferLayout<'static> {
-        const ATTRIBUTES: [VertexAttribute; 9] = vertex_attr_array![
+        const ATTRIBUTES: [VertexAttribute; 14] = vertex_attr_array![
             1 => Float32x4, //UV
-            2 => Float32x4, //Matrix
+            2 => Float32x2, //Size
+
             3 => Float32x4, //Matrix
             4 => Float32x4, //Matrix
             5 => Float32x4, //Matrix
-            6 => Float32x4, //Color
-            7 => Float32x4, //Color end
-            8 => Float32,   //Degree
-            9 => Uint32, //Use gradient
+            6 => Float32x4, //Matrix
+
+            7 => Float32x4, //Color
+
+            8 => Float32x4, //Stroke color
+            9 => Float32,   //Stroke width
+            10 => Float32x4, //Stroke corners
+
+            11 => Float32x4, //Color end
+            12 => Float32,   //Degree
+            13 => Uint32,    //Use gradient
+            14 => Uint32,
         ];
 
         const INSTANCE_DESC: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
