@@ -66,12 +66,12 @@ impl UserWindow<App> for MainWindow {
         subpanel.background =
             Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0))
                 .into();
-        subpanel.padding = Vec4::new(0.0, 0.0, 0.0, 0.0);
+        //subpanel.padding = Vec4::new(0.0, 0.0, 0.0, 0.0);
         let mut text = Text::new(gui.font.clone(), "Label");
         text.value =
             "Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)".to_string();
         //text.value = "Hello, world!".to_string();
-        text.color = Color::Simple(Argb8888::RED);
+        text.color = Color::Simple(Argb8888::WHITE);
         //text.color = Color::LinearGradient(LinearGradient::new(Argb8888::RED, Argb8888::YELLOW));
         text.size = 16;
         subpanel.add_child(Box::new(text));
@@ -93,7 +93,7 @@ impl UserWindow<App> for SmartPanel {
     fn request(&self) -> WindowRequest {
         WindowRequest::new("smart_panel")
             .bottom(SpecialOptions {
-                anchor: Anchor::Bottom,
+                anchor: Anchor::Top,
                 exclusive_zone: 35,
                 target: Default::default(),
             })

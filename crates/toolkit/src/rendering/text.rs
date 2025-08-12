@@ -103,7 +103,7 @@ impl FontAtlas {
                 &self.texture,
                 (self.size, self.size),
                 TextureFormat::Rgba8Unorm,
-                FilterMode::Nearest,
+                FilterMode::Linear,
                 FilterMode::Nearest,
                 &gpu.device,
                 &gpu.queue,

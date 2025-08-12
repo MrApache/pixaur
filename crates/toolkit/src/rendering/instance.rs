@@ -9,22 +9,27 @@ use wgpu::*;
 #[derive(Default, Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct InstanceData {
     uv: Vec4,
-    size: Vec2,
+
+    size: Vec2, 
     _padding0: [u32; 2],
 
     model: Mat4,
+
     color: Vec4,
 
     stroke_color: Vec4,
+
     stroke_width: f32,
     _padding1: [u32; 3],
+
     stroke_corners: Vec4,
 
     color_end: Vec4,
+
     degree: f32,
     use_gradient: u32,
     support_stroke: u32,
-    _padding3: [u32; 1],
+    _padding3: u32,
 }
 
 impl InstanceData {
@@ -107,35 +112,37 @@ impl InstanceData {
         Self::new_uv_4(uv_rect, position, size, color, stroke, proj)
     }
 
+
     pub fn get_layout() -> VertexBufferLayout<'static> {
-        const ATTRIBUTES: [VertexAttribute; 14] = vertex_attr_array![
-            1 => Float32x4, //UV
-            2 => Float32x2, //Size
-
-            3 => Float32x4, //Matrix
-            4 => Float32x4, //Matrix
-            5 => Float32x4, //Matrix
-            6 => Float32x4, //Matrix
-
-            7 => Float32x4, //Color
-
-            8 => Float32x4, //Stroke color
-            9 => Float32,   //Stroke width
-            10 => Float32x4, //Stroke corners
-
-            11 => Float32x4, //Color end
-            12 => Float32,   //Degree
-            13 => Uint32,    //Use gradient
-            14 => Uint32,
+        use wgpu::{VertexAttribute, VertexFormat::*, VertexStepMode};
+    
+        const ATTRIBUTES: &[VertexAttribute] = &[
+            // location, offset, format
+            VertexAttribute { offset: 0,   shader_location: 1, format: Float32x4 }, // uv
+            VertexAttribute { offset: 16,  shader_location: 2, format: Float32x2 }, // size
+    
+            VertexAttribute { offset: 32,  shader_location: 3, format: Float32x4 }, // model_matrix_0
+            VertexAttribute { offset: 48,  shader_location: 4, format: Float32x4 }, // model_matrix_1
+            VertexAttribute { offset: 64,  shader_location: 5, format: Float32x4 }, // model_matrix_2
+            VertexAttribute { offset: 80,  shader_location: 6, format: Float32x4 }, // model_matrix_3
+    
+            VertexAttribute { offset: 96,  shader_location: 7, format: Float32x4 }, // color
+    
+            VertexAttribute { offset: 112, shader_location: 8,  format: Float32x4 }, // stroke_color
+            VertexAttribute { offset: 128, shader_location: 9,  format: Float32 },   // stroke_width
+            VertexAttribute { offset: 144, shader_location: 10, format: Float32x4 }, // stroke_corners
+    
+            VertexAttribute { offset: 160, shader_location: 11, format: Float32x4 }, // color_end
+            VertexAttribute { offset: 176, shader_location: 12, format: Float32 },   // degree
+            VertexAttribute { offset: 180, shader_location: 13, format: Uint32 },    // use_gradient
+            VertexAttribute { offset: 184, shader_location: 14, format: Uint32 },    // support_stroke
         ];
-
-        const INSTANCE_DESC: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    
+        VertexBufferLayout {
             array_stride: std::mem::size_of::<InstanceData>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &ATTRIBUTES,
-        };
-
-        INSTANCE_DESC
+            step_mode: VertexStepMode::Instance,
+            attributes: ATTRIBUTES,
+        }
     }
 }
 

@@ -11,7 +11,7 @@ impl Default for Stroke {
     fn default() -> Self {
         Self {
             color: Argb8888::GRAY,
-            width: 2.0,
+            width: 1.0,
             corners: Corners::default(),
         }
     }

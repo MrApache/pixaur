@@ -32,8 +32,8 @@ impl Panel {
             content: vec![],
             rect: Rect::default(),
             background: Color::Simple(Argb8888::WHITE).into(),
-            padding: Vec4::new(2.0, 2.0, 2.0, 2.0),
-            spacing: 2.0,
+            padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
+            spacing: 4.0,
             mode: LayoutMode::Vertical,
             stroke: Stroke::default(),
         }
@@ -74,6 +74,10 @@ impl Widget for Panel {
 
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
+        self.rect.min.x += self.stroke.width;
+        self.rect.min.y += self.stroke.width;
+        self.rect.max.x -= self.stroke.width;
+        self.rect.max.y -= self.stroke.width;
 
         // Учитываем padding с обеих сторон для вычисления внутренних границ
         let min_x = self.rect.min.x + self.padding.x; // left

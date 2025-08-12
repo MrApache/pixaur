@@ -82,59 +82,65 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexPayload) -> @location(0) vec4<f32> {
-    return vec4<f32>(1.0, 0.0, 0.0, 1.0);
-    //var texColor = textureSample(texture, t_sampler, in.uv);
+    let texColor = textureSample(texture, t_sampler, in.uv);
+    var baseColor = texColor * in.color;
 
-    //if in.use_gradient >= 1u {
-    //    let angle = in.degree * 3.14159265 / 180.0;
-    //    let dir = vec2<f32>(cos(angle), sin(angle));
-    //
-    //    let centered_uv = in.uv - vec2<f32>(0.5, 0.5);
-    //    let max_len = 0.707;
-    //    let raw_t = dot(centered_uv, dir);
-    //    let t = clamp((raw_t / max_len + 1.0) * 0.5, 0.0, 1.0);
-    //
-    //    return texColor * mix(in.color, in.color_end, t);
-    //}
+    if in.use_gradient >= 1u {
+        let angle = in.degree * 3.14159265 / 180.0;
+        let dir = vec2<f32>(cos(angle), sin(angle));
+        let centered_uv = in.uv - vec2<f32>(0.5);
+        let max_len = 0.707;
+        let raw_t = dot(centered_uv, dir);
+        let t = clamp((raw_t / max_len + 1.0) * 0.5, 0.0, 1.0);
+        baseColor = texColor * mix(in.color, in.color_end, t);
+    }
 
-    //return texColor * in.color;
+    if in.stroke_width > 0.0 && in.support_stroke >= 1u {
+        // Нормализация толщины (как в предыдущем решении)
+        let stroke_norm = vec2(
+            in.stroke_width / in.size.x,
+            in.stroke_width / in.size.y
+        );
+
+        // Расстояние до границ
+        let dist = vec2(
+            min(in.uv.x, 1.0 - in.uv.x),
+            min(in.uv.y, 1.0 - in.uv.y)
+        );
+        
+        // Основная обводка (жёсткий край)
+        let stroke_factor = 1.0 - smoothstep(
+            0.95,
+            1.05,
+            min(dist.x / stroke_norm.x, dist.y / stroke_norm.y)
+        );
+        
+        // Тень (мягкое свечение за обводкой)
+        let shadow_width = 1.5; // Пикселей
+        let shadow_norm = vec2(
+            (in.stroke_width + shadow_width) / in.size.x,
+            (in.stroke_width + shadow_width) / in.size.y
+        );
+        
+        let shadow_factor = 1.0 - smoothstep(
+            0.8, // Более плавный переход
+            1.2,
+            min(dist.x / shadow_norm.x, dist.y / shadow_norm.y)
+        );
+        
+        // Смешивание (основной цвет -> тень -> обводка)
+        let shadow_color = mix(
+            baseColor,
+            in.stroke_color * vec4(0.1, 0.1, 0.1, 1.0), // Затемнённый цвет обводки
+            shadow_factor - stroke_factor
+        );
+        
+        return mix(
+            shadow_color,
+            in.stroke_color,
+            stroke_factor
+        );
+    }
+
+    return baseColor;
 }
-
-//@fragment
-//fn fs_main(in: VertexPayload) -> @location(0) vec4<f32> {
-//    let texColor = textureSample(texture, t_sampler, in.uv);
-//    var baseColor = texColor * in.color;
-//
-//    if in.use_gradient >= 1u {
-//        let angle = in.degree * 3.14159265 / 180.0;
-//        let dir = vec2<f32>(cos(angle), sin(angle));
-//        let centered_uv = in.uv - vec2<f32>(0.5);
-//        let max_len = 0.707;
-//        let raw_t = dot(centered_uv, dir);
-//        let t = clamp((raw_t / max_len + 1.0) * 0.5, 0.0, 1.0);
-//        baseColor = texColor * mix(in.color, in.color_end, t);
-//    }
-//
-//    // Обводка (если включена)
-//    if in.stroke_width > 0.0 && in.support_stroke >= 1u {
-//        // Переводим пиксели в UV-координаты (нормализуем)
-//        let stroke_uv = in.stroke_width / in.size.x; // Используем width как базовый размер
-//        let aa_uv = 1.0 / in.size.x; // Антиалиасинг ~1 пиксель
-//        
-//        let dist_to_edge = min(
-//            min(in.uv.x, 1.0 - in.uv.x),
-//            min(in.uv.y, 1.0 - in.uv.y)
-//        );
-//        
-//        let stroke_factor = 1.0 - smoothstep(
-//            stroke_uv - aa_uv,
-//            stroke_uv + aa_uv,
-//            dist_to_edge
-//        );
-//        
-//        return baseColor;
-//        //return mix(baseColor, in.stroke_color, stroke_factor);
-//    }
-//
-//    return baseColor;
-//}
