@@ -1,6 +1,5 @@
 use crate::{error::Error, rendering::bind_group::BindGroupBuilder};
 use image::GenericImageView;
-use std::env::current_dir;
 use wgpu::*;
 
 pub struct Material {
@@ -116,15 +115,6 @@ impl Material {
 
     pub fn default(device: &Device, queue: &Queue) -> Self {
         Self::from_rgba_pixels("Default", &[255, 255, 255, 255], (1, 1), device, queue)
-    }
-
-    pub fn new(path: &'static str, device: &Device, queue: &Queue) -> Result<Self, Error> {
-        let mut filepath = current_dir()?;
-        filepath.push("/home/irisu/Storage/Projects/pixaur/assets/");
-        filepath.push(path);
-
-        let bytes = std::fs::read(filepath)?;
-        Self::from_bytes(&bytes, device, queue)
     }
 
     pub fn from_bytes(bytes: &[u8], device: &Device, queue: &Queue) -> Result<Self, Error> {

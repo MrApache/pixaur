@@ -79,6 +79,7 @@ pub(crate) struct TextureRequest {
     bytes: &'static [u8],
 }
 
+#[allow(dead_code)]
 impl ContentManager {
     pub fn include_font(&mut self, bytes: &'static [u8]) -> FontHandle {
         let font_name = font_name(bytes).unwrap();

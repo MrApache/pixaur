@@ -43,7 +43,7 @@ impl Default for Mmap {
 }
 
 #[derive(Debug)]
-pub(crate) struct ShmPool {
+pub struct ShmPool {
     mmap: Mmap,
     inner: WlShmPool,
     pool_size: i32,

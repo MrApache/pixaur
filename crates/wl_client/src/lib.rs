@@ -316,7 +316,7 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
             XdgTopLevelEvent::Configure {
                 mut width,
                 mut height,
-                states,
+                states: _, //TODO
             } => {
                 let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
                 if let WindowLayer::Desktop(opts) = &window.layer {
@@ -337,7 +337,7 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
 
                 window.can_resize = true;
             }
-            XdgTopLevelEvent::Close => exit(0),
+            XdgTopLevelEvent::Close => exit(0), //TODO
             //XdgTopLevelEvent::ConfigureBounds { width, height } => todo!(),
             //XdgTopLevelEvent::WmCapabilities { capabilities } => todo!(),
             _ => {}
@@ -369,8 +369,8 @@ impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
         match event {
             ZwlrLayerSurfaceV1Event::Configure {
                 serial,
-                width,
-                height,
+                width: _, //TODO
+                height: _, //TODO
             } => {
                 surface.ack_configure(serial);
                 let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
@@ -379,6 +379,7 @@ impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
             }
             ZwlrLayerSurfaceV1Event::Closed => {
                 println!("Layer surface event 'closed'");
+                //TODO
             }
             _ => {}
         }
