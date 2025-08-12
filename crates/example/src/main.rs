@@ -4,11 +4,11 @@ use widgets::{
 };
 
 use toolkit::{
-    Anchor, Argb8888, Color, ContentManager, Context, DesktopOptions, EventLoop, FontHandle, GUI,
-    LinearGradient, SpecialOptions, TextureHandle, UserWindow,
+    Anchor, ContentManager, Context, DesktopOptions, EventLoop, FontHandle, GUI, SpecialOptions,
+    TextureHandle, UserWindow,
     glam::{Vec2, Vec4},
     include_asset,
-    style::Texture,
+    types::*,
     widget::Container,
     window::WindowRequest,
 };

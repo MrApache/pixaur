@@ -1,22 +1,6 @@
-use std::any::Any;
-
+use crate::{CommandBuffer, types::Rect};
 use glam::Vec2;
-
-use crate::CommandBuffer;
-
-#[derive(Default, Debug, Clone, Copy)]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
-}
-
-impl Point {
-    pub const ZERO: Self = Self::new(0.0, 0.0);
-
-    pub const fn new(x: f32, y: f32) -> Self {
-        Self { x, y }
-    }
-}
+use std::any::Any;
 
 #[derive(Default)]
 pub struct Spacing {
@@ -24,36 +8,6 @@ pub struct Spacing {
     pub right: f32,
     pub bottom: f32,
     pub left: f32,
-}
-
-#[derive(Default, Debug, Clone)]
-pub struct Rect {
-    pub min: Vec2,
-    pub max: Vec2,
-}
-
-impl Rect {
-    pub fn new(position: Vec2, size: Vec2) -> Self {
-        Self {
-            min: position,
-            max: position + size,
-        }
-    }
-
-    pub const fn from_size(size: Vec2) -> Self {
-        Self {
-            min: Vec2::ZERO,
-            max: size,
-        }
-    }
-
-    pub const fn width(&self) -> f32 {
-        self.max.x - self.min.x
-    }
-
-    pub const fn height(&self) -> f32 {
-        self.max.y - self.min.y
-    }
 }
 
 pub enum DesiredSize {

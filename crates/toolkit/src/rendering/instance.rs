@@ -1,4 +1,7 @@
-use crate::{Argb8888, rendering::Gpu};
+use crate::{
+    rendering::Gpu,
+    types::{self, Argb8888},
+};
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use wgpu::*;
 
@@ -10,6 +13,9 @@ pub struct InstanceData {
     model: Mat4,
     color: Vec4,
 
+    //Style
+
+    //Gradient
     color_end: Vec4,
     degree: f32,
     use_gradient: u32,
@@ -22,7 +28,7 @@ impl InstanceData {
         uv: Vec4,
         position: Vec2,
         size: Vec2,
-        color: &crate::Color,
+        color: &types::Color,
         proj: Mat4,
     ) -> Self {
         let model = proj
@@ -32,10 +38,10 @@ impl InstanceData {
                 Vec3::new(position.x, position.y, 0.0),
             );
         let (color, color_end, degree, use_gradient): (Vec4, Vec4, f32, u32) = match color {
-            crate::Color::Simple(argb8888) => {
+            types::Color::Simple(argb8888) => {
                 (argb8888.into(), Argb8888::TRANSPARENT.into(), 0.0, 0)
             }
-            crate::Color::LinearGradient(linear_gradient) => (
+            types::Color::LinearGradient(linear_gradient) => (
                 (&linear_gradient.from).into(),
                 (&linear_gradient.to).into(),
                 linear_gradient.degree,
@@ -63,7 +69,7 @@ impl InstanceData {
         uv3: Vec2,
         position: Vec2,
         size: Vec2,
-        color: &crate::Color,
+        color: &types::Color,
         proj: Mat4,
     ) -> Self {
         let u_min = uv0.x.min(uv1.x).min(uv2.x).min(uv3.x);

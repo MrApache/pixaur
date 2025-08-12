@@ -1,9 +1,9 @@
 use toolkit::{
-    Argb8888, Color,
     commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
     glam::{Vec2, Vec4},
-    style::BackgroundStyle,
-    widget::{Container, DesiredSize, Rect, Widget},
+    types::styling::*,
+    types::*,
+    widget::{Container, DesiredSize, Widget},
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -22,6 +22,7 @@ pub struct Panel {
     pub mode: LayoutMode,
 
     pub background: BackgroundStyle,
+    pub stroke: Stroke,
 }
 
 impl Panel {
@@ -34,6 +35,7 @@ impl Panel {
             padding: Vec4::new(2.0, 2.0, 2.0, 2.0),
             spacing: 2.0,
             mode: LayoutMode::Vertical,
+            stroke: Stroke::default(),
         }
     }
 }

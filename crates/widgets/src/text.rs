@@ -1,8 +1,9 @@
 use toolkit::{
-    Argb8888, Color, FontHandle,
-    commands::{CommandBuffer, DrawTextCommand},
-    fontdue::layout::{Layout, LayoutSettings, TextStyle},
+    FontHandle,
+    commands::{CommandBuffer, DrawCommand, DrawTextCommand},
+    fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
     glam::Vec2,
+    types::*,
     widget::{DesiredSize, Widget},
 };
 
@@ -26,7 +27,7 @@ impl Text {
             font,
             size: 12,
             color: Color::Simple(Argb8888::WHITE),
-            layout: Layout::new(toolkit::fontdue::layout::CoordinateSystem::PositiveYDown),
+            layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
         }
     }
@@ -50,7 +51,7 @@ impl Widget for Text {
     }
 
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        out.push(toolkit::commands::DrawCommand::Text(DrawTextCommand::new(
+        out.push(DrawCommand::Text(DrawTextCommand::new(
             self.size,
             self.color.clone(),
             self.position,
@@ -59,7 +60,7 @@ impl Widget for Text {
         )));
     }
 
-    fn layout(&mut self, bounds: toolkit::widget::Rect) {
+    fn layout(&mut self, bounds: Rect) {
         self.layout.reset(&LayoutSettings {
             max_width: Some(bounds.max.x),
             max_height: Some(bounds.max.y),

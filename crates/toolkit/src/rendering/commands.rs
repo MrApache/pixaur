@@ -5,10 +5,9 @@ use std::slice::IterMut;
 use wgpu::RenderPass;
 
 use crate::{
-    Color, ContentManager, FontHandle,
+    ContentManager, FontHandle,
     rendering::{Gpu, Renderer, instance::InstanceData},
-    style::Texture,
-    widget::Rect,
+    types::{Color, Rect, Texture},
 };
 
 #[enum_dispatch(DrawCommand)]

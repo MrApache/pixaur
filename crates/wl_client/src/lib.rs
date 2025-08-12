@@ -369,7 +369,7 @@ impl Dispatch<ZwlrLayerSurfaceV1, WindowId> for WlClient {
         match event {
             ZwlrLayerSurfaceV1Event::Configure {
                 serial,
-                width: _, //TODO
+                width: _,  //TODO
                 height: _, //TODO
             } => {
                 surface.ack_configure(serial);

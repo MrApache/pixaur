@@ -1,9 +1,8 @@
-mod color;
 mod content;
 mod debug;
 mod error;
 mod rendering;
-pub mod style;
+pub mod types;
 
 pub use content::*;
 pub use fontdue;
@@ -14,7 +13,6 @@ pub mod window;
 
 pub use rendering::commands;
 
-pub use color::*;
 pub use error::*;
 pub use wl_client::{
     Anchor,
@@ -24,7 +22,8 @@ pub use wl_client::{
 use crate::{
     debug::FpsCounter,
     rendering::{Gpu, Renderer, commands::CommandBuffer},
-    widget::{Container, Rect, Widget},
+    types::Rect,
+    widget::{Container, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
 
@@ -105,9 +104,6 @@ impl<T: GUI> EventLoop<T> {
         loop {
             self.content.dispath_queue(&self.gpu)?;
 
-            let fps = counter.tick();
-            println!("FPS: {fps:.1}");
-
             windows
                 .iter_mut()
                 .try_for_each(|window| -> Result<(), Error> {
@@ -130,6 +126,9 @@ impl<T: GUI> EventLoop<T> {
                     if !backend.can_draw() {
                         return Ok(());
                     }
+
+                    let fps = counter.tick();
+                    println!("FPS: {fps:.1}");
 
                     let mut commands = CommandBuffer::default();
                     window.frontend.layout(Rect::new(
