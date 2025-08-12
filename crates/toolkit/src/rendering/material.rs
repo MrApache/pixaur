@@ -1,21 +1,25 @@
-use std::env::current_dir;
-
-use crate::{error::Error, rendering::bind_group::BindGroupBuilder};
-use image::{GenericImageView, GrayImage, ImageBuffer, Luma, Rgba};
 use wgpu::*;
+use std::env::current_dir;
+use image::GenericImageView;
+use crate::{
+    error::Error,
+    rendering::bind_group::BindGroupBuilder
+};
 
 pub struct Material {
-    pub bind_group: BindGroup, //Texture + Sampler
+    pub bind_group: BindGroup,
 }
 
 impl Material {
     pub(crate) fn from_pixels(
-        label: &'static str,
+        label:  &'static str,
         pixels: &[u8],
-        size: (u32, u32),
+        size:   (u32, u32),
         format: TextureFormat,
+        mag_filter: FilterMode,
+        min_filter: FilterMode,
         device: &Device,
-        queue: &Queue,
+        queue:  &Queue,
     ) -> Self {
         let texture_size = Extent3d {
             width: size.0,
@@ -56,8 +60,10 @@ impl Material {
             address_mode_u: AddressMode::Repeat,
             address_mode_v: AddressMode::Repeat,
             address_mode_w: AddressMode::Repeat,
-            mag_filter: FilterMode::Nearest,
-            min_filter: FilterMode::Nearest,
+            mag_filter,
+            min_filter,
+            //mag_filter: FilterMode::Linear,
+            //min_filter: FilterMode::Nearest,
             ..Default::default()
         };
         let sampler = device.create_sampler(&sampler_descriptor);
@@ -93,13 +99,22 @@ impl Material {
     }
 
     pub(crate) fn from_rgba_pixels(
-        label: &'static str,
+        label:  &'static str,
         pixels: &[u8],
-        size: (u32, u32),
+        size:   (u32, u32),
         device: &Device,
-        queue: &Queue,
+        queue:  &Queue,
     ) -> Self {
-        Self::from_pixels(label, pixels, size, TextureFormat::Rgba8Unorm, device, queue)
+        Self::from_pixels(
+            label,
+            pixels,
+            size,
+            TextureFormat::Rgba8UnormSrgb,
+            FilterMode::Linear,
+            FilterMode::Nearest,
+            device,
+            queue
+        )
     }
 
     pub fn default(device: &Device, queue: &Queue) -> Self {
@@ -122,53 +137,5 @@ impl Material {
         Ok(Self::from_rgba_pixels(
             "texture", &converted, size, device, queue,
         ))
-    }
-}
-
-fn bytes_per_pixel(format: wgpu::TextureFormat) -> u32 {
-    use wgpu::TextureFormat::*;
-    match format {
-        R8Unorm
-        | R8Snorm
-        | R8Uint
-        | R8Sint => 1,
-
-        R16Uint
-        | R16Sint
-        | R16Float
-        |Rg8Unorm
-        | Rg8Snorm
-        | Rg8Uint
-        | Rg8Sint => 2,
-
-        R32Uint
-        | R32Sint
-        | R32Float
-        | Rg16Uint
-        | Rg16Sint
-        | Rg16Float
-        | Rgba8Unorm
-        | Rgba8UnormSrgb
-        | Rgba8Snorm
-        | Rgba8Uint
-        | Rgba8Sint
-        | Bgra8Unorm
-        | Bgra8UnormSrgb => 4,
-
-        Rg32Uint
-        | Rg32Sint
-        | Rg32Float
-        | Rgba16Uint
-        | Rgba16Sint
-        | Rgba16Float => 8,
-
-        Rgba32Uint
-        | Rgba32Sint
-        | Rgba32Float => 16,
-
-        // Compressed or depth/stencil formats обычно имеют специальное представление,
-        // для них возвращаем 0, так как размер считается по блокам.
-        // Можно доработать по необходимости.
-        _ => 0,
     }
 }

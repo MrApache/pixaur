@@ -1,25 +1,42 @@
-use widgets::{panel::{Panel, TestPanelLayoutWidget}, text::Text};
+use widgets::{
+    panel::{
+        Panel,
+        TestPanelLayoutWidget
+    },
+    text::Text
+};
 
 use toolkit::{
-    Anchor, Argb8888, Color, ContentManager, Context, DesktopOptions, EventLoop, GUI,
-    LinearGradient, SpecialOptions, TextureHandle, UserWindow,
-    glam::{Vec2, Vec4},
     include_asset,
+    glam::{Vec2, Vec4},
     style::Texture,
     widget::Container,
     window::WindowRequest,
+    Anchor,
+    Argb8888,
+    Color,
+    ContentManager,
+    Context,
+    DesktopOptions,
+    EventLoop,
+    FontHandle,
+    SpecialOptions,
+    TextureHandle,
+    UserWindow,
+    GUI
 };
 
 #[derive(Default)]
 struct App {
     texture: TextureHandle,
+    font: FontHandle,
 }
 
 impl GUI for App {
     fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<App>>> {
         vec![
             Box::new(MainWindow::default()),
-            //Box::new(SmartPanel)
+            Box::new(SmartPanel)
         ]
     }
 
@@ -47,6 +64,11 @@ impl UserWindow<App> for MainWindow {
         panel.background = Color::Simple(Argb8888::RED).into();
 
         let mut subpanel = Panel::new("Subpanel");
+
+        let mut test_layout_widget = TestPanelLayoutWidget::default();
+        test_layout_widget.min = Vec2::new(100.0, 100.0);
+        subpanel.add_child(Box::new(test_layout_widget));
+
         //subpanel.background = Color::Simple(Argb8888::GREEN).into();
         subpanel.background = Texture::new(gui.texture)
             //.with_color(Color::LinearGradient(LinearGradient::new(
@@ -58,9 +80,13 @@ impl UserWindow<App> for MainWindow {
 
         let mut subpanel = Panel::new("Subpanel");
         subpanel.background = Color::Simple(Argb8888::BLACK).into();
-        let mut text = Text::new("Hello, world!", "Label");
-        text.color = Color::Simple(Argb8888::BLUE);
-        text.size = 64.0;
+        subpanel.padding = Vec4::new(0.0, 0.0, 0.0, 0.0);
+        let mut text = Text::new(gui.font.clone(), "Label");
+        text.value = "Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)".to_string();
+        //text.value = "Hello, world!".to_string();
+        text.color = Color::Simple(Argb8888::WHITE);
+        //text.color = Color::LinearGradient(LinearGradient::new(Argb8888::RED, Argb8888::YELLOW));
+        text.size = 16;
         subpanel.add_child(Box::new(text));
         panel.add_child(Box::new(subpanel));
 

@@ -1,19 +1,58 @@
 use std::{
-    fs,
-    path::PathBuf,
-    collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
+    collections::HashMap, fs, path::PathBuf, sync::{atomic::{AtomicUsize, Ordering}, Arc}
 };
+use once_cell::sync::Lazy;
 use ttf_parser::Face;
 use fontdue::{Font, FontSettings};
 
 use crate::{
     Error,
-    rendering::{Gpu, material::Material},
+    rendering::{
+        material::Material,
+        Gpu, 
+    },
 };
 
-static HANDLE_ID: AtomicUsize = AtomicUsize::new(0);
+#[macro_export]
+macro_rules! include_asset {
+    ($path:expr) => {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/", $path))
+    };
+}
 
+#[macro_export]
+macro_rules! include_asset_content {
+    ($path:expr) => {
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/", $path))
+    };
+}
+
+static DEFAULT_FONT: Lazy<Arc<Font>> = Lazy::new(|| {
+    let bytes = include_asset!("Ubuntu-Regular.ttf");
+    let font = Font::from_bytes(bytes.as_ref(), FontSettings::default()).unwrap();
+    Arc::new(font)
+});
+
+#[derive(Clone, Debug)]
+pub struct FontHandle {
+    pub(crate) inner: Arc<Font>
+}
+
+impl Default for FontHandle {
+    fn default() -> Self {
+        Self {
+            inner: DEFAULT_FONT.clone()
+        }
+    }
+}
+
+impl AsRef<Font> for FontHandle {
+    fn as_ref(&self) -> &Font {
+        self.inner.as_ref()
+    }
+}
+
+static HANDLE_ID: AtomicUsize = AtomicUsize::new(0);
 fn next_handle_id() -> usize {
     HANDLE_ID.fetch_add(1, Ordering::SeqCst)
 }
@@ -25,8 +64,7 @@ pub struct TextureHandle {
 
 #[derive(Default)]
 pub struct ContentManager {
-    static_font: HashMap<String, Font>,
-    //dynamic_font: HashMap<String, FontRef<'static>>,
+    static_font: HashMap<String, Arc<Font>>,
     static_textures: Vec<Material>,
 
     queue: Vec<TextureRequest>,
@@ -39,17 +77,25 @@ pub(crate) struct TextureRequest {
 }
 
 impl ContentManager {
-    pub fn include_font(&mut self, bytes: &'static [u8]) {
+    pub fn include_font(&mut self, bytes: &'static [u8]) -> FontHandle {
         let font_name = font_name(bytes).unwrap();
         let font = Font::from_bytes(bytes, FontSettings::default()).unwrap();
-        self.static_font.insert(font_name, font);
+        let font_handle = Arc::new(font);
+        self.static_font.insert(font_name, font_handle.clone());
+        FontHandle {
+           inner: font_handle 
+        }
     }
 
-    pub fn static_load_font(&mut self, path: &'static str) {
+    pub fn static_load_font(&mut self, path: &'static str) -> FontHandle {
         let bytes: &'static [u8] = Box::leak(std::fs::read(path).unwrap().into_boxed_slice());
         let font_name = font_name(bytes).unwrap();
         let font = Font::from_bytes(bytes, FontSettings::default()).unwrap();
-        self.static_font.insert(font_name, font);
+        let font_handle = Arc::new(font);
+        self.static_font.insert(font_name, font_handle.clone());
+        FontHandle {
+           inner: font_handle 
+        }
     }
 
     pub(crate) fn get_font(&self, font: &str) -> &Font {
@@ -105,20 +151,6 @@ fn font_name(data: &[u8]) -> Option<String> {
         .into_iter()
         .find(|name| name.name_id == ttf_parser::name_id::FULL_NAME)
         .and_then(|name| name.to_string())
-}
-
-#[macro_export]
-macro_rules! include_asset {
-    ($path:expr) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/", $path))
-    };
-}
-
-#[macro_export]
-macro_rules! include_asset_content {
-    ($path:expr) => {
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/", $path))
-    };
 }
 
 pub fn load_asset(path: &str) -> Result<Vec<u8>, Error> {

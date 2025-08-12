@@ -34,7 +34,7 @@ fn vs_main(
 
     let local_uv = vec2<f32>(
         mix(instance.uv.x, instance.uv.z, vertex.position.x),
-        mix(instance.uv.w, instance.uv.y, vertex.position.y)
+        mix(instance.uv.y, instance.uv.w, vertex.position.y)
     );
 
     let model = mat4x4<f32>(
@@ -45,7 +45,7 @@ fn vs_main(
     );
 
     var out: VertexPayload;
-    out.position = model * vec4<f32>(vertex.position, 1.0);
+    out.position = model * vec4<f32>(vertex.position.x, vertex.position.y, vertex.position.z, 1.0);
     out.uv = local_uv;
     out.color_start = instance.color_start;
     out.color_end = instance.color_end;

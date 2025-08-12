@@ -1709,6 +1709,7 @@ dependencies = [
  "glam",
  "guillotiere",
  "image",
+ "once_cell",
  "pollster",
  "thiserror 2.0.12",
  "ttf-parser 0.25.1",

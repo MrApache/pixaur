@@ -99,9 +99,9 @@ impl Widget for Panel {
             });
 
         // Общая ширина, занятная spacing (между элементами, их len-1)
-        let total_spacing = self.spacing * (len.saturating_sub(1)) as f32;
+        let total_spacing = self.spacing * len.saturating_sub(1) as f32;
         // Вычисляем доступное пространство для Fill-виджетов, учитывая padding и spacing
-        let total_available_width = max_x - total_spacing - total_min_width - min_x;
+        let total_available_width = max_x - total_spacing - total_min_width - self.padding.z;
         let fill_width = total_available_width / fill_count as f32;
 
         // 2. Расставляем дочерние элементы по горизонтали с учётом spacing и fill_width

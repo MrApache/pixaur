@@ -46,6 +46,14 @@ impl Rect {
             max: size,
         }
     }
+
+    pub const fn width(&self) -> f32 {
+        self.max.x - self.min.x
+    }
+
+    pub const fn height(&self) -> f32 {
+        self.max.y - self.min.y
+    }
 }
 
 pub enum DesiredSize {

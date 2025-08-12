@@ -7,6 +7,7 @@ pub mod style;
 
 pub use content::*;
 pub use glam;
+pub use fontdue;
 
 pub mod widget;
 pub mod window;
@@ -15,13 +16,16 @@ pub use color::*;
 pub use error::*;
 pub use wl_client::{
     Anchor,
-    window::{DesktopOptions, SpecialOptions},
+    window::{
+        DesktopOptions,
+        SpecialOptions
+    },
 };
 
 use crate::{
+    style::Texture,
     debug::FpsCounter,
     rendering::{Gpu, Renderer},
-    style::Texture,
     widget::{Container, Rect, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
@@ -30,10 +34,9 @@ use glam::Vec2;
 use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{Connection, EventQueue, Proxy};
 use wl_client::{WlClient, window::WindowLayer};
+use fontdue::layout::Layout;
 
-pub const DEFAULT_FONT: &str = "Ubuntu Regular";
-
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum DrawCommand<'frame> {
     Rect {
         rect: Rect,
@@ -44,10 +47,11 @@ pub enum DrawCommand<'frame> {
         texture: Texture,
     },
     Text {
-        size: f32,
-        font: &'frame str,
-        text: &'frame str,
+        size: u32,
         color: Color,
+        position: Vec2,
+        font: &'frame FontHandle,
+        layout: &'frame Layout,
     },
 }
 
@@ -102,16 +106,7 @@ impl<T: GUI> EventLoop<T> {
         event_queue.roundtrip(&mut client)?; //Register objects
         event_queue.roundtrip(&mut client)?; //Register outputs
 
-        let mut content = ContentManager::default();
-
-        content.include_font(include_asset!("Ubuntu-Regular.ttf"));
-        content.include_font(include_asset!("Ubuntu-Light.ttf"));
-        content.include_font(include_asset!("Ubuntu-LightItalic.ttf"));
-        content.include_font(include_asset!("Ubuntu-Bold.ttf"));
-        content.include_font(include_asset!("Ubuntu-BoldItalic.ttf"));
-        content.include_font(include_asset!("Ubuntu-Italic.ttf"));
-        content.include_font(include_asset!("Ubuntu-Medium.ttf"));
-        content.include_font(include_asset!("Ubuntu-MediumItalic.ttf"));
+        let content = ContentManager::default();
 
         //Fix egl error: BadDisplay
         let (display_ptr, gpu) = {
