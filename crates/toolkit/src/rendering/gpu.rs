@@ -37,13 +37,11 @@ impl Gpu {
         height: u32,
     ) -> Result<(Surface<'window>, SurfaceConfiguration), Error> {
         let surface = self.instance.create_surface(ptr)?;
-        let surface_caps = surface.get_capabilities(&self.adapter);
-        let format = surface_caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| f.is_srgb())
-            .unwrap_or(surface_caps.formats[0]);
+
+        let caps = surface.get_capabilities(&self.adapter);
+        let format = *caps.formats.iter()
+            .find(|&&f| matches!(f, wgpu::TextureFormat::Rgba8Unorm))
+            .unwrap_or(&caps.formats[0]);
 
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
@@ -52,7 +50,7 @@ impl Gpu {
             height,
             present_mode: PresentMode::Fifo,
             desired_maximum_frame_latency: 2,
-            alpha_mode: surface_caps.alpha_modes[0],
+            alpha_mode: caps.alpha_modes[0],
             view_formats: vec![],
         };
 

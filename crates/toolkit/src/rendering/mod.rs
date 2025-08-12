@@ -59,6 +59,11 @@ impl Renderer {
                 push_constant_ranges: &[],
             });
 
+        let caps = surface.get_capabilities(&gpu.adapter);
+        let format = caps.formats.iter()
+            .find(|&&f| matches!(f, wgpu::TextureFormat::Rgba8Unorm))
+            .unwrap_or(&caps.formats[0]);
+
         let render_pipeline = gpu
             .device
             .create_render_pipeline(&RenderPipelineDescriptor {
@@ -75,7 +80,8 @@ impl Renderer {
                     entry_point: Some("fs_main"),
                     compilation_options: Default::default(),
                     targets: &[Some(ColorTargetState {
-                        format: surface.get_capabilities(&gpu.adapter).formats[0],
+                        //format: surface.get_capabilities(&gpu.adapter).formats[0],
+                        format: *format,
                         blend: Some(BlendState::ALPHA_BLENDING),
                         write_mask: ColorWrites::ALL,
                     })],

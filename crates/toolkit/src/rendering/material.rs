@@ -105,7 +105,7 @@ impl Material {
             label,
             pixels,
             size,
-            TextureFormat::Rgba8UnormSrgb,
+            TextureFormat::Rgba8Unorm,
             FilterMode::Linear,
             FilterMode::Nearest,
             device,
