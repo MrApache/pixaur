@@ -1,10 +1,7 @@
-use wgpu::*;
-use std::env::current_dir;
+use crate::{error::Error, rendering::bind_group::BindGroupBuilder};
 use image::GenericImageView;
-use crate::{
-    error::Error,
-    rendering::bind_group::BindGroupBuilder
-};
+use std::env::current_dir;
+use wgpu::*;
 
 pub struct Material {
     pub bind_group: BindGroup,
@@ -12,14 +9,14 @@ pub struct Material {
 
 impl Material {
     pub(crate) fn from_pixels(
-        label:  &'static str,
+        label: &'static str,
         pixels: &[u8],
-        size:   (u32, u32),
+        size: (u32, u32),
         format: TextureFormat,
         mag_filter: FilterMode,
         min_filter: FilterMode,
         device: &Device,
-        queue:  &Queue,
+        queue: &Queue,
     ) -> Self {
         let texture_size = Extent3d {
             width: size.0,
@@ -99,11 +96,11 @@ impl Material {
     }
 
     pub(crate) fn from_rgba_pixels(
-        label:  &'static str,
+        label: &'static str,
         pixels: &[u8],
-        size:   (u32, u32),
+        size: (u32, u32),
         device: &Device,
-        queue:  &Queue,
+        queue: &Queue,
     ) -> Self {
         Self::from_pixels(
             label,
@@ -113,7 +110,7 @@ impl Material {
             FilterMode::Linear,
             FilterMode::Nearest,
             device,
-            queue
+            queue,
         )
     }
 

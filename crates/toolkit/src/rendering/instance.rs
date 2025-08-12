@@ -8,11 +8,13 @@ pub struct InstanceData {
     uv: Vec4,
 
     model: Mat4,
-    color_start: Vec4,
+    color: Vec4,
+
     color_end: Vec4,
+    degree: f32,
     use_gradient: u32,
 
-    _padding1: [u32; 3],
+    _padding: [u32; 2],
 }
 
 impl InstanceData {
@@ -23,18 +25,20 @@ impl InstanceData {
         color: &crate::Color,
         proj: Mat4,
     ) -> Self {
-
         let model = proj
             * Mat4::from_scale_rotation_translation(
                 Vec3::new(size.x, size.y, 0.0),
                 Quat::IDENTITY,
                 Vec3::new(position.x, position.y, 0.0),
             );
-        let (color_start, color_end, use_gradient): (Vec4, Vec4, u32) = match color {
-            crate::Color::Simple(argb8888) => (argb8888.into(), Argb8888::TRANSPARENT.into(), 0),
+        let (color, color_end, degree, use_gradient): (Vec4, Vec4, f32, u32) = match color {
+            crate::Color::Simple(argb8888) => {
+                (argb8888.into(), Argb8888::TRANSPARENT.into(), 0.0, 0)
+            }
             crate::Color::LinearGradient(linear_gradient) => (
                 (&linear_gradient.from).into(),
                 (&linear_gradient.to).into(),
+                linear_gradient.degree,
                 1,
             ),
         };
@@ -42,10 +46,13 @@ impl InstanceData {
         Self {
             uv,
             model,
-            color_start,
+            color,
+
             color_end,
+            degree,
             use_gradient,
-            _padding1: [0,0,0]
+
+            _padding: [0, 0],
         }
     }
 
@@ -63,22 +70,23 @@ impl InstanceData {
         let v_min = uv0.y.min(uv1.y).min(uv2.y).min(uv3.y);
         let u_max = uv0.x.max(uv1.x).max(uv2.x).max(uv3.x);
         let v_max = uv0.y.max(uv1.y).max(uv2.y).max(uv3.y);
-        
+
         let uv_rect = Vec4::new(u_min, v_min, u_max, v_max);
 
         Self::new_uv_4(uv_rect, position, size, color, proj)
     }
 
     pub fn get_layout() -> VertexBufferLayout<'static> {
-        const ATTRIBUTES: [VertexAttribute; 8] = vertex_attr_array![
-            1 => Float32x4,
-            2 => Float32x4,
-            3 => Float32x4,
-            4 => Float32x4,
-            5 => Float32x4,
-            6 => Float32x4,
-            7 => Float32x4,
-            8 => Uint32,
+        const ATTRIBUTES: [VertexAttribute; 9] = vertex_attr_array![
+            1 => Float32x4, //UV
+            2 => Float32x4, //Matrix
+            3 => Float32x4, //Matrix
+            4 => Float32x4, //Matrix
+            5 => Float32x4, //Matrix
+            6 => Float32x4, //Color
+            7 => Float32x4, //Color end
+            8 => Float32,   //Degree
+            9 => Uint32, //Use gradient
         ];
 
         const INSTANCE_DESC: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {

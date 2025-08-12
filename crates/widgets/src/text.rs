@@ -1,12 +1,9 @@
 use toolkit::{
-    commands::{CommandBuffer, DrawTextCommand}, fontdue::layout::{
-        Layout,
-        LayoutSettings,
-        TextStyle,
-    }, glam::Vec2, widget::{
-            DesiredSize,
-            Widget
-    }, Argb8888, Color, FontHandle
+    Argb8888, Color, FontHandle,
+    commands::{CommandBuffer, DrawTextCommand},
+    fontdue::layout::{Layout, LayoutSettings, TextStyle},
+    glam::Vec2,
+    widget::{DesiredSize, Widget},
 };
 
 pub struct Text {
@@ -53,16 +50,13 @@ impl Widget for Text {
     }
 
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        out.push(toolkit::commands::DrawCommand::Text(
-                DrawTextCommand::new(
-                    self.size,
-                    self.color.clone(),
-                    self.position,
-                    &self.font,
-                    &self.layout,
-                )
-            )
-        );
+        out.push(toolkit::commands::DrawCommand::Text(DrawTextCommand::new(
+            self.size,
+            self.color.clone(),
+            self.position,
+            &self.font,
+            &self.layout,
+        )));
     }
 
     fn layout(&mut self, bounds: toolkit::widget::Rect) {
@@ -72,12 +66,15 @@ impl Widget for Text {
             ..LayoutSettings::default()
         });
 
-        self.layout.append(&[self.font.as_ref()], &TextStyle {
-            text: &self.value,
-            px: self.size as f32,
-            font_index: 0,
-            user_data: (),
-        });
+        self.layout.append(
+            &[self.font.as_ref()],
+            &TextStyle {
+                text: &self.value,
+                px: self.size as f32,
+                font_index: 0,
+                user_data: (),
+            },
+        );
 
         self.position = bounds.min;
     }

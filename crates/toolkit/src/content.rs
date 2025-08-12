@@ -1,16 +1,19 @@
-use std::{
-    collections::HashMap, fs, path::PathBuf, sync::{atomic::{AtomicUsize, Ordering}, Arc}
-};
-use once_cell::sync::Lazy;
-use ttf_parser::Face;
 use fontdue::{Font, FontSettings};
+use once_cell::sync::Lazy;
+use std::{
+    collections::HashMap,
+    fs,
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
+use ttf_parser::Face;
 
 use crate::{
     Error,
-    rendering::{
-        material::Material,
-        Gpu, 
-    },
+    rendering::{Gpu, material::Material},
 };
 
 #[macro_export]
@@ -35,13 +38,13 @@ static DEFAULT_FONT: Lazy<Arc<Font>> = Lazy::new(|| {
 
 #[derive(Clone, Debug)]
 pub struct FontHandle {
-    pub(crate) inner: Arc<Font>
+    pub(crate) inner: Arc<Font>,
 }
 
 impl Default for FontHandle {
     fn default() -> Self {
         Self {
-            inner: DEFAULT_FONT.clone()
+            inner: DEFAULT_FONT.clone(),
         }
     }
 }
@@ -82,9 +85,7 @@ impl ContentManager {
         let font = Font::from_bytes(bytes, FontSettings::default()).unwrap();
         let font_handle = Arc::new(font);
         self.static_font.insert(font_name, font_handle.clone());
-        FontHandle {
-           inner: font_handle 
-        }
+        FontHandle { inner: font_handle }
     }
 
     pub fn static_load_font(&mut self, path: &'static str) -> FontHandle {
@@ -93,9 +94,7 @@ impl ContentManager {
         let font = Font::from_bytes(bytes, FontSettings::default()).unwrap();
         let font_handle = Arc::new(font);
         self.static_font.insert(font_name, font_handle.clone());
-        FontHandle {
-           inner: font_handle 
-        }
+        FontHandle { inner: font_handle }
     }
 
     pub(crate) fn get_font(&self, font: &str) -> &Font {

@@ -18,4 +18,4 @@ glam.workspace = true
 guillotiere.workspace = true
 once_cell.workspace = true
 enum_dispatch.workspace = true
-#derive_more.workspace = true
+derive_more.workspace = true

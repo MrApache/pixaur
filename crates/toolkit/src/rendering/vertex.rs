@@ -1,5 +1,5 @@
 use glam::Vec3;
-use wgpu::{vertex_attr_array, VertexAttribute, VertexBufferLayout, VertexStepMode};
+use wgpu::{VertexAttribute, VertexBufferLayout, VertexStepMode, vertex_attr_array};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

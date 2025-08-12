@@ -17,13 +17,13 @@ pub use rendering::commands;
 pub use color::*;
 pub use error::*;
 pub use wl_client::{
-    window::{DesktopOptions, SpecialOptions},
     Anchor,
+    window::{DesktopOptions, SpecialOptions},
 };
 
 use crate::{
     debug::FpsCounter,
-    rendering::{commands::CommandBuffer, Gpu, Renderer},
+    rendering::{Gpu, Renderer, commands::CommandBuffer},
     widget::{Container, Rect, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
@@ -31,7 +31,7 @@ use crate::{
 use glam::Vec2;
 use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{Connection, EventQueue, Proxy};
-use wl_client::{window::WindowLayer, WlClient};
+use wl_client::{WlClient, window::WindowLayer};
 
 #[allow(unused)]
 pub trait GUI {

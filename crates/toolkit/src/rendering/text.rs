@@ -5,11 +5,11 @@ use glam::Vec4;
 use guillotiere::AtlasAllocator;
 use wgpu::{FilterMode, TextureFormat};
 
-use crate::rendering::{material::Material, Gpu};
+use crate::rendering::{Gpu, material::Material};
 
 #[derive(Default)]
 pub struct FontAtlasSet {
-    inner: HashMap<u32, FontAtlas>
+    inner: HashMap<u32, FontAtlas>,
 }
 
 impl FontAtlasSet {
@@ -29,7 +29,7 @@ pub struct FontAtlas {
     allocator: AtlasAllocator,
     texture: Vec<u8>,
     size: u32,
-    material: Option<Material>
+    material: Option<Material>,
 }
 
 impl FontAtlas {
@@ -43,13 +43,7 @@ impl FontAtlas {
         }
     }
 
-    pub fn get_or_add_glyph(
-        &mut self,
-        char: char,
-        size: u32,
-        font: &Font
-    ) -> GlyphData {
-
+    pub fn get_or_add_glyph(&mut self, char: char, size: u32, font: &Font) -> GlyphData {
         if let Some(glyph) = self.inner.get(&char) {
             return glyph.clone();
         }
@@ -58,7 +52,7 @@ impl FontAtlas {
         if metrics.width == 0 || metrics.height == 0 {
             let glyph = GlyphData {
                 uv: Vec4::ZERO,
-                metrics
+                metrics,
             };
 
             self.inner.insert(char, glyph.clone());
@@ -66,17 +60,23 @@ impl FontAtlas {
             return glyph;
         }
 
-        let rectangle = self.allocator.allocate((metrics.width as i32, metrics.height as i32).into()).unwrap().rectangle;
+        let rectangle = self
+            .allocator
+            .allocate((metrics.width as i32, metrics.height as i32).into())
+            .unwrap()
+            .rectangle;
 
         for y in 0..metrics.height {
             for x in 0..metrics.width {
                 let alpha = bitmap[y * metrics.width + x];
                 let dst_index = (((rectangle.min.x + x as i32) as u32)
-                    + ((rectangle.min.y + y as i32) as u32) * self.size) as usize * 4;
-        
-                self.texture[dst_index] = 255;       // R
-                self.texture[dst_index + 1] = 255;   // G
-                self.texture[dst_index + 2] = 255;   // B
+                    + ((rectangle.min.y + y as i32) as u32) * self.size)
+                    as usize
+                    * 4;
+
+                self.texture[dst_index] = 255; // R
+                self.texture[dst_index + 1] = 255; // G
+                self.texture[dst_index + 2] = 255; // B
                 self.texture[dst_index + 3] = alpha; // A
             }
         }
@@ -88,7 +88,7 @@ impl FontAtlas {
 
         let data = GlyphData {
             uv: Vec4::new(u0, v0, u1, v1),
-            metrics
+            metrics,
         };
 
         self.inner.insert(char, data.clone());
@@ -98,18 +98,16 @@ impl FontAtlas {
 
     pub fn get_or_add_material(&mut self, gpu: &Gpu) -> &Material {
         if self.material.is_none() {
-            self.material = Some(
-                Material::from_pixels(
-                    "Glyph atlas",
-                    &self.texture,
-                    (self.size, self.size),
-                    TextureFormat::Rgba8Unorm,
-                    FilterMode::Nearest,
-                    FilterMode::Nearest,
-                    &gpu.device,
-                    &gpu.queue
-                )
-            );
+            self.material = Some(Material::from_pixels(
+                "Glyph atlas",
+                &self.texture,
+                (self.size, self.size),
+                TextureFormat::Rgba8Unorm,
+                FilterMode::Nearest,
+                FilterMode::Nearest,
+                &gpu.device,
+                &gpu.queue,
+            ));
         }
 
         self.material.as_ref().unwrap()

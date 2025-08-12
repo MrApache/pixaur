@@ -1,29 +1,16 @@
 use widgets::{
-    panel::{
-        Panel,
-        TestPanelLayoutWidget
-    },
-    text::Text
+    panel::{Panel, TestPanelLayoutWidget},
+    text::Text,
 };
 
 use toolkit::{
-    include_asset,
+    Anchor, Argb8888, Color, ContentManager, Context, DesktopOptions, EventLoop, FontHandle, GUI,
+    LinearGradient, SpecialOptions, TextureHandle, UserWindow,
     glam::{Vec2, Vec4},
+    include_asset,
     style::Texture,
     widget::Container,
     window::WindowRequest,
-    Anchor,
-    Argb8888,
-    Color,
-    ContentManager,
-    Context,
-    DesktopOptions,
-    EventLoop,
-    FontHandle,
-    SpecialOptions,
-    TextureHandle,
-    UserWindow,
-    GUI
 };
 
 #[derive(Default)]
@@ -34,10 +21,7 @@ struct App {
 
 impl GUI for App {
     fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<App>>> {
-        vec![
-            Box::new(MainWindow::default()),
-            Box::new(SmartPanel)
-        ]
+        vec![Box::new(MainWindow::default()), Box::new(SmartPanel)]
     }
 
     fn load_content(&mut self, content: &mut ContentManager) {
@@ -61,7 +45,7 @@ impl UserWindow<App> for MainWindow {
 
     fn setup(&self, gui: &mut App) -> Box<dyn Container> {
         let mut panel = Panel::new("Panel");
-        panel.background = Color::Simple(Argb8888::RED).into();
+        panel.background = Color::Simple(Argb8888::BLACK).into();
 
         let mut subpanel = Panel::new("Subpanel");
 
@@ -79,10 +63,13 @@ impl UserWindow<App> for MainWindow {
         panel.add_child(Box::new(subpanel));
 
         let mut subpanel = Panel::new("Subpanel");
-        subpanel.background = Color::Simple(Argb8888::BLACK).into();
+        subpanel.background =
+            Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0))
+                .into();
         subpanel.padding = Vec4::new(0.0, 0.0, 0.0, 0.0);
         let mut text = Text::new(gui.font.clone(), "Label");
-        text.value = "Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)".to_string();
+        text.value =
+            "Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)".to_string();
         //text.value = "Hello, world!".to_string();
         text.color = Color::Simple(Argb8888::WHITE);
         //text.color = Color::LinearGradient(LinearGradient::new(Argb8888::RED, Argb8888::YELLOW));

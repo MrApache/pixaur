@@ -1,6 +1,7 @@
+use derive_more::From;
 use glam::Vec4;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, From)]
 pub enum Color {
     Simple(Argb8888),
     LinearGradient(LinearGradient),
@@ -84,24 +85,15 @@ impl From<&Argb8888> for Vec4 {
     }
 }
 
-impl From<Argb8888> for Color {
-    fn from(value: Argb8888) -> Self {
-        Self::Simple(value)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct LinearGradient {
     pub from: Argb8888,
     pub to: Argb8888,
+    pub degree: f32,
 }
 
 impl LinearGradient {
-    pub const fn new(from: Argb8888, to: Argb8888) -> Self {
-        Self { from, to }
-    }
-
-    pub fn color_at(&self, t: f32) -> Argb8888 {
-        self.from.lerp(&self.to, t.clamp(0.0, 1.0))
+    pub const fn new(from: Argb8888, to: Argb8888, degree: f32) -> Self {
+        Self { from, to, degree }
     }
 }

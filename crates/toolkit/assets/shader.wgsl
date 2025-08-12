@@ -8,17 +8,21 @@ struct Instance {
     @location(3) model_matrix_1: vec4<f32>,
     @location(4) model_matrix_2: vec4<f32>,
     @location(5) model_matrix_3: vec4<f32>,
-    @location(6) color_start: vec4<f32>,
+    @location(6) color: vec4<f32>,
+
     @location(7) color_end: vec4<f32>,
-    @location(8) use_gradient: u32,
+    @location(8) degree: f32,
+    @location(9) use_gradient: u32,
 };
 
 struct VertexPayload {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
-    @location(1) color_start: vec4<f32>,
+    @location(1) color: vec4<f32>,
+
     @location(2) color_end: vec4<f32>,
-    @location(3) use_gradient: u32,
+    @location(3) degree: f32,
+    @location(4) use_gradient: u32,
 };
 
 struct Vertex {
@@ -45,11 +49,15 @@ fn vs_main(
     );
 
     var out: VertexPayload;
-    out.position = model * vec4<f32>(vertex.position.x, vertex.position.y, vertex.position.z, 1.0);
+
     out.uv = local_uv;
-    out.color_start = instance.color_start;
+    out.position = model * vec4<f32>(vertex.position, 1.0);
+    out.color = instance.color;
+
     out.color_end = instance.color_end;
+    out.degree = instance.degree;
     out.use_gradient = instance.use_gradient;
+
     return out;
 }
 
@@ -57,9 +65,17 @@ fn vs_main(
 fn fs_main(in: VertexPayload) -> @location(0) vec4<f32> {
     var texColor = textureSample(texture, t_sampler, in.uv);
 
-    if in.use_gradient == 1u {
-        return texColor * mix(in.color_start, in.color_end, in.uv.x);
+    if in.use_gradient >= 1u {
+        let angle = in.degree * 3.14159265 / 180.0;
+        let dir = vec2<f32>(cos(angle), sin(angle));
+    
+        let centered_uv = in.uv - vec2<f32>(0.5, 0.5);
+        let max_len = 0.707;
+        let raw_t = dot(centered_uv, dir);
+        let t = clamp((raw_t / max_len + 1.0) * 0.5, 0.0, 1.0);
+    
+        return texColor * mix(in.color, in.color_end, t);
     }
 
-    return texColor * in.color_start;
+    return texColor * in.color;
 }
