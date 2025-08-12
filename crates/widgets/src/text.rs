@@ -19,10 +19,36 @@ pub struct Text {
     position: Vec2,
 }
 
-impl Text {
-    pub fn new(font: FontHandle, id: Option<impl Into<String>>) -> Self {
+impl Default for Text {
+    fn default() -> Self {
         Self {
-            id: id.map(|val| val.into()),
+            id: None,
+            value: String::new(),
+            font: FontHandle::default(),
+            size: 12,
+            color: Color::Simple(Argb8888::WHITE),
+            layout: Layout::new(CoordinateSystem::PositiveYDown),
+            position: Vec2::ZERO,
+        }
+    }
+}
+
+impl Text {
+    pub fn new(font: FontHandle) -> Self {
+        Self {
+            id: None,
+            value: String::new(),
+            font,
+            size: 12,
+            color: Color::Simple(Argb8888::WHITE),
+            layout: Layout::new(CoordinateSystem::PositiveYDown),
+            position: Vec2::ZERO,
+        }
+    }
+
+    pub fn with_id(font: FontHandle, id: impl Into<String>) -> Self {
+        Self {
+            id: Some(id.into()),
             value: String::new(),
             font,
             size: 12,
