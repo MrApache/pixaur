@@ -8,7 +8,7 @@ wl_client = {path = "crates/wl_client"}
 toolkit = {path = "crates/toolkit"}
 widgets = {path = "crates/widgets"}
 
-smithay-client-toolkit = "0.19.2"
+smithay-client-toolkit = "0.20.0"
 wayland-client = "0.31.11"
 wayland-backend = { version = "0.3.11", features=["client_system", "rwh_06"] }
 wayland-protocols = { version = "0.32.9", features = ["client"] }
@@ -33,4 +33,5 @@ image = "0.25.6"
 glam = { version = "0.30.5", features = ["bytemuck"] }
 
 once_cell = "1.21.3"
-
+enum_dispatch = "0.3.13"
+#derive_more = { version = "2.0.1", features = ["from"] }

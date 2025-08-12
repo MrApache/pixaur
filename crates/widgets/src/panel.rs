@@ -1,8 +1,9 @@
 use toolkit::{
-    Argb8888, Color, DrawCommand,
+    commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
     glam::{Vec2, Vec4},
     style::BackgroundStyle,
     widget::{Container, DesiredSize, Rect, Widget},
+    Argb8888, Color,
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -54,19 +55,15 @@ impl Widget for Panel {
         self
     }
 
-    fn draw<'frame>(&'frame self, out: &mut toolkit::CommandBuffer<'frame>) {
-        let command = match &self.background {
-            BackgroundStyle::Color(color) => DrawCommand::Rect {
-                rect: self.rect.clone(),
-                color: color.clone(),
-            },
-            BackgroundStyle::Texture(texture) => DrawCommand::Texture {
-                rect: self.rect.clone(),
-                texture: texture.clone(),
-            },
-        };
-
-        out.push(command);
+    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
+        match &self.background {
+            BackgroundStyle::Color(color) => {
+                out.push(DrawRectCommand::new(self.rect.clone(), color.clone()))
+            }
+            BackgroundStyle::Texture(texture) => {
+                out.push(DrawTextureCommand::new(self.rect.clone(), texture.clone()))
+            }
+        }
 
         self.content.iter().for_each(|w| {
             w.draw(out);
@@ -170,11 +167,11 @@ impl Widget for TestPanelLayoutWidget {
         self
     }
 
-    fn draw<'frame>(&'frame self, out: &mut toolkit::CommandBuffer<'frame>) {
-        out.push(toolkit::DrawCommand::Rect {
-            rect: self.rect.clone(),
-            color: Color::Simple(Argb8888::CYAN),
-        });
+    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
+        out.push(DrawCommand::Rect(DrawRectCommand::new(
+            self.rect.clone(),
+            Argb8888::CYAN,
+        )));
     }
 
     fn layout(&mut self, bounds: Rect) {

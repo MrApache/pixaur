@@ -6,26 +6,24 @@ mod rendering;
 pub mod style;
 
 pub use content::*;
-pub use glam;
 pub use fontdue;
+pub use glam;
 
 pub mod widget;
 pub mod window;
 
+pub use rendering::commands;
+
 pub use color::*;
 pub use error::*;
 pub use wl_client::{
+    window::{DesktopOptions, SpecialOptions},
     Anchor,
-    window::{
-        DesktopOptions,
-        SpecialOptions
-    },
 };
 
 use crate::{
-    style::Texture,
     debug::FpsCounter,
-    rendering::{Gpu, Renderer},
+    rendering::{commands::CommandBuffer, Gpu, Renderer},
     widget::{Container, Rect, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
@@ -33,46 +31,7 @@ use crate::{
 use glam::Vec2;
 use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{Connection, EventQueue, Proxy};
-use wl_client::{WlClient, window::WindowLayer};
-use fontdue::layout::Layout;
-
-#[derive(Clone)]
-pub enum DrawCommand<'frame> {
-    Rect {
-        rect: Rect,
-        color: Color,
-    },
-    Texture {
-        rect: Rect,
-        texture: Texture,
-    },
-    Text {
-        size: u32,
-        color: Color,
-        position: Vec2,
-        font: &'frame FontHandle,
-        layout: &'frame Layout,
-    },
-}
-
-#[derive(Default)]
-pub struct CommandBuffer<'frame> {
-    pub storage: Vec<DrawCommand<'frame>>,
-}
-
-impl<'frame> CommandBuffer<'frame> {
-    pub fn push(&mut self, cmd: DrawCommand<'frame>) {
-        self.storage.push(cmd);
-    }
-
-    pub fn extend<I: IntoIterator<Item = DrawCommand<'frame>>>(&mut self, iter: I) {
-        iter.into_iter().for_each(|cmd| self.push(cmd));
-    }
-
-    pub(crate) fn pop(&mut self) -> Option<DrawCommand<'frame>> {
-        self.storage.pop()
-    }
-}
+use wl_client::{window::WindowLayer, WlClient};
 
 #[allow(unused)]
 pub trait GUI {
@@ -181,10 +140,11 @@ impl<T: GUI> EventLoop<T> {
                         ),
                     ));
                     window.frontend.draw(&mut commands);
+                    commands.pack_active_group();
                     window.renderer.render(
                         &self.gpu,
                         &window.surface,
-                        &mut commands.storage,
+                        &mut commands,
                         &self.content,
                         window.configuration.width as f32,
                         window.configuration.height as f32,

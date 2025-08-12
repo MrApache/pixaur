@@ -1,50 +1,28 @@
 pub mod bind_group;
 pub mod bind_group_layout;
-mod gpu;
-mod instance;
-mod text;
+pub mod commands;
 pub mod material;
 pub mod mesh;
 
-use std::collections::HashMap;
-use std::sync::Arc;
+mod gpu;
+mod instance;
+mod text;
+mod vertex;
 
-use fontdue::Font;
 pub use gpu::Gpu;
-use guillotiere::AtlasAllocator;
 
 use crate::error::Error;
-use crate::rendering::text::{FontAtlas, FontAtlasSet};
-use glam::{Mat4, Vec2, Vec3, Vec4};
-use wgpu::*;
-
 use crate::rendering::bind_group_layout::BindGroupLayoutBuilder;
 use crate::rendering::instance::{InstanceData, InstancingPool};
 use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
-use crate::{ContentManager, DrawCommand, include_asset_content, load_asset_str};
+use crate::rendering::text::FontAtlasSet;
+use crate::rendering::vertex::Vertex;
+use crate::{include_asset_content, load_asset_str, ContentManager};
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
-    position: Vec3,
-}
-
-impl Vertex {
-    pub fn new(position: Vec3) -> Vertex {
-        Self { position }
-    }
-
-    pub fn get_layout() -> VertexBufferLayout<'static> {
-        const ATTRIBUTES: [VertexAttribute; 1] = vertex_attr_array![0 => Float32x3];
-
-        VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as u64,
-            step_mode: VertexStepMode::Vertex,
-            attributes: &ATTRIBUTES,
-        }
-    }
-}
+use glam::Mat4;
+use std::collections::HashMap;
+use wgpu::*;
 
 pub struct Renderer {
     render_pipeline: RenderPipeline,
@@ -52,6 +30,8 @@ pub struct Renderer {
     material: Material,
     buffer_pool: InstancingPool,
     fonts: HashMap<String, FontAtlasSet>,
+
+    projection: Mat4,
 }
 
 impl Renderer {
@@ -119,6 +99,7 @@ impl Renderer {
             material: Material::default(&gpu.device, &gpu.queue),
             buffer_pool: InstancingPool::new(gpu),
             fonts: HashMap::default(),
+            projection: Mat4::IDENTITY,
         })
     }
 
@@ -126,7 +107,7 @@ impl Renderer {
         &mut self,
         gpu: &Gpu,
         surface: &Surface,
-        commands: &mut Vec<DrawCommand>,
+        commands: &mut commands::CommandBuffer,
         content: &ContentManager,
         window_width: f32,
         window_height: f32,
@@ -165,113 +146,19 @@ impl Renderer {
                 label: Some("Render Encoder"),
             });
 
-        let proj = Mat4::orthographic_rh_gl(0.0, window_width, window_height, 0.0, -1.0, 1.0);
+        self.projection =
+            Mat4::orthographic_rh_gl(0.0, window_width, window_height, 0.0, -1.0, 1.0);
 
         {
             self.buffer_pool.clear();
 
             let mut renderpass = command_encoder.begin_render_pass(&render_pass_descriptor);
             renderpass.set_pipeline(&self.render_pipeline);
-            renderpass.set_bind_group(0, &self.material.bind_group, &[]);
             renderpass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
             renderpass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
 
-            commands.iter().for_each(|command| {
-                match command {
-                    DrawCommand::Rect { rect, color } => {
-                        let uv0 = Vec2::new(0.0, 0.0);
-                        let uv1 = Vec2::new(1.0, 0.0);
-                        let uv2 = Vec2::new(1.0, 1.0);
-                        let uv3 = Vec2::new(0.0, 1.0);
-                        self.buffer_pool.push(
-                            InstanceData::new_uv_2(
-                                uv0,
-                                uv1,
-                                uv2,
-                                uv3,
-                                rect.min,
-                                rect.max,
-                                color,
-                                proj
-                            )
-                        );
-                    }
-                    DrawCommand::Texture { rect, texture } => {
-                        {
-                            renderpass.set_bind_group(0, &self.material.bind_group, &[]);
-                            self.buffer_pool.draw_instances(gpu, &mut renderpass);
-                        }
-
-                        let uv0 = Vec2::new(0.0, 0.0);
-                        let uv1 = Vec2::new(1.0, 0.0);
-                        let uv2 = Vec2::new(1.0, 1.0);
-                        let uv3 = Vec2::new(0.0, 1.0);
-                        self.buffer_pool.push(InstanceData::new_uv_2(
-                            uv0,
-                            uv1,
-                            uv2,
-                            uv3,
-                            rect.min,
-                            rect.max,
-                            &texture.color,
-                            proj,
-                        ));
-
-                        let material = content.get_texture(texture.handle);
-                        renderpass.set_bind_group(0, &material.bind_group, &[]);
-
-                        self.buffer_pool.draw_instances(gpu, &mut renderpass);
-                        return;
-                    }
-                    DrawCommand::Text {
-                        size,
-                        font,
-                        color,
-                        position,
-                        layout,
-                    } => {
-                        let set = self.fonts.entry(font.inner.name().unwrap().to_string()).or_default();
-                        let atlas = set.get_atlas(*size);
-
-                        layout.glyphs().iter().for_each(|glyph| {
-
-                            match glyph.parent {
-                                ' '
-                                    | '\t'
-                                    | '\n'
-                                    | '\r'
-                                    | '\u{200B}'
-                                    | '\u{200C}'
-                                    | '\u{200D}'
-                                    | '\u{FEFF}' => return,
-                                c if c.is_control() => return,
-                                _ => {}
-                            }
-
-                            let data = atlas.get_or_add_glyph(glyph.parent, *size, &font.inner);
-                            self.buffer_pool.push(
-                                InstanceData::new_uv_4(
-                                    data.uv,
-                                    Vec2::new(
-                                        position.x + glyph.x,
-                                        position.y + glyph.y,
-                                    ),
-                                    Vec2::new(data.metrics.width as f32, data.metrics.height as f32),
-                                    color,
-                                    proj
-                                )
-                            );
-                        });
-
-                        let material = atlas.get_or_add_material(gpu);
-                        renderpass.set_bind_group(0, &material.bind_group, &[]);
-                        self.buffer_pool.draw_instances(gpu, &mut renderpass);
-                        return;
-                    }
-                }
-
-                renderpass.set_bind_group(0, &self.material.bind_group, &[]);
-                self.buffer_pool.draw_instances(gpu, &mut renderpass);
+            commands.iter_mut().for_each(|command_group| {
+                command_group.prepare_frame(self, content, gpu, &mut renderpass);
             });
         }
 

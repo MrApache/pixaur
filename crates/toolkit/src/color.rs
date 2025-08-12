@@ -84,6 +84,12 @@ impl From<&Argb8888> for Vec4 {
     }
 }
 
+impl From<Argb8888> for Color {
+    fn from(value: Argb8888) -> Self {
+        Self::Simple(value)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LinearGradient {
     pub from: Argb8888,

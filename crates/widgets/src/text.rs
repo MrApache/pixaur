@@ -1,18 +1,12 @@
 use toolkit::{
-    fontdue::layout::{
+    commands::{CommandBuffer, DrawTextCommand}, fontdue::layout::{
         Layout,
         LayoutSettings,
         TextStyle,
-    },
-    glam::Vec2,
-        widget::{
+    }, glam::Vec2, widget::{
             DesiredSize,
             Widget
-    },
-    Color,
-    Argb8888,
-    DrawCommand,
-    FontHandle
+    }, Argb8888, Color, FontHandle
 };
 
 pub struct Text {
@@ -58,14 +52,17 @@ impl Widget for Text {
         self
     }
 
-    fn draw<'frame>(&'frame self, out: &mut toolkit::CommandBuffer<'frame>) {
-        out.push(DrawCommand::Text {
-            font: &self.font,
-            size: self.size,
-            color: self.color.clone(),
-            position: self.position,
-            layout: &self.layout,
-        });
+    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
+        out.push(toolkit::commands::DrawCommand::Text(
+                DrawTextCommand::new(
+                    self.size,
+                    self.color.clone(),
+                    self.position,
+                    &self.font,
+                    &self.layout,
+                )
+            )
+        );
     }
 
     fn layout(&mut self, bounds: toolkit::widget::Rect) {
