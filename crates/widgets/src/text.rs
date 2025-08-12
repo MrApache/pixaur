@@ -8,7 +8,7 @@ use toolkit::{
 };
 
 pub struct Text {
-    id: String,
+    id: Option<String>,
     font: FontHandle,
 
     pub value: String,
@@ -20,9 +20,9 @@ pub struct Text {
 }
 
 impl Text {
-    pub fn new(font: FontHandle, id: impl Into<String>) -> Self {
+    pub fn new(font: FontHandle, id: Option<impl Into<String>>) -> Self {
         Self {
-            id: id.into(),
+            id: id.map(|val| val.into()),
             value: String::new(),
             font,
             size: 12,
@@ -34,8 +34,13 @@ impl Text {
 }
 
 impl Widget for Text {
-    fn id(&self) -> &str {
-        &self.id
+    fn id(&self) -> Option<&str> {
+        if let Some(id) = &self.id {
+            Some(id)
+        }
+        else {
+            None
+        }
     }
 
     fn desired_size(&self) -> DesiredSize {

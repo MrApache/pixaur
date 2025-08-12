@@ -16,7 +16,7 @@ pub enum DesiredSize {
 }
 
 pub trait Widget: Any {
-    fn id(&self) -> &str;
+    fn id(&self) -> Option<&str>;
     fn desired_size(&self) -> DesiredSize;
     fn as_container(&self) -> Option<&dyn Container> {
         None

@@ -24,3 +24,14 @@ impl From<Corners> for Vec4 {
         Vec4::new(value.left_top, value.left_bottom, value.right_top, value.right_bottom)
     }
 }
+
+impl Corners {
+    pub fn none() -> Self {
+        Self {
+            left_top: 0.0,
+            left_bottom: 0.0,
+            right_top: 0.0,
+            right_bottom: 0.0,
+        }
+    }
+}

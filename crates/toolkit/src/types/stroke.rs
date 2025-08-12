@@ -16,3 +16,13 @@ impl Default for Stroke {
         }
     }
 }
+
+impl Stroke {
+    pub fn none() -> Self {
+        Self {
+            color: Argb8888::TRANSPARENT,
+            width: 0.0,
+            corners: Corners::none(),
+        }
+    }
+}

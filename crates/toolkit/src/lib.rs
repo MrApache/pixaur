@@ -13,6 +13,7 @@ pub mod window;
 
 pub use rendering::commands;
 
+pub use wl_client::window::TargetMonitor;
 pub use error::*;
 pub use wl_client::{
     Anchor,
@@ -204,12 +205,14 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     fn internal_get_by_id<W: Widget>(container: &'a dyn Container, id: &str) -> Option<&'a W> {
         for w in container.children() {
-            if w.id().eq(id) {
-                return w.as_any().downcast_ref::<W>();
-            }
+            if let Some(w_id) = w.id() {
+                if w_id.eq(id) {
+                    return w.as_any().downcast_ref::<W>();
+                }
 
-            if let Some(container) = w.as_container() {
-                return Self::internal_get_by_id(container, id);
+                if let Some(container) = w.as_container() {
+                    return Self::internal_get_by_id(container, id);
+                }
             }
         }
 
@@ -221,12 +224,14 @@ impl<'a> Context<'a> {
         id: &str,
     ) -> Option<&'a mut W> {
         for w in container.children_mut() {
-            if w.id().eq(id) {
-                return w.as_any_mut().downcast_mut::<W>();
-            }
+            if let Some(w_id) = w.id() {
+                if w_id.eq(id) {
+                    return w.as_any_mut().downcast_mut::<W>();
+                }
 
-            if let Some(container) = w.as_container_mut() {
-                return Self::internal_get_mut_by_id(container, id);
+                if let Some(container) = w.as_container_mut() {
+                    return Self::internal_get_mut_by_id(container, id);
+                }
             }
         }
 

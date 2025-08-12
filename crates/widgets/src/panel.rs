@@ -14,7 +14,7 @@ pub enum LayoutMode {
 }
 
 pub struct Panel {
-    id: String,
+    id: Option<String>,
     rect: Rect,
     content: Vec<Box<dyn Widget>>,
     pub padding: Vec4,
@@ -25,10 +25,29 @@ pub struct Panel {
     pub stroke: Stroke,
 }
 
+impl Default for Panel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Panel {
-    pub fn new(id: impl Into<String>) -> Self {
+    pub fn new() -> Self {
         Self {
-            id: id.into(),
+            id: None,
+            content: vec![],
+            rect: Rect::default(),
+            background: Color::Simple(Argb8888::WHITE).into(),
+            padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
+            spacing: 4.0,
+            mode: LayoutMode::Vertical,
+            stroke: Stroke::default(),
+        }
+    }
+
+    pub fn with_id(id: impl Into<String>) -> Self {
+        Self {
+            id: Some(id.into()),
             content: vec![],
             rect: Rect::default(),
             background: Color::Simple(Argb8888::WHITE).into(),
@@ -41,8 +60,13 @@ impl Panel {
 }
 
 impl Widget for Panel {
-    fn id(&self) -> &str {
-        &self.id
+    fn id(&self) -> Option<&str> {
+        if let Some(id) = &self.id {
+            Some(id)
+        }
+        else {
+            None
+        }
     }
 
     fn desired_size(&self) -> DesiredSize {
@@ -158,8 +182,8 @@ pub struct TestPanelLayoutWidget {
 }
 
 impl Widget for TestPanelLayoutWidget {
-    fn id(&self) -> &str {
-        "test_widget"
+    fn id(&self) -> Option<&str> {
+        Some("test_widget")
     }
 
     fn desired_size(&self) -> DesiredSize {
