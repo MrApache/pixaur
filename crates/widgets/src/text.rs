@@ -1,17 +1,12 @@
 use toolkit::{
-    FontHandle,
-    commands::{CommandBuffer, DrawCommand, DrawTextCommand},
-    fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
-    glam::Vec2,
-    types::*,
-    widget::{DesiredSize, Widget},
+    commands::{CommandBuffer, DrawCommand, DrawTextCommand}, fontdue::layout::{self, CoordinateSystem, Layout, LayoutSettings, TextStyle}, glam::Vec2, types::*, widget::{DesiredSize, Widget}, FontHandle
 };
 
 pub struct Text {
     id: Option<String>,
     font: FontHandle,
 
-    pub value: String,
+    value: String,
     pub size: u32,
     pub color: Color,
 
@@ -21,7 +16,7 @@ pub struct Text {
 
 impl Default for Text {
     fn default() -> Self {
-        Self {
+        let mut instance = Self {
             id: None,
             value: String::new(),
             font: FontHandle::default(),
@@ -29,13 +24,16 @@ impl Default for Text {
             color: Color::Simple(Argb8888::WHITE),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
-        }
+        };
+
+        instance.refresh_layout();
+        instance
     }
 }
 
 impl Text {
     pub fn new(font: FontHandle) -> Self {
-        Self {
+        let mut instance = Self {
             id: None,
             value: String::new(),
             font,
@@ -43,11 +41,14 @@ impl Text {
             color: Color::Simple(Argb8888::WHITE),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
-        }
+        };
+
+        instance.refresh_layout();
+        instance
     }
 
     pub fn with_id(font: FontHandle, id: impl Into<String>) -> Self {
-        Self {
+        let mut instance = Self {
             id: Some(id.into()),
             value: String::new(),
             font,
@@ -55,7 +56,29 @@ impl Text {
             color: Color::Simple(Argb8888::WHITE),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
-        }
+        };
+
+        instance.refresh_layout();
+        instance
+    }
+
+    pub fn set_text(&mut self, value: &str) {
+        self.value.clear();
+        self.value.insert_str(0, value);
+        self.refresh_layout();
+    }
+
+    fn refresh_layout(&mut self) {
+        self.layout.clear();
+        self.layout.append(
+            &[self.font.as_ref()],
+            &TextStyle {
+                text: &self.value,
+                px: self.size as f32,
+                font_index: 0,
+                user_data: (),
+            },
+        );
     }
 }
 
@@ -69,8 +92,31 @@ impl Widget for Text {
         }
     }
 
+    #[allow(clippy::eq_op)]
     fn desired_size(&self) -> DesiredSize {
-        DesiredSize::Fill
+        let font = self.font.as_ref();
+        let mut x = 0.0;
+
+        let glyphs = self.layout.glyphs();
+        let text_width = match self.layout.lines() {
+            Some(lines) => lines
+                .iter()
+                .map(|ln| {
+                    let glyph = &glyphs[ln.glyph_end];
+                    glyph.x + glyph.width as f32
+                })
+                .fold(0.0 / 0.0, |m, v| v.max(m)),
+            None => 0.0
+        };
+
+        self.layout.glyphs().iter().for_each(|c| {
+            let metrics = font.metrics(c.parent, self.size as f32);
+            x += metrics.advance_width;
+            x += metrics.bounds.xmin;
+        });
+
+        let y = self.layout.height();
+        DesiredSize::Min(Vec2::new(x.floor(), y))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -98,15 +144,7 @@ impl Widget for Text {
             ..LayoutSettings::default()
         });
 
-        self.layout.append(
-            &[self.font.as_ref()],
-            &TextStyle {
-                text: &self.value,
-                px: self.size as f32,
-                font_index: 0,
-                user_data: (),
-            },
-        );
+        self.refresh_layout();
 
         self.position = bounds.min;
     }

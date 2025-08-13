@@ -12,6 +12,7 @@ pub struct Spacing {
 
 pub enum DesiredSize {
     Min(Vec2),
+    FillMinY(f32),
     Fill,
 }
 

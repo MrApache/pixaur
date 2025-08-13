@@ -98,6 +98,7 @@ impl<T: GUI> EventLoop<T> {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
+
         self.gui.load_content(&mut self.content);
         let mut windows = self.init_windows_backends()?;
         let mut counter = FpsCounter::new(144);

@@ -4,7 +4,7 @@ use toolkit::{
     window::WindowRequest,
     Anchor, Error, EventLoop, SpecialOptions, TargetMonitor, UserWindow, GUI,
 };
-use widgets::{panel::Panel, text::Text};
+use widgets::{panel::{HorizontalAlign, Panel, VerticalAlign}, text::Text};
 
 #[derive(Default)]
 struct App {}
@@ -32,9 +32,13 @@ impl UserWindow<App> for BarWindow {
         let mut root = Panel::new();
         root.background = Color::Simple(Argb8888::new(17, 17, 27, 255)).into();
         root.stroke = Stroke::none();
+        root.vertical_align = VerticalAlign::Center;
+        root.horizontal_align = HorizontalAlign::Center;
 
         let mut time = Text::default();
-        time.value = "23:59".into();
+        time.set_text("23:59");
+        //time.set_text("qq");
+        //time.set_text("qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
         time.size = 16;
         root.add_child(Box::new(time));
 

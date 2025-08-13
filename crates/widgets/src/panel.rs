@@ -13,6 +13,22 @@ pub enum LayoutMode {
     Horizontal,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub enum HorizontalAlign {
+    #[default]
+    Start,
+    Center,
+    End,
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+pub enum VerticalAlign {
+    #[default]
+    Start,
+    Center,
+    End,
+}
+
 pub struct Panel {
     id: Option<String>,
     rect: Rect,
@@ -20,6 +36,8 @@ pub struct Panel {
     pub padding: Vec4,
     pub spacing: f32,
     pub mode: LayoutMode,
+    pub vertical_align: VerticalAlign,
+    pub horizontal_align: HorizontalAlign,
 
     pub background: BackgroundStyle,
     pub stroke: Stroke,
@@ -42,6 +60,8 @@ impl Panel {
             spacing: 4.0,
             mode: LayoutMode::Vertical,
             stroke: Stroke::default(),
+            horizontal_align: HorizontalAlign::Center,
+            vertical_align: VerticalAlign::Center,
         }
     }
 
@@ -55,6 +75,8 @@ impl Panel {
             spacing: 4.0,
             mode: LayoutMode::Vertical,
             stroke: Stroke::default(),
+            horizontal_align: HorizontalAlign::Center,
+            vertical_align: VerticalAlign::Center,
         }
     }
 }
@@ -96,6 +118,7 @@ impl Widget for Panel {
         });
     }
 
+
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
         self.rect.min.x += self.stroke.width;
@@ -109,12 +132,16 @@ impl Widget for Panel {
         let max_x = self.rect.max.x - self.padding.z; // right
         let max_y = self.rect.max.y - self.padding.w; // top
 
-        let mut cursor_x = min_x;
+        let len = self.content.len();
+        let available_width = max_x;
         let available_height = max_y - min_y;
 
-        let len = self.content.len();
+        let mut cursor_x = match self.horizontal_align {
+            HorizontalAlign::Start => min_x,
+            HorizontalAlign::Center => min_x + available_width / 2.0,
+            HorizontalAlign::End => max_x - available_width,
+        };
 
-        // 1. Считаем суммарную ширину Min-виджетов и количество Fill-виджетов
         let mut total_min_width = 0.0;
         let mut fill_count = 0;
 
@@ -123,36 +150,48 @@ impl Widget for Panel {
             .for_each(|widget| match widget.desired_size() {
                 DesiredSize::Min(size) => total_min_width += size.x,
                 DesiredSize::Fill => fill_count += 1,
+                DesiredSize::FillMinY(_) => fill_count += 1,
             });
 
-        // Общая ширина, занятная spacing (между элементами, их len-1)
         let total_spacing = self.spacing * len.saturating_sub(1) as f32;
-        // Вычисляем доступное пространство для Fill-виджетов, учитывая padding и spacing
         let total_available_width = max_x - total_spacing - total_min_width - self.padding.z;
         let fill_width = total_available_width / fill_count as f32;
 
-        // 2. Расставляем дочерние элементы по горизонтали с учётом spacing и fill_width
         for (i, child) in self.content.iter_mut().enumerate() {
             let (width, height) = match child.desired_size() {
                 DesiredSize::Min(vec2) => (vec2.x, vec2.y.min(available_height)),
                 DesiredSize::Fill => (fill_width, available_height),
+                DesiredSize::FillMinY(y) => (fill_width, y.min(available_height))
+            };
+
+            let offset_y = match self.vertical_align {
+                VerticalAlign::Start => 0.0,
+                VerticalAlign::Center => (available_height - height) / 2.0,
+                VerticalAlign::End => available_height - height,
+            };
+
+            let offset_x = match self.horizontal_align {
+                HorizontalAlign::Start => 0.0,
+                HorizontalAlign::Center => width - (width / 2.0),
+                HorizontalAlign::End => 0.0,
             };
 
             let child_bounds = Rect {
-                min: Vec2::new(cursor_x, min_y),
+                min: Vec2::new(cursor_x - offset_x, min_y + offset_y),
                 max: Vec2::new(width, height),
             };
+
+            println!("Offset: {offset_x}x{offset_y}");
+
 
             child.layout(child_bounds);
 
             cursor_x += width;
 
-            // Добавляем spacing после элемента, кроме последнего
             if i != len - 1 {
                 cursor_x += self.spacing;
             }
 
-            // Если вышли за границы — прекращаем
             if cursor_x >= max_x {
                 break;
             }
