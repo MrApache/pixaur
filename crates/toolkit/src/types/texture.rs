@@ -1,24 +1,15 @@
-use crate::{
-    TextureHandle,
-    types::{Argb8888, Color},
-};
+use bevy_ecs::component::Component;
+use crate::TextureHandle;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone, Component)]
 pub struct Texture {
-    pub color: Color,
     pub handle: TextureHandle,
 }
 
 impl Texture {
     pub const fn new(handle: TextureHandle) -> Self {
         Self {
-            color: Color::Simple(Argb8888::WHITE),
             handle,
         }
-    }
-
-    pub fn with_color(mut self, color: impl Into<Color>) -> Self {
-        self.color = color.into();
-        self
     }
 }

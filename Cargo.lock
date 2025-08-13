@@ -2140,6 +2140,7 @@ dependencies = [
  "guillotiere",
  "image",
  "once_cell",
+ "paste",
  "pollster",
  "swash",
  "thiserror 2.0.12",

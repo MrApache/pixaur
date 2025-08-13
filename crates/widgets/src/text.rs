@@ -139,13 +139,13 @@ impl Widget for Text {
 
     fn layout(&mut self, bounds: Rect) {
         self.layout.reset(&LayoutSettings {
-            max_width: Some(bounds.max.x),
-            max_height: Some(bounds.max.y),
+            max_width: Some(bounds.size.x),
+            max_height: Some(bounds.size.y),
             ..LayoutSettings::default()
         });
 
         self.refresh_layout();
 
-        self.position = bounds.min;
+        self.position = bounds.position;
     }
 }

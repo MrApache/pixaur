@@ -1,3 +1,4 @@
+use bevy_ecs::component::Component;
 use fontdue::{Font, FontSettings};
 use once_cell::sync::Lazy;
 use std::{
@@ -60,7 +61,7 @@ fn next_handle_id() -> usize {
     HANDLE_ID.fetch_add(1, Ordering::SeqCst)
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Component)]
 pub struct TextureHandle {
     id: usize,
 }

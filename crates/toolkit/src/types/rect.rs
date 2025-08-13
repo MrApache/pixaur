@@ -1,31 +1,35 @@
+use bevy_ecs::component::Component;
 use glam::Vec2;
 
-#[derive(Default, Debug, Clone)]
+use crate::types::Color;
+
+#[derive(Default, Debug, Clone, Component)]
+#[require(Color)]
 pub struct Rect {
-    pub min: Vec2,
-    pub max: Vec2,
+    pub position: Vec2,
+    pub size: Vec2,
 }
 
 impl Rect {
     pub fn new(position: Vec2, size: Vec2) -> Self {
         Self {
-            min: position,
-            max: position + size,
+            position,
+            size: position + size,
         }
     }
 
     pub const fn from_size(size: Vec2) -> Self {
         Self {
-            min: Vec2::ZERO,
-            max: size,
+            position: Vec2::ZERO,
+            size,
         }
     }
 
     pub const fn width(&self) -> f32 {
-        self.max.x - self.min.x
+        self.size.x - self.position.x
     }
 
     pub const fn height(&self) -> f32 {
-        self.max.y - self.min.y
+        self.size.y - self.position.y
     }
 }

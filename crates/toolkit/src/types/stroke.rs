@@ -1,6 +1,8 @@
+use bevy_ecs::component::Component;
+
 use super::{Argb8888, Corners};
 
-#[derive(Clone)]
+#[derive(Component, Clone)]
 pub struct Stroke {
     pub color: Argb8888,
     pub width: f32,

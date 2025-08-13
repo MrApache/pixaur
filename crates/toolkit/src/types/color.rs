@@ -1,10 +1,17 @@
+use bevy_ecs::component::Component;
 use derive_more::From;
 use glam::Vec4;
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, Clone, From, Component)]
 pub enum Color {
     Simple(Argb8888),
     LinearGradient(LinearGradient),
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Self::Simple(Argb8888::default())
+    }
 }
 
 #[derive(Debug, Clone)]

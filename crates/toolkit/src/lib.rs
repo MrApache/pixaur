@@ -2,6 +2,8 @@ mod content;
 mod debug;
 mod error;
 mod rendering;
+mod ecs;
+pub mod components;
 pub mod types;
 
 pub use content::*;
@@ -22,8 +24,8 @@ pub use wl_client::{
 
 use crate::{
     debug::FpsCounter,
-    rendering::{Gpu, Renderer, commands::CommandBuffer},
-    types::Rect,
+    rendering::{commands::{CommandBuffer, DrawCommand, DrawRectCommand}, Gpu, Renderer},
+    types::{Argb8888, Color, LinearGradient, Rect, Stroke, Texture},
     widget::{Container, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
@@ -98,6 +100,12 @@ impl<T: GUI> EventLoop<T> {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
+        let mut world = World::new();
+        let mut scheduler = Schedule::default();
+
+        scheduler.add_systems(create_render_commands);
+
+        scheduler.run(&mut world);
 
         self.gui.load_content(&mut self.content);
         let mut windows = self.init_windows_backends()?;
@@ -246,4 +254,76 @@ impl<'a> Context<'a> {
     pub fn get_mut_by_id<W: Widget>(&'a mut self, id: &str) -> Option<&'a mut W> {
         Self::internal_get_mut_by_id(self.root.as_mut(), id)
     }
+}
+
+use bevy_ecs::prelude::*;
+
+
+pub struct WidgetBuilder<'w, 's> {
+    commands: Commands<'w, 's>,
+    entity: Entity,
+}
+
+impl<'w, 's> WidgetBuilder<'w, 's> {
+    pub fn new(mut commands: Commands<'w, 's>) -> Self {
+        let entity = commands.spawn_empty().id();
+        Self { commands, entity }
+    }
+
+    // Метод завершения
+    pub fn build(self) -> Entity {
+        self.entity
+    }
+
+    // Добавление компонентов
+    pub fn with<T: Component>(mut self, component: T) -> Self {
+        self.commands.entity(self.entity).insert(component);
+        self
+    }
+}
+
+impl<'w, 's> WidgetBuilder<'w, 's> {
+    // Для прямоугольников
+    pub fn rect(self, size: Vec2) -> RectBuilder<'w, 's> {
+        self.with(Rect::new(Vec2::ZERO, size))
+            .into()
+    }
+
+    // Для текста
+    //pub fn text(self, content: &str) -> TextBuilder<'w, 's> {
+    //    self.with(UiText::new(content))
+    //        .with(TextAlignment::Left)
+    //        .into()
+    //}
+}
+
+impl<'w, 's> From<WidgetBuilder<'w, 's>> for RectBuilder<'w, 's> {
+    fn from(builder: WidgetBuilder<'w, 's>) -> Self {
+        RectBuilder(builder)
+    }
+}
+
+// Специализированный строитель для прямоугольников
+pub struct RectBuilder<'w, 's>(WidgetBuilder<'w, 's>);
+
+impl<'w, 's> RectBuilder<'w, 's> {
+    pub fn color(mut self, color: impl Into<Color>) -> Self {
+        self.0 = self.0.with(color.into());
+        self
+    }
+
+    pub fn texture(mut self, texture: TextureHandle) -> Self {
+        self.0 = self.0.with(texture);
+        self
+    }
+
+    pub fn stroke(mut self, stroke: Stroke) -> Self {
+        self.0 = self.0.with(stroke);
+        self
+    }
+
+    //pub fn shadow(mut self, offset: Vec2, blur: f32) -> Self {
+    //    self.0 = self.0.with(UiShadow::new(offset, blur));
+    //    self
+    //}
 }

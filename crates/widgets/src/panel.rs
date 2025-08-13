@@ -121,16 +121,16 @@ impl Widget for Panel {
 
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
-        self.rect.min.x += self.stroke.width;
-        self.rect.min.y += self.stroke.width;
-        self.rect.max.x -= self.stroke.width;
-        self.rect.max.y -= self.stroke.width;
+        self.rect.position.x += self.stroke.width;
+        self.rect.position.y += self.stroke.width;
+        self.rect.size.x -= self.stroke.width;
+        self.rect.size.y -= self.stroke.width;
 
         // Учитываем padding с обеих сторон для вычисления внутренних границ
-        let min_x = self.rect.min.x + self.padding.x; // left
-        let min_y = self.rect.min.y + self.padding.y; // bottom
-        let max_x = self.rect.max.x - self.padding.z; // right
-        let max_y = self.rect.max.y - self.padding.w; // top
+        let min_x = self.rect.position.x + self.padding.x; // left
+        let min_y = self.rect.position.y + self.padding.y; // bottom
+        let max_x = self.rect.size.x - self.padding.z; // right
+        let max_y = self.rect.size.y - self.padding.w; // top
 
         let len = self.content.len();
         let available_width = max_x;
@@ -177,8 +177,8 @@ impl Widget for Panel {
             };
 
             let child_bounds = Rect {
-                min: Vec2::new(cursor_x - offset_x, min_y + offset_y),
-                max: Vec2::new(width, height),
+                position: Vec2::new(cursor_x - offset_x, min_y + offset_y),
+                size: Vec2::new(width, height),
             };
 
             println!("Offset: {offset_x}x{offset_y}");
