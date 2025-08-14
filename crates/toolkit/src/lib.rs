@@ -7,11 +7,13 @@ mod rendering;
 mod app;
 mod ecs_rendering;
 
+pub use ecs::Monitor;
+pub use ecs::WidgetBundle;
+
 pub use app::*;
 pub mod types;
 
 pub use content::*;
-pub use ecs::WidgetBundle;
 pub use fontdue;
 pub use glam;
 
@@ -150,14 +152,14 @@ impl<T: GUI> EventLoop<T> {
                     //));
                     //window.frontend.draw(&mut commands);
                     commands.pack_active_group();
-                    window.renderer.render(
-                        &self.gpu,
-                        &window.surface,
-                        &mut commands,
-                        &self.content,
-                        window.configuration.width as f32,
-                        window.configuration.height as f32,
-                    )?;
+                    //window.renderer.render(
+                    //    &self.gpu,
+                    //    &window.surface,
+                    //    &mut commands,
+                    //    &self.content,
+                    //    window.configuration.width as f32,
+                    //    window.configuration.height as f32,
+                    //)?;
                     backend.commit();
 
                     Ok(())

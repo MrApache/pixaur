@@ -51,7 +51,7 @@ impl Default for WindowLayer {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TargetMonitor {
     #[default]
     Primary,

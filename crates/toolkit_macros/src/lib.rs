@@ -105,6 +105,8 @@ const COMMANDS: &str = "bevy_ecs::prelude::Commands<'world, 'state>";
 const CHILD_OF: &str = "bevy_ecs::prelude::ChildOf";
 const BUNDLE: &str = "bevy_ecs::prelude::Bundle";
 const DESIRED_SIZE: &str = "toolkit::widget::DesiredSize";
+const TARGET_MONITOR: &str = "toolkit::TargetMonitor";
+const MONITOR: &str = "toolkit::Monitor";
 
 #[proc_macro]
 pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -113,6 +115,8 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let child_of_ty: Type = parse_str(CHILD_OF).unwrap();
     let bundle_ty: Type = parse_str(BUNDLE).unwrap();
     let desired_size_ty: Type = parse_str(DESIRED_SIZE).unwrap();
+    let target_monitor_ty: Type = parse_str(TARGET_MONITOR).unwrap();
+    let monitor_ty: Type = parse_str(MONITOR).unwrap();
 
     let input = proc_macro2::TokenStream::from(input);
     let components: Components = syn::parse2(input).expect("dfsfs");
@@ -184,6 +188,11 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
             pub fn desired_size(mut self, value: #desired_size_ty) -> Self {
                 self.bundle.widget_base.desired_size = value;
+                self
+            }
+
+            pub fn target_monitor(mut self, value: #target_monitor_ty) -> Self {
+                self.bundle.widget_base.monitor = #monitor_ty::new(value);
                 self
             }
 

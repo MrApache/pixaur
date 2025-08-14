@@ -1,5 +1,6 @@
 use bevy_ecs::{component::HookContext, prelude::*, world::DeferredWorld};
 use glam::Vec2;
+use wl_client::window::TargetMonitor;
 use crate::widget::DesiredSize;
 
 #[derive(Default, Clone, Component)]
@@ -40,4 +41,14 @@ pub struct WidgetBundle {
     order: ZOrder,
     transform: Transform,
     pub desired_size: DesiredSize,
+    pub monitor: Monitor,
+}
+
+#[derive(Default, Clone, Component)]
+pub struct Monitor(pub(crate) TargetMonitor);
+
+impl Monitor {
+    pub const fn new(monitor: TargetMonitor) -> Self {
+        Self(monitor)
+    }
 }
