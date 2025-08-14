@@ -1,15 +1,18 @@
-use std::iter::Map;
-use std::slice::Iter;
-use proc_macro2::{Ident, Span, TokenStream};
-use syn::{braced, parse::{Parse, ParseStream}, parse_str, punctuated::Punctuated, ExprAssign, FieldValue, Token, Type};
+use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
+use syn::{
+    braced,
+    parse::{Parse, ParseStream},
+    parse_str,
+    punctuated::Punctuated,
+    FieldValue, Token, Type,
+};
 
 struct Components {
     first: Ident,
     rest: Vec<Ident>,
     defaults: Vec<FieldValue>,
 }
-
 
 impl Parse for Components {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -44,15 +47,19 @@ impl Parse for Components {
                 let content;
                 braced!(content in input);
 
-                let parsed: Punctuated<FieldValue, Token![,]> = content.parse_terminated(FieldValue::parse, syn::Token![,])?;
+                let parsed: Punctuated<FieldValue, Token![,]> =
+                    content.parse_terminated(FieldValue::parse, syn::Token![,])?;
                 defaults.extend(parsed);
             }
         }
 
-        Ok(Components { first, rest, defaults })
+        Ok(Components {
+            first,
+            rest,
+            defaults,
+        })
     }
 }
-
 
 impl Components {
     fn generate_default(&self) -> Vec<syn::ExprAssign> {
@@ -64,13 +71,13 @@ impl Components {
 
             let (left, right) = default_str.split_once(':').unwrap();
             let result = format!("widget_base.{left} = {right}");
-    
+
             let expr_assign = syn::parse_str::<syn::ExprAssign>(&result)
                 .unwrap_or_else(|_| panic!("Failed to parse: {result}"));
-            
+
             return vec![expr_assign];
         }
-    
+
         vec![]
     }
 }
@@ -78,7 +85,7 @@ impl Components {
 fn to_snake_case(ident: &Ident) -> Ident {
     let mut s = String::new();
     let name = ident.to_string();
-    
+
     for (i, c) in name.chars().enumerate() {
         if c.is_uppercase() {
             if i != 0 {
@@ -89,7 +96,7 @@ fn to_snake_case(ident: &Ident) -> Ident {
             s.push(c);
         }
     }
-    
+
     Ident::new(&s, Span::call_site())
 }
 
@@ -106,7 +113,6 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let child_of_ty: Type = parse_str(CHILD_OF).unwrap();
     let bundle_ty: Type = parse_str(BUNDLE).unwrap();
     let desired_size_ty: Type = parse_str(DESIRED_SIZE).unwrap();
-
 
     let input = proc_macro2::TokenStream::from(input);
     let components: Components = syn::parse2(input).expect("dfsfs");
@@ -125,16 +131,13 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         fields.push(quote! { pub #field_name: #component, });
         defaults.push(quote! { #field_name: Default::default(), });
         if component == "Color" {
-            setters.push(
-                quote! {
-                    pub fn color(mut self, value: impl Into<Color>) -> Self {
-                        self.bundle.color = value.into();
-                        self
-                    }
+            setters.push(quote! {
+                pub fn color(mut self, value: impl Into<Color>) -> Self {
+                    self.bundle.color = value.into();
+                    self
                 }
-            );
-        }
-        else {
+            });
+        } else {
             setters.push(quote! {
                 pub fn #field_name(mut self, value: #component) -> Self {
                     self.bundle.#field_name = value;
@@ -192,5 +195,6 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 self.commands.spawn(self.bundle).id()
             }
         }
-    }.into()
+    }
+    .into()
 }

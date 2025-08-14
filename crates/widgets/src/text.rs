@@ -110,6 +110,3 @@ define_widget! {
         desired_size: DesiredSize::Fill,
     }
 }
-
-fn test() {
-}
