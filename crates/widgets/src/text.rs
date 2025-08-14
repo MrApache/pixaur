@@ -7,7 +7,7 @@ use toolkit::{
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
     glam::Vec2,
     types::*,
-    widget::{DesiredSize, Widget},
+    widget::{DesiredSize, Plugin},
     FontHandle, Transform, Update,
 };
 use toolkit_macros::define_widget;
@@ -112,7 +112,7 @@ define_widget! {
 }
 
 pub struct TextWidget;
-impl Widget for TextWidget {
+impl Plugin for TextWidget {
     fn init(&self, app: &mut toolkit::App) {
         app.add_systems(Update, (text_layout, text_desired_size));
     }

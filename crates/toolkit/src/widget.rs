@@ -20,7 +20,7 @@ pub enum DesiredSize {
     Fill,
 }
 
-pub trait Widget: Send + Sync + 'static {
+pub trait Plugin: Send + Sync + 'static {
     fn init(&self, app: &mut App);
 }
 

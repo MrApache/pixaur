@@ -9,7 +9,7 @@ use bevy_ecs::{
     system::Query,
 };
 use toolkit::{
-    glam::{Vec2, Vec4}, types::*, widget::{DesiredSize, Widget}, Transform, Update
+    glam::{Vec2, Vec4}, types::*, widget::{DesiredSize, Plugin}, Transform, Update
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -201,7 +201,7 @@ pub fn test_panel_set_size(mut query: Query<(&TestPanelLayoutWidget, &mut Desire
 }
 
 pub struct PanelWidget;
-impl Widget for PanelWidget {
+impl Plugin for PanelWidget {
     fn init(&self, app: &mut toolkit::App) {
         app.add_systems(Update, test_panel_set_size);
         app.add_systems(Update, panel_layout);

@@ -4,11 +4,11 @@ use std::{
     collections::HashSet,
 };
 
-use crate::{ecs_rendering::Renderer, widget::Widget};
+use crate::{ecs_rendering::Renderer, widget::Plugin};
 
 #[derive(Default)]
 pub struct App {
-    registered_widgets: HashSet<TypeId>,
+    unique_plugins: HashSet<TypeId>,
 
     world: World,
     schedules: Schedules,
@@ -28,12 +28,12 @@ impl App {
         schedules.insert(render);
 
         let mut app = Self {
-            registered_widgets: Default::default(),
+            unique_plugins: Default::default(),
             world: World::new(),
             schedules,
         };
 
-        app.add_widget(Renderer);
+        app.add_plugin(Renderer);
 
         app
     }
@@ -47,15 +47,15 @@ impl App {
         self
     }
 
-    pub fn add_widget<T: Widget>(&mut self, widget: T) -> &mut Self {
-        let widget_type = TypeId::of::<T>();
-        if self.registered_widgets.contains(&widget_type) {
+    pub fn add_plugin<T: Plugin>(&mut self, plugin: T) -> &mut Self {
+        let plugin_type = TypeId::of::<T>();
+        if self.unique_plugins.contains(&plugin_type) {
             let type_name = type_name::<T>();
-            panic!("Widget '{type_name}' already registered");
+            panic!("Plugin '{type_name}' already registered");
         }
 
-        widget.init(self);
-        self.registered_widgets.insert(TypeId::of::<T>());
+        plugin.init(self);
+        self.unique_plugins.insert(TypeId::of::<T>());
         self
     }
 

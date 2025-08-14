@@ -1,7 +1,7 @@
 use crate::{
     ecs::{Text, ZOrder},
     types::{Color, Stroke},
-    widget::Widget,
+    widget::Plugin,
     CollectDrawCommands, Render, TextureHandle, Transform,
 };
 use bevy_ecs::prelude::*;
@@ -77,7 +77,7 @@ fn sort_commands(mut commands: ResMut<Commands>) {
 
 pub(crate) struct Renderer;
 
-impl Widget for Renderer {
+impl Plugin for Renderer {
     fn init(&self, app: &mut crate::App) {
         app.insert_resource(Commands::default());
         app.add_systems(CollectDrawCommands, (collect_draw_text, collect_draw_rect));

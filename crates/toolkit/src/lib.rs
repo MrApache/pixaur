@@ -33,7 +33,7 @@ use crate::{
     debug::FpsCounter,
     rendering::{commands::CommandBuffer, Gpu, Renderer},
     types::Rect,
-    widget::Widget,
+    widget::Plugin,
     window::{Window, WindowPointer, WindowRequest},
 };
 
