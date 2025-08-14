@@ -9,10 +9,9 @@ use bevy_ecs::{
     system::Query,
 };
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawRectCommand},
+    widget::DesiredSize,
     glam::{Vec2, Vec4},
     types::*,
-    widget::{DesiredSize, Widget},
     Transform,
 };
 
@@ -174,45 +173,20 @@ pub fn panel_layout(
         });
 }
 
+//desired_size = Fill
 define_widget! {
     Panel,
     Color,
     Texture,
 }
 
-#[derive(Default)]
+#[derive(Default, Component)]
 pub struct TestPanelLayoutWidget {
     pub min: Vec2,
-    rect: Rect,
-    pub stroke: Stroke,
 }
 
-impl Widget for TestPanelLayoutWidget {
-    fn id(&self) -> Option<&str> {
-        Some("test_widget")
-    }
-
-    fn desired_size(&self) -> DesiredSize {
-        DesiredSize::Min(self.min)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        out.push(DrawCommand::Rect(DrawRectCommand::new(
-            self.rect.clone(),
-            Argb8888::CYAN,
-            self.stroke.clone(),
-        )));
-    }
-
-    fn layout(&mut self, bounds: Rect) {
-        self.rect = bounds;
-    }
+//Desired size = min(self.min)
+define_widget! {
+    TestPanelLayoutWidget,
+    Stroke,
 }
