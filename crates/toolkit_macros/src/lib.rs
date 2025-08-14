@@ -1,27 +1,77 @@
-use proc_macro2::{Ident, Span};
-use syn::{parse::{Parse, ParseStream}, parse_str, Token, Type};
-use quote::quote;
+use std::iter::Map;
+use std::slice::Iter;
+use proc_macro2::{Ident, Span, TokenStream};
+use syn::{braced, parse::{Parse, ParseStream}, parse_str, punctuated::Punctuated, ExprAssign, FieldValue, Token, Type};
+use quote::{quote, ToTokens};
 
 struct Components {
-    pub first: Ident,
-    pub rest: Vec<Ident>,
+    first: Ident,
+    rest: Vec<Ident>,
+    defaults: Vec<FieldValue>,
 }
+
 
 impl Parse for Components {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let first: Ident = input.parse()?;
-
-        let mut rest = vec![first.clone()];
+        let mut rest: Vec<Ident> = vec![first.clone()];
 
         while input.peek(Token![,]) {
             input.parse::<Token![,]>()?;
             if input.is_empty() {
                 break;
             }
+            // Если следующий токен — `default`, прерываем
+            if input.peek(syn::Ident) && input.peek2(Token![:]) {
+                let lookahead = input.fork();
+                let ident: Ident = lookahead.parse()?;
+                if ident == "default" {
+                    break;
+                }
+            }
             rest.push(input.parse()?);
         }
 
-        Ok(Components { first, rest })
+        if input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+        }
+
+        let mut defaults = Vec::new();
+        if input.peek(syn::Ident) {
+            let kw: Ident = input.parse()?;
+            if kw == "default" {
+                input.parse::<Token![:]>()?;
+                let content;
+                braced!(content in input);
+
+                let parsed: Punctuated<FieldValue, Token![,]> = content.parse_terminated(FieldValue::parse, syn::Token![,])?;
+                defaults.extend(parsed);
+            }
+        }
+
+        Ok(Components { first, rest, defaults })
+    }
+}
+
+
+impl Components {
+    fn generate_default(&self) -> Vec<syn::ExprAssign> {
+        for default in &self.defaults {
+            let default_str = default.into_token_stream().to_string();
+            if !default_str.starts_with("desired_size") {
+                continue;
+            }
+
+            let (left, right) = default_str.split_once(':').unwrap();
+            let result = format!("widget_base.{left} = {right}");
+    
+            let expr_assign = syn::parse_str::<syn::ExprAssign>(&result)
+                .unwrap_or_else(|_| panic!("Failed to parse: {result}"));
+            
+            return vec![expr_assign];
+        }
+    
+        vec![]
     }
 }
 
@@ -57,15 +107,18 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let bundle_ty: Type = parse_str(BUNDLE).unwrap();
     let desired_size_ty: Type = parse_str(DESIRED_SIZE).unwrap();
 
+
     let input = proc_macro2::TokenStream::from(input);
-    let components: Components = syn::parse2(input).unwrap();
+    let components: Components = syn::parse2(input).expect("dfsfs");
 
-    let first = &components.first;
-    let components = &components.rest;
-
+    let field_defaults = components.generate_default();
+    //panic!("{:#?}", field_defaults);
     let mut fields = Vec::new();
     let mut defaults = Vec::new();
     let mut setters = Vec::new();
+
+    let first = &components.first;
+    let components = &components.rest;
 
     components.iter().for_each(|component| {
         let field_name = to_snake_case(component);
@@ -94,10 +147,21 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let bundle_name = Ident::new(&format!("{first}Bundle"), Span::call_site());
     let builder_name = Ident::new(&format!("{first}Builder"), Span::call_site());
     quote! {
-        #[derive(Default, #bundle_ty)]
+        #[derive(#bundle_ty)]
         pub struct #bundle_name {
             widget_base: toolkit::WidgetBundle,
             #(#fields)*
+        }
+
+        impl Default for #bundle_name {
+            fn default() -> Self {
+                let mut widget_base = toolkit::WidgetBundle::default();
+                #(#field_defaults;)*
+                Self {
+                    widget_base,
+                    #(#defaults)*
+                }
+            }
         }
 
         pub struct #builder_name<'commands, 'world, 'state> {
@@ -109,10 +173,7 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             pub fn new(commands: &'commands mut #commands_ty) -> Self {
                 Self {
                     commands,
-                    bundle: #bundle_name {
-                        widget_base: Default::default(),
-                        #(#defaults)*
-                    }
+                    bundle: #bundle_name::default()
                 }
             }
 

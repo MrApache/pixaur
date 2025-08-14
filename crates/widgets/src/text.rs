@@ -104,5 +104,12 @@ pub fn text_desired_size(mut query: Query<(&Text, &mut DesiredSize), Changed<Tex
 
 define_widget! {
     Text,
-    Color
+    Color,
+
+    default: {
+        desired_size: DesiredSize::Fill,
+    }
+}
+
+fn test() {
 }
