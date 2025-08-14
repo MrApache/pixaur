@@ -24,7 +24,6 @@ pub trait Widget: Send + Sync + 'static {
     fn init(&self, app: &mut App);
 }
 
-
 pub trait Container: Any + Send + Sync + 'static {
     fn layout(&self);
     fn draw(&self);

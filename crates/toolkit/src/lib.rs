@@ -5,6 +5,7 @@ mod ecs;
 mod error;
 mod rendering;
 mod app;
+mod ecs_rendering;
 
 pub use app::*;
 pub mod types;

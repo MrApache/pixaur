@@ -1,8 +1,10 @@
-use std::{any::{type_name, TypeId}, collections::HashSet};
+use bevy_ecs::{prelude::*, schedule::ScheduleLabel, system::ScheduleSystem};
+use std::{
+    any::{type_name, TypeId},
+    collections::HashSet,
+};
 
-use bevy_ecs::{schedule::{IntoScheduleConfigs, Schedule, ScheduleLabel, Schedules}, system::ScheduleSystem, world::World};
-
-use crate::widget::Widget;
+use crate::{ecs_rendering::Renderer, widget::Widget};
 
 #[derive(Default)]
 pub struct App {
@@ -16,19 +18,31 @@ impl App {
     pub fn new() -> Self {
         let update_schedule = Schedule::new(Update);
         let update_transforms_schedule = Schedule::new(UpdateTransforms);
+        let collect_draw_commands = Schedule::new(CollectDrawCommands);
+        let render = Schedule::new(Render);
 
         let mut schedules = Schedules::new();
         schedules.insert(update_schedule);
         schedules.insert(update_transforms_schedule);
+        schedules.insert(collect_draw_commands);
+        schedules.insert(render);
 
-        Self {
+        let mut app = Self {
             registered_widgets: Default::default(),
             world: World::new(),
             schedules,
-        }
+        };
+
+        app.add_widget(Renderer);
+
+        app
     }
 
-    pub fn add_systems<M>(&mut self, schedule: impl ScheduleLabel, systems: impl IntoScheduleConfigs<ScheduleSystem, M>) -> &mut Self {
+    pub fn add_systems<M>(
+        &mut self,
+        schedule: impl ScheduleLabel,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
+    ) -> &mut Self {
         self.schedules.add_systems(schedule, systems);
         self
     }
@@ -45,10 +59,17 @@ impl App {
         self
     }
 
+    pub fn insert_resource<R: Resource>(&mut self, value: R) -> &mut Self {
+        self.world.insert_resource(value);
+        self
+    }
+
     pub fn run(&mut self) {
         loop {
             self.world.run_schedule(UpdateTransforms);
             self.world.run_schedule(Update);
+            self.world.run_schedule(CollectDrawCommands);
+            self.world.run_schedule(Render);
         }
     }
 }
@@ -58,3 +79,9 @@ pub struct Update;
 
 #[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
 struct UpdateTransforms;
+
+#[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
+pub(crate) struct CollectDrawCommands;
+
+#[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
+pub(crate) struct Render;
