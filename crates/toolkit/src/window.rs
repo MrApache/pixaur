@@ -10,7 +10,7 @@ use wgpu::{Surface, SurfaceConfiguration};
 use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 use wl_client::WindowBackend;
 
-use crate::{UserWindow, GUI};
+use crate::UserWindow;
 
 pub struct WindowRequest {
     pub(crate) id: String,
@@ -61,23 +61,23 @@ impl WindowRequest {
     }
 }
 
-pub struct Window<T: GUI> {
+pub struct Window {
     pub(crate) backend: WindowBackend,
     pub(crate) surface: Surface<'static>,
     pub(crate) configuration: SurfaceConfiguration,
-    pub(crate) handle: Box<dyn UserWindow<T>>,
+    pub(crate) _handle: Box<dyn UserWindow>,
 }
 
-impl<T: GUI> Window<T> {
+impl Window {
     pub(crate) const fn new(
         backend: WindowBackend,
         surface: Surface<'static>,
         configuration: SurfaceConfiguration,
-        handle: Box<dyn UserWindow<T>>,
+        _handle: Box<dyn UserWindow>,
     ) -> Self {
         Self {
             backend,
-            handle,
+            _handle,
             surface,
             configuration,
         }

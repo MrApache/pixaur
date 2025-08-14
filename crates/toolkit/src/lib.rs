@@ -1,12 +1,14 @@
+mod app;
 pub mod components;
 mod content;
 mod debug;
 mod ecs;
+mod ecs_rendering;
 mod error;
 mod rendering;
-mod app;
-mod ecs_rendering;
 
+use bevy_ecs::resource::Resource;
+use bevy_ecs::system::Commands;
 pub use ecs::Monitor;
 pub use ecs::WidgetBundle;
 
@@ -23,6 +25,7 @@ pub mod window;
 pub use rendering::commands;
 
 pub use error::*;
+use wayland_client::QueueHandle;
 pub use wl_client::window::TargetMonitor;
 pub use wl_client::{
     window::{DesktopOptions, SpecialOptions},
@@ -62,52 +65,6 @@ pub struct EventLoop<T: GUI> {
 }
 
 impl<T: GUI> EventLoop<T> {
-    pub fn new(app: T) -> Result<Self, Error> {
-        let conn = Connection::connect_to_env()?;
-
-        let display = conn.display();
-        let mut event_queue = conn.new_event_queue();
-        let qh = event_queue.handle();
-
-        let _registry = display.get_registry(&qh, Arc::new("".to_string()));
-
-        let mut client = WlClient::default();
-
-        event_queue.roundtrip(&mut client)?; //Register objects
-        event_queue.roundtrip(&mut client)?; //Register outputs
-
-        let content = ContentManager::default();
-
-        //Fix egl error: BadDisplay
-        let (display_ptr, gpu) = {
-            let display_ptr = NonNull::new(display.id().as_ptr() as *mut c_void).unwrap();
-            let dummy = client.create_window_backend(qh, "dummy", 1, 1, WindowLayer::default());
-            event_queue.roundtrip(&mut client)?; //Init dummy
-
-            let dummy_ptr = dummy.lock().unwrap().as_ptr();
-            let ptr = WindowPointer::new(display_ptr, dummy_ptr);
-            let gpu = Gpu::new(ptr)?;
-
-            drop(dummy);
-
-            client.destroy_window_backend("dummy");
-            event_queue.roundtrip(&mut client)?; //Destroy dummy
-
-            (display_ptr, gpu)
-        };
-
-        Ok(Self {
-            gui: app,
-            content,
-
-            client,
-            event_queue,
-            display_ptr,
-
-            gpu,
-        })
-    }
-
     pub fn run(&mut self) -> Result<(), Error> {
         self.gui.load_content(&mut self.content);
         let mut windows = self.init_windows_backends()?;
@@ -168,44 +125,28 @@ impl<T: GUI> EventLoop<T> {
         }
     }
 
-    fn init_windows_backends(&mut self) -> Result<Vec<Window<T>>, Error> {
+    fn init_windows_backends(&mut self) -> Result<Vec<Window>, Error> {
         Ok(vec![])
-        //let user_windows = self.gui.setup_windows();
-        //let mut backends = Vec::with_capacity(user_windows.len());
-        //let qh = self.event_queue.handle();
-
-        //user_windows.into_iter().try_for_each(|handle| {
-        //    let request = handle.request();
-        //    let backend = self.client.create_window_backend(
-        //        qh.clone(),
-        //        request.id,
-        //        request.width,
-        //        request.height,
-        //        request.layer,
-        //    );
-
-        //    let (width, height, surface_ptr) = {
-        //        let guard = backend.lock().unwrap();
-        //        (guard.width as u32, guard.height as u32, guard.as_ptr())
-        //    };
-
-        //    let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
-        //    let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
-        //    let frontend = handle.setup(&mut self.gui);
-        //    let renderer = Renderer::new(&self.gpu, None, &surface)?;
-        //    let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
-
-        //    backends.push(window);
-
-        //    Ok::<(), Error>(())
-        //})?;
-
-        //Ok(backends)
     }
 }
 
-pub trait UserWindow<T: GUI> {
+pub trait UserWindow: Send + Sync + 'static {
     fn request(&self) -> WindowRequest;
-    //fn setup(&self, gui: &mut T) -> Box<dyn Container>;
-    //fn update<'ctx>(&mut self, gui: &mut T, context: &'ctx mut Context<'ctx>);
+    fn setup(&self, commands: &mut Commands);
 }
+
+#[derive(Resource)]
+pub struct Windows {
+    handle: QueueHandle<WlClient>,
+    active: Vec<Window>,
+    not_initalized: Vec<Box<dyn UserWindow>>,
+}
+
+#[derive(Resource)]
+pub(crate) struct Client {
+    pub inner: WlClient,
+    pub display_ptr: NonNull<c_void>,
+}
+
+unsafe impl Sync for Client {}
+unsafe impl Send for Client {}

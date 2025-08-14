@@ -2,20 +2,73 @@ use bevy_ecs::{prelude::*, schedule::ScheduleLabel, system::ScheduleSystem};
 use std::{
     any::{type_name, TypeId},
     collections::HashSet,
+    ffi::c_void,
+    ptr::NonNull,
+    sync::Arc,
+};
+use wayland_client::{Connection, EventQueue, Proxy};
+use wl_client::{window::WindowLayer, WlClient};
+
+use crate::{
+    ecs_rendering::RendererPlugin,
+    rendering::{Gpu, Renderer},
+    widget::Plugin,
+    window::{Window, WindowPointer},
+    Client, ContentPlugin, Error, UserWindow, Windows,
 };
 
-use crate::{ecs_rendering::RendererPlugin, widget::Plugin, ContentPlugin};
-
-#[derive(Default)]
 pub struct App {
     unique_plugins: HashSet<TypeId>,
 
     world: World,
     schedules: Schedules,
+
+    event_queue: EventQueue<WlClient>,
 }
 
 impl App {
-    pub fn new() -> Self {
+    fn init_client() -> Result<(EventQueue<WlClient>, Client, Gpu), Error> {
+        let conn = Connection::connect_to_env()?;
+
+        let display = conn.display();
+        let mut event_queue = conn.new_event_queue();
+        let qh = event_queue.handle();
+
+        let _registry = display.get_registry(&qh, Arc::new("".to_string()));
+
+        let mut client = WlClient::default();
+
+        event_queue.roundtrip(&mut client)?; //Register objects
+        event_queue.roundtrip(&mut client)?; //Register outputs
+
+        //Fix egl error: BadDisplay
+        let (display_ptr, gpu) = {
+            let display_ptr = NonNull::new(display.id().as_ptr() as *mut c_void).unwrap();
+            let dummy = client.create_window_backend(qh, "dummy", 1, 1, WindowLayer::default());
+            event_queue.roundtrip(&mut client)?; //Init dummy
+
+            let dummy_ptr = dummy.lock().unwrap().as_ptr();
+            let ptr = WindowPointer::new(display_ptr, dummy_ptr);
+            let gpu = Gpu::new(ptr)?;
+
+            drop(dummy);
+
+            client.destroy_window_backend("dummy");
+            event_queue.roundtrip(&mut client)?; //Destroy dummy
+
+            (display_ptr, gpu)
+        };
+
+        let client = Client {
+            inner: client,
+            display_ptr,
+        };
+
+        Ok((event_queue, client, gpu))
+    }
+
+    pub fn new() -> Result<Self, Error> {
+        let startup = Schedule::new(Startup);
         let first = Schedule::new(First);
         let update_schedule = Schedule::new(Update);
         let update_transforms_schedule = Schedule::new(UpdateTransforms);
@@ -23,22 +76,36 @@ impl App {
         let render = Schedule::new(Render);
 
         let mut schedules = Schedules::new();
+        schedules.insert(startup);
         schedules.insert(first);
         schedules.insert(update_schedule);
         schedules.insert(update_transforms_schedule);
         schedules.insert(collect_draw_commands);
         schedules.insert(render);
 
+        let (event_queue, client, gpu) = Self::init_client()?;
+
         let mut app = Self {
             unique_plugins: Default::default(),
             world: World::new(),
             schedules,
+
+            event_queue
         };
 
+        app.insert_resource(Windows {
+            handle: app.event_queue.handle(),
+            active: vec![],
+            not_initalized: vec![],
+        });
+        app.insert_resource(client);
+        app.insert_resource(gpu);
         app.add_plugin(RendererPlugin);
         app.add_plugin(ContentPlugin);
 
-        app
+        app.add_systems(Startup, init_windows);
+
+        Ok(app)
     }
 
     pub fn add_systems<M>(
@@ -67,16 +134,59 @@ impl App {
         self
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), Error> {
+        self.world.run_schedule(Startup);
         loop {
             self.world.run_schedule(First);
             self.world.run_schedule(UpdateTransforms);
             self.world.run_schedule(Update);
             self.world.run_schedule(CollectDrawCommands);
             self.world.run_schedule(Render);
+            let mut client = self.world.resource_mut::<Client>();
+            self.event_queue.blocking_dispatch(&mut client.inner)?;
         }
+
+    }
+
+    pub fn add_window(&mut self, window: impl UserWindow) -> &mut Self {
+        let mut windows = self.world.resource_mut::<Windows>();
+        windows.not_initalized.push(Box::new(window));
+        self
     }
 }
+
+fn init_windows(mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: Res<Gpu>) {
+    let mut active = Vec::with_capacity(windows.not_initalized.len());
+
+    let qh = windows.handle.clone();
+    windows.not_initalized.drain(..).for_each(|handle| {
+        let request = handle.request();
+        let backend = client.inner.create_window_backend(
+            qh.clone(),
+            request.id,
+            request.width,
+            request.height,
+            request.layer,
+        );
+
+        let (width, height, surface_ptr) = {
+            let guard = backend.lock().unwrap();
+            (guard.width as u32, guard.height as u32, guard.as_ptr())
+        };
+
+        let window_ptr = WindowPointer::new(client.display_ptr, surface_ptr);
+        let (surface, configuration) = gpu.create_surface(window_ptr, width, height).unwrap();
+        let renderer = Renderer::new(&gpu, None, &surface).unwrap();
+        let window = Window::new(backend, surface, configuration, handle);
+
+        active.push(window);
+    });
+
+    windows.active.extend(active);
+}
+
+#[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct Startup;
 
 #[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct First;
