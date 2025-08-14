@@ -4,6 +4,9 @@ mod debug;
 mod ecs;
 mod error;
 mod rendering;
+mod app;
+
+pub use app::*;
 pub mod types;
 
 pub use content::*;
@@ -29,7 +32,7 @@ use crate::{
     debug::FpsCounter,
     rendering::{commands::CommandBuffer, Gpu, Renderer},
     types::Rect,
-    widget::{Container, Widget},
+    widget::Widget,
     window::{Window, WindowPointer, WindowRequest},
 };
 
@@ -41,7 +44,7 @@ use wl_client::{window::WindowLayer, WlClient};
 #[allow(unused)]
 pub trait GUI {
     fn load_content(&mut self, content: &mut ContentManager) {}
-    fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<Self>>>;
+    //fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<Self>>>;
 }
 
 pub struct EventLoop<T: GUI> {
@@ -122,11 +125,11 @@ impl<T: GUI> EventLoop<T> {
                         backend.set_resized();
                     }
 
-                    let mut context = Context {
-                        root: &mut window.frontend,
-                    };
+                    //let mut context = Context {
+                    //    root: &mut window.frontend,
+                    //};
 
-                    window.handle.update(&mut self.gui, &mut context);
+                    //window.handle.update(&mut self.gui, &mut context);
 
                     backend.frame();
                     if !backend.can_draw() {
@@ -137,14 +140,14 @@ impl<T: GUI> EventLoop<T> {
                     println!("FPS: {fps:.1}");
 
                     let mut commands = CommandBuffer::default();
-                    window.frontend.layout(Rect::new(
-                        Vec2::ZERO,
-                        Vec2::new(
-                            window.configuration.width as f32,
-                            window.configuration.height as f32,
-                        ),
-                    ));
-                    window.frontend.draw(&mut commands);
+                    //window.frontend.layout(Rect::new(
+                    //    Vec2::ZERO,
+                    //    Vec2::new(
+                    //        window.configuration.width as f32,
+                    //        window.configuration.height as f32,
+                    //    ),
+                    //));
+                    //window.frontend.draw(&mut commands);
                     commands.pack_active_group();
                     window.renderer.render(
                         &self.gpu,
@@ -163,91 +166,43 @@ impl<T: GUI> EventLoop<T> {
     }
 
     fn init_windows_backends(&mut self) -> Result<Vec<Window<T>>, Error> {
-        let user_windows = self.gui.setup_windows();
-        let mut backends = Vec::with_capacity(user_windows.len());
-        let qh = self.event_queue.handle();
+        Ok(vec![])
+        //let user_windows = self.gui.setup_windows();
+        //let mut backends = Vec::with_capacity(user_windows.len());
+        //let qh = self.event_queue.handle();
 
-        user_windows.into_iter().try_for_each(|handle| {
-            let request = handle.request();
-            let backend = self.client.create_window_backend(
-                qh.clone(),
-                request.id,
-                request.width,
-                request.height,
-                request.layer,
-            );
+        //user_windows.into_iter().try_for_each(|handle| {
+        //    let request = handle.request();
+        //    let backend = self.client.create_window_backend(
+        //        qh.clone(),
+        //        request.id,
+        //        request.width,
+        //        request.height,
+        //        request.layer,
+        //    );
 
-            let (width, height, surface_ptr) = {
-                let guard = backend.lock().unwrap();
-                (guard.width as u32, guard.height as u32, guard.as_ptr())
-            };
+        //    let (width, height, surface_ptr) = {
+        //        let guard = backend.lock().unwrap();
+        //        (guard.width as u32, guard.height as u32, guard.as_ptr())
+        //    };
 
-            let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
-            let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
-            let frontend = handle.setup(&mut self.gui);
-            let renderer = Renderer::new(&self.gpu, None, &surface)?;
-            let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
+        //    let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
+        //    let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
+        //    let frontend = handle.setup(&mut self.gui);
+        //    let renderer = Renderer::new(&self.gpu, None, &surface)?;
+        //    let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
 
-            backends.push(window);
+        //    backends.push(window);
 
-            Ok::<(), Error>(())
-        })?;
+        //    Ok::<(), Error>(())
+        //})?;
 
-        Ok(backends)
+        //Ok(backends)
     }
 }
 
 pub trait UserWindow<T: GUI> {
     fn request(&self) -> WindowRequest;
-    fn setup(&self, gui: &mut T) -> Box<dyn Container>;
-    fn update<'ctx>(&mut self, gui: &mut T, context: &'ctx mut Context<'ctx>);
-}
-
-pub struct Context<'a> {
-    root: &'a mut Box<dyn Container>,
-}
-
-impl<'a> Context<'a> {
-    fn internal_get_by_id<W: Widget>(container: &'a dyn Container, id: &str) -> Option<&'a W> {
-        for w in container.children() {
-            if let Some(w_id) = w.id() {
-                if w_id.eq(id) {
-                    return w.as_any().downcast_ref::<W>();
-                }
-
-                if let Some(container) = w.as_container() {
-                    return Self::internal_get_by_id(container, id);
-                }
-            }
-        }
-
-        None
-    }
-
-    fn internal_get_mut_by_id<W: Widget>(
-        container: &'a mut dyn Container,
-        id: &str,
-    ) -> Option<&'a mut W> {
-        for w in container.children_mut() {
-            if let Some(w_id) = w.id() {
-                if w_id.eq(id) {
-                    return w.as_any_mut().downcast_mut::<W>();
-                }
-
-                if let Some(container) = w.as_container_mut() {
-                    return Self::internal_get_mut_by_id(container, id);
-                }
-            }
-        }
-
-        None
-    }
-
-    pub fn get_by_id<W: Widget>(&'a self, id: &str) -> Option<&'a W> {
-        Self::internal_get_by_id(self.root.as_ref(), id)
-    }
-
-    pub fn get_mut_by_id<W: Widget>(&'a mut self, id: &str) -> Option<&'a mut W> {
-        Self::internal_get_mut_by_id(self.root.as_mut(), id)
-    }
+    //fn setup(&self, gui: &mut T) -> Box<dyn Container>;
+    //fn update<'ctx>(&mut self, gui: &mut T, context: &'ctx mut Context<'ctx>);
 }

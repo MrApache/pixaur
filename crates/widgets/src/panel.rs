@@ -9,10 +9,7 @@ use bevy_ecs::{
     system::Query,
 };
 use toolkit::{
-    widget::DesiredSize,
-    glam::{Vec2, Vec4},
-    types::*,
-    Transform,
+    glam::{Vec2, Vec4}, types::*, widget::{DesiredSize, Widget}, Transform, Update
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -173,11 +170,14 @@ pub fn panel_layout(
         });
 }
 
-//desired_size = Fill
 define_widget! {
     Panel,
     Color,
     Texture,
+
+    default: {
+        desired_size: DesiredSize::Fill,
+    }
 }
 
 #[derive(Default, Component)]
@@ -185,8 +185,25 @@ pub struct TestPanelLayoutWidget {
     pub min: Vec2,
 }
 
-//Desired size = min(self.min)
 define_widget! {
     TestPanelLayoutWidget,
     Stroke,
+
+    default: {
+        desired_size: DesiredSize::Min(Vec2::ZERO),
+    }
+}
+
+pub fn test_panel_set_size(mut query: Query<(&TestPanelLayoutWidget, &mut DesiredSize), Changed<DesiredSize>>) {
+    query.iter_mut().for_each(|(widget, mut size)| {
+        *size = DesiredSize::Min(widget.min)
+    });
+}
+
+pub struct PanelWidget;
+impl Widget for PanelWidget {
+    fn init(&self, app: &mut toolkit::App) {
+        app.add_systems(Update, test_panel_set_size);
+        app.add_systems(Update, panel_layout);
+    }
 }
