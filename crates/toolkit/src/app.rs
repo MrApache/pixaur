@@ -4,7 +4,7 @@ use std::{
     collections::HashSet,
 };
 
-use crate::{ecs_rendering::Renderer, widget::Plugin};
+use crate::{ecs_rendering::RendererPlugin, widget::Plugin, ContentPlugin};
 
 #[derive(Default)]
 pub struct App {
@@ -16,12 +16,14 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
+        let first = Schedule::new(First);
         let update_schedule = Schedule::new(Update);
         let update_transforms_schedule = Schedule::new(UpdateTransforms);
         let collect_draw_commands = Schedule::new(CollectDrawCommands);
         let render = Schedule::new(Render);
 
         let mut schedules = Schedules::new();
+        schedules.insert(first);
         schedules.insert(update_schedule);
         schedules.insert(update_transforms_schedule);
         schedules.insert(collect_draw_commands);
@@ -33,7 +35,8 @@ impl App {
             schedules,
         };
 
-        app.add_plugin(Renderer);
+        app.add_plugin(RendererPlugin);
+        app.add_plugin(ContentPlugin);
 
         app
     }
@@ -66,6 +69,7 @@ impl App {
 
     pub fn run(&mut self) {
         loop {
+            self.world.run_schedule(First);
             self.world.run_schedule(UpdateTransforms);
             self.world.run_schedule(Update);
             self.world.run_schedule(CollectDrawCommands);
@@ -73,6 +77,9 @@ impl App {
         }
     }
 }
+
+#[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct First;
 
 #[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct Update;

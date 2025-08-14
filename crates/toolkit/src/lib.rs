@@ -114,7 +114,7 @@ impl<T: GUI> EventLoop<T> {
         let mut counter = FpsCounter::new(144);
 
         loop {
-            self.content.dispath_queue(&self.gpu)?;
+            //self.content.dispath_queue(&self.gpu)?;
 
             windows
                 .iter_mut()

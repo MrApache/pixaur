@@ -1,8 +1,10 @@
+use bevy_ecs::resource::Resource;
 use wgpu::*;
 
 use crate::Error;
 use crate::window::WindowPointer;
 
+#[derive(Resource)]
 pub struct Gpu {
     pub instance: Instance,
     pub adapter: Adapter,

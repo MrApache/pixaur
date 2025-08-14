@@ -1,4 +1,4 @@
-use bevy_ecs::component::Component;
+use bevy_ecs::{component::Component, resource::Resource, system::{Res, ResMut}};
 use fontdue::{Font, FontSettings};
 use once_cell::sync::Lazy;
 use std::{
@@ -13,8 +13,7 @@ use std::{
 use ttf_parser::Face;
 
 use crate::{
-    Error,
-    rendering::{Gpu, material::Material},
+    rendering::{material::Material, Gpu}, widget::Plugin, Error, First
 };
 
 #[macro_export]
@@ -66,7 +65,7 @@ pub struct TextureHandle {
     id: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct ContentManager {
     static_font: HashMap<String, Arc<Font>>,
     static_textures: Vec<Material>,
@@ -182,4 +181,16 @@ fn get_asset_path() -> PathBuf {
             .unwrap()
             .join("assets")
     }
+}
+
+pub(crate) struct ContentPlugin;
+impl Plugin for ContentPlugin {
+    fn init(&self, app: &mut crate::App) {
+        app.insert_resource(ContentManager::default());
+        app.add_systems(First, load_content);
+    }
+}
+
+fn load_content(mut content: ResMut<ContentManager>, gpu: Res<Gpu>) {
+    content.dispath_queue(&gpu).unwrap();
 }

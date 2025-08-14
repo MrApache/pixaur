@@ -95,9 +95,9 @@ fn sort_commands(mut commands: ResMut<Commands>) {
     });
 }
 
-pub(crate) struct Renderer;
+pub(crate) struct RendererPlugin;
 
-impl Plugin for Renderer {
+impl Plugin for RendererPlugin {
     fn init(&self, app: &mut crate::App) {
         app.insert_resource(Commands::default());
         app.add_systems(CollectDrawCommands, (collect_draw_text, collect_draw_rect));
