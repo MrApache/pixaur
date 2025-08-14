@@ -1,12 +1,20 @@
-use bevy_ecs::component::Component;
-use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
-    glam::{Vec2, Vec4},
-    types::styling::*,
-    types::*,
-    widget::{Container, DesiredSize, Widget},
-};
 use toolkit_macros::define_widget;
+use std::slice::Iter;
+use bevy_ecs::{
+    change_detection::DetectChangesMut,
+    component::Component,
+    entity::Entity,
+    hierarchy::Children,
+    query::{Changed, Or},
+    system::Query,
+};
+use toolkit::{
+    commands::{CommandBuffer, DrawCommand, DrawRectCommand},
+    glam::{Vec2, Vec4},
+    types::*,
+    widget::{DesiredSize, Widget},
+    Transform,
+};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub enum LayoutMode {
@@ -33,17 +41,11 @@ pub enum VerticalAlign {
 
 #[derive(Component)]
 pub struct Panel {
-    id: Option<String>,
-    rect: Rect,
-    content: Vec<Box<dyn Widget>>,
     pub padding: Vec4,
     pub spacing: f32,
     pub mode: LayoutMode,
     pub vertical_align: VerticalAlign,
     pub horizontal_align: HorizontalAlign,
-
-    pub background: BackgroundStyle,
-    pub stroke: Stroke,
 }
 
 impl Default for Panel {
@@ -55,87 +57,33 @@ impl Default for Panel {
 impl Panel {
     pub fn new() -> Self {
         Self {
-            id: None,
-            content: vec![],
-            rect: Rect::default(),
-            background: Color::Simple(Argb8888::WHITE).into(),
             padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
             spacing: 4.0,
-            mode: LayoutMode::Vertical,
-            stroke: Stroke::default(),
             horizontal_align: HorizontalAlign::Center,
             vertical_align: VerticalAlign::Center,
-        }
-    }
-
-    pub fn with_id(id: impl Into<String>) -> Self {
-        Self {
-            id: Some(id.into()),
-            content: vec![],
-            rect: Rect::default(),
-            background: Color::Simple(Argb8888::WHITE).into(),
-            padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
-            spacing: 4.0,
             mode: LayoutMode::Vertical,
-            stroke: Stroke::default(),
-            horizontal_align: HorizontalAlign::Center,
-            vertical_align: VerticalAlign::Center,
-        }
-    }
-}
-
-impl Widget for Panel {
-    fn id(&self) -> Option<&str> {
-        if let Some(id) = &self.id {
-            Some(id)
-        }
-        else {
-            None
         }
     }
 
-    fn desired_size(&self) -> DesiredSize {
-        DesiredSize::Fill
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        match &self.background {
-            BackgroundStyle::Color(color) => {
-                out.push(DrawRectCommand::new(self.rect.clone(), color.clone(), self.stroke.clone()))
-            }
-            BackgroundStyle::Texture(texture) => {
-                out.push(DrawTextureCommand::new(self.rect.clone(), texture.clone(), self.stroke.clone()))
-            }
-        }
-
-        self.content.iter().for_each(|w| {
-            w.draw(out);
-        });
-    }
-
-
-    fn layout(&mut self, bounds: Rect) {
-        self.rect = bounds;
-        self.rect.position.x += self.stroke.width;
-        self.rect.position.y += self.stroke.width;
-        self.rect.size.x -= self.stroke.width;
-        self.rect.size.y -= self.stroke.width;
+    fn layout(
+        &mut self,
+        transform: &mut Transform,
+        stroke: &Stroke,
+        content: Iter<'_, Entity>,
+        transforms: &mut Query<(&mut Transform, &DesiredSize)>,
+    ) {
+        transform.position.x += stroke.width;
+        transform.position.y += stroke.width;
+        transform.size.x -= stroke.width;
+        transform.size.y -= stroke.width;
 
         // Учитываем padding с обеих сторон для вычисления внутренних границ
-        let min_x = self.rect.position.x + self.padding.x; // left
-        let min_y = self.rect.position.y + self.padding.y; // bottom
-        let max_x = self.rect.size.x - self.padding.z; // right
-        let max_y = self.rect.size.y - self.padding.w; // top
+        let min_x = transform.position.x + self.padding.x; // left
+        let min_y = transform.position.y + self.padding.y; // bottom
+        let max_x = transform.size.x - self.padding.z; // right
+        let max_y = transform.size.y - self.padding.w; // top
 
-        let len = self.content.len();
+        let len = content.len();
         let available_width = max_x;
         let available_height = max_y - min_y;
 
@@ -148,23 +96,26 @@ impl Widget for Panel {
         let mut total_min_width = 0.0;
         let mut fill_count = 0;
 
-        self.content
-            .iter()
-            .for_each(|widget| match widget.desired_size() {
+        content.clone().for_each(|entity| {
+            let (_, desired_size) = transforms.get_mut(*entity).unwrap();
+            match desired_size {
                 DesiredSize::Min(size) => total_min_width += size.x,
                 DesiredSize::Fill => fill_count += 1,
                 DesiredSize::FillMinY(_) => fill_count += 1,
-            });
+            }
+        });
 
         let total_spacing = self.spacing * len.saturating_sub(1) as f32;
         let total_available_width = max_x - total_spacing - total_min_width - self.padding.z;
         let fill_width = total_available_width / fill_count as f32;
 
-        for (i, child) in self.content.iter_mut().enumerate() {
-            let (width, height) = match child.desired_size() {
+        for (i, entity) in content.enumerate() {
+            let (mut child, desired_size) = transforms.get_mut(*entity).unwrap();
+
+            let (width, height) = match desired_size {
                 DesiredSize::Min(vec2) => (vec2.x, vec2.y.min(available_height)),
                 DesiredSize::Fill => (fill_width, available_height),
-                DesiredSize::FillMinY(y) => (fill_width, y.min(available_height))
+                DesiredSize::FillMinY(y) => (fill_width, y.min(available_height)),
             };
 
             let offset_y = match self.vertical_align {
@@ -179,15 +130,11 @@ impl Widget for Panel {
                 HorizontalAlign::End => 0.0,
             };
 
-            let child_bounds = Rect {
-                position: Vec2::new(cursor_x - offset_x, min_y + offset_y),
-                size: Vec2::new(width, height),
-            };
+            let position = Vec2::new(cursor_x - offset_x, min_y + offset_y);
+            let size = Vec2::new(width, height);
 
-            println!("Offset: {offset_x}x{offset_y}");
-
-
-            child.layout(child_bounds);
+            child.position = position;
+            child.size = size;
 
             cursor_x += width;
 
@@ -202,18 +149,35 @@ impl Widget for Panel {
     }
 }
 
-impl Container for Panel {
-    fn add_child(&mut self, child: Box<dyn Widget>) {
-        self.content.push(child);
-    }
+pub fn panel_layout(
+    mut query: Query<
+        (&mut Panel, &mut Transform, &Stroke, Option<&Children>),
+        Or<(Changed<Panel>, Changed<Transform>, Changed<Children>)>,
+    >,
+    mut widgets: Query<(&mut Transform, &DesiredSize)>,
+) {
+    query
+        .iter_mut()
+        .for_each(|(mut panel, mut transform, stroke, content)| {
+            let content = if let Some(content) = content {
+                content.iter()
+            } else {
+                Default::default()
+            };
 
-    fn children(&self) -> &[Box<dyn Widget>] {
-        &self.content
-    }
+            panel.layout(
+                transform.bypass_change_detection(),
+                stroke,
+                content,
+                &mut widgets,
+            );
+        });
+}
 
-    fn children_mut(&mut self) -> &mut [Box<dyn Widget>] {
-        &mut self.content
-    }
+define_widget! {
+    Panel,
+    Color,
+    Texture,
 }
 
 #[derive(Default)]
@@ -251,10 +215,4 @@ impl Widget for TestPanelLayoutWidget {
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
     }
-}
-
-define_widget! {
-    Panel,
-    Color,
-    Texture,
 }

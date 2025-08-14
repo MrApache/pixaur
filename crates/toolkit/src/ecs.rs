@@ -2,8 +2,7 @@ use bevy_ecs::{component::HookContext, prelude::*, world::DeferredWorld};
 use glam::Vec2;
 
 use crate::{
-    types::{Color, Stroke},
-    TextureHandle,
+    types::{Color, Stroke}, widget::DesiredSize, TextureHandle
 };
 
 #[derive(Default, Clone, Component)]
@@ -104,12 +103,13 @@ fn on_add_z_order(mut world: DeferredWorld, context: HookContext) {
 
 #[derive(Default, Clone, Component)]
 pub struct Transform {
-    position: Vec2,
-    size: Vec2,
+    pub position: Vec2,
+    pub size: Vec2,
 }
 
 #[derive(Default, Clone, Bundle)]
 pub struct WidgetBundle {
     order: ZOrder,
     transform: Transform,
+    pub desired_size: DesiredSize,
 }

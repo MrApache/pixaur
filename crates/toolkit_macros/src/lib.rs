@@ -47,6 +47,7 @@ const ENTITY: &str = "bevy_ecs::prelude::Entity";
 const COMMANDS: &str = "bevy_ecs::prelude::Commands<'world, 'state>";
 const CHILD_OF: &str = "bevy_ecs::prelude::ChildOf";
 const BUNDLE: &str = "bevy_ecs::prelude::Bundle";
+const DESIRED_SIZE: &str = "toolkit::widget::DesiredSize";
 
 #[proc_macro]
 pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -54,6 +55,7 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let commands_ty: Type = parse_str(COMMANDS).unwrap();
     let child_of_ty: Type = parse_str(CHILD_OF).unwrap();
     let bundle_ty: Type = parse_str(BUNDLE).unwrap();
+    let desired_size_ty: Type = parse_str(DESIRED_SIZE).unwrap();
 
     let input = proc_macro2::TokenStream::from(input);
     let components: Components = syn::parse2(input).unwrap();
@@ -115,6 +117,11 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             }
 
             #(#setters)*
+
+            pub fn desired_size(mut self, value: #desired_size_ty) -> Self {
+                self.bundle.widget_base.desired_size = value;
+                self
+            }
 
             pub fn build_as_child_of(self, parent: #entity_ty) -> #entity_ty {
                 self.commands.spawn((self.bundle, #child_of_ty(parent))).id()

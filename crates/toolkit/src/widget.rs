@@ -1,4 +1,5 @@
 use crate::{CommandBuffer, types::Rect};
+use bevy_ecs::component::Component;
 use glam::Vec2;
 use std::any::Any;
 
@@ -10,9 +11,11 @@ pub struct Spacing {
     pub left: f32,
 }
 
+#[derive(Default, Component, Clone)]
 pub enum DesiredSize {
     Min(Vec2),
     FillMinY(f32),
+    #[default]
     Fill,
 }
 

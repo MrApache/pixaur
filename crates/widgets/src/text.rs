@@ -1,11 +1,11 @@
-use bevy_ecs::prelude::Component;
+use bevy_ecs::{prelude::Component, query::{Changed, Or}, system::Query};
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawTextCommand},
+    commands::CommandBuffer,
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
     glam::Vec2,
     types::*,
     widget::{DesiredSize, Widget},
-    FontHandle,
+    FontHandle, Transform,
 };
 use toolkit_macros::define_widget;
 
@@ -16,10 +16,8 @@ pub struct Text {
 
     value: String,
     pub size: u32,
-    pub color: Color,
 
     layout: Layout,
-    position: Vec2,
 }
 
 impl Default for Text {
@@ -29,9 +27,7 @@ impl Default for Text {
             value: String::new(),
             font: FontHandle::default(),
             size: 12,
-            color: Color::Simple(Argb8888::WHITE),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
         };
 
         instance.refresh_layout();
@@ -46,9 +42,7 @@ impl Text {
             value: String::new(),
             font,
             size: 12,
-            color: Color::Simple(Argb8888::WHITE),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
         };
 
         instance.refresh_layout();
@@ -61,9 +55,7 @@ impl Text {
             value: String::new(),
             font,
             size: 12,
-            color: Color::Simple(Argb8888::WHITE),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
         };
 
         instance.refresh_layout();
@@ -134,27 +126,22 @@ impl Widget for Text {
         self
     }
 
-    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        out.push(DrawCommand::Text(DrawTextCommand::new(
-            self.size,
-            self.color.clone(),
-            self.position,
-            &self.font,
-            &self.layout,
-        )));
-    }
+    fn draw<'frame>(&'frame self, _out: &mut CommandBuffer<'frame>) {}
 
     fn layout(&mut self, bounds: Rect) {
-        self.layout.reset(&LayoutSettings {
-            max_width: Some(bounds.size.x),
-            max_height: Some(bounds.size.y),
+    }
+}
+
+pub fn text_layout(mut query: Query<(&mut Text, &Transform), Or<(Changed<Text>, Changed<Transform>)>>) {
+    query.iter_mut().for_each(|(mut text, transform)| {
+        text.layout.reset(&LayoutSettings {
+            max_width: Some(transform.size.x),
+            max_height: Some(transform.size.y),
             ..LayoutSettings::default()
         });
 
-        self.refresh_layout();
-
-        self.position = bounds.position;
-    }
+        text.refresh_layout();
+    });
 }
 
 define_widget! {

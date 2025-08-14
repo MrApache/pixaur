@@ -23,6 +23,8 @@ pub use wl_client::{
     Anchor,
 };
 
+pub use ecs::Transform;
+
 use crate::{
     debug::FpsCounter,
     rendering::{commands::CommandBuffer, Gpu, Renderer},
