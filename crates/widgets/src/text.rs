@@ -1,29 +1,28 @@
-use bevy_ecs::{prelude::Component, query::{Changed, Or}, system::Query};
+use bevy_ecs::{
+    prelude::Component,
+    query::{Changed, Or},
+    system::Query,
+};
 use toolkit::{
-    commands::CommandBuffer,
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
     glam::Vec2,
     types::*,
-    widget::{DesiredSize, Widget},
+    widget::DesiredSize,
     FontHandle, Transform,
 };
 use toolkit_macros::define_widget;
 
 #[derive(Component)]
 pub struct Text {
-    id: Option<String>,
     font: FontHandle,
-
-    value: String,
-    pub size: u32,
-
     layout: Layout,
+    value: String,
+    size: u32,
 }
 
 impl Default for Text {
     fn default() -> Self {
         let mut instance = Self {
-            id: None,
             value: String::new(),
             font: FontHandle::default(),
             size: 12,
@@ -38,20 +37,6 @@ impl Default for Text {
 impl Text {
     pub fn new(font: FontHandle) -> Self {
         let mut instance = Self {
-            id: None,
-            value: String::new(),
-            font,
-            size: 12,
-            layout: Layout::new(CoordinateSystem::PositiveYDown),
-        };
-
-        instance.refresh_layout();
-        instance
-    }
-
-    pub fn with_id(font: FontHandle, id: impl Into<String>) -> Self {
-        let mut instance = Self {
-            id: Some(id.into()),
             value: String::new(),
             font,
             size: 12,
@@ -65,6 +50,11 @@ impl Text {
     pub fn set_text(&mut self, value: &str) {
         self.value.clear();
         self.value.insert_str(0, value);
+        self.refresh_layout();
+    }
+
+    pub fn set_size(&mut self, value: u32) {
+        self.size = value;
         self.refresh_layout();
     }
 
@@ -82,57 +72,9 @@ impl Text {
     }
 }
 
-impl Widget for Text {
-    fn id(&self) -> Option<&str> {
-        if let Some(id) = &self.id {
-            Some(id)
-        } else {
-            None
-        }
-    }
-
-    #[allow(clippy::eq_op)]
-    fn desired_size(&self) -> DesiredSize {
-        let font = self.font.as_ref();
-        let mut x = 0.0;
-
-        let glyphs = self.layout.glyphs();
-        let text_width = match self.layout.lines() {
-            Some(lines) => lines
-                .iter()
-                .map(|ln| {
-                    let glyph = &glyphs[ln.glyph_end];
-                    glyph.x + glyph.width as f32
-                })
-                .fold(0.0 / 0.0, |m, v| v.max(m)),
-            None => 0.0,
-        };
-
-        self.layout.glyphs().iter().for_each(|c| {
-            let metrics = font.metrics(c.parent, self.size as f32);
-            x += metrics.advance_width;
-            x += metrics.bounds.xmin;
-        });
-
-        let y = self.layout.height();
-        DesiredSize::Min(Vec2::new(x.floor(), y))
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn draw<'frame>(&'frame self, _out: &mut CommandBuffer<'frame>) {}
-
-    fn layout(&mut self, bounds: Rect) {
-    }
-}
-
-pub fn text_layout(mut query: Query<(&mut Text, &Transform), Or<(Changed<Text>, Changed<Transform>)>>) {
+pub fn text_layout(
+    mut query: Query<(&mut Text, &Transform), Or<(Changed<Text>, Changed<Transform>)>>,
+) {
     query.iter_mut().for_each(|(mut text, transform)| {
         text.layout.reset(&LayoutSettings {
             max_width: Some(transform.size.x),
@@ -141,6 +83,22 @@ pub fn text_layout(mut query: Query<(&mut Text, &Transform), Or<(Changed<Text>, 
         });
 
         text.refresh_layout();
+    });
+}
+
+pub fn text_desired_size(mut query: Query<(&Text, &mut DesiredSize), Changed<Text>>) {
+    query.iter_mut().for_each(|(text, mut desired_size)| {
+        let font = text.font.as_ref();
+        let mut x = 0.0;
+
+        text.layout.glyphs().iter().for_each(|c| {
+            let metrics = font.metrics(c.parent, text.size as f32);
+            x += metrics.advance_width;
+            x += metrics.bounds.xmin;
+        });
+
+        let y = text.layout.height();
+        *desired_size = DesiredSize::Min(Vec2::new(x.floor(), y));
     });
 }
 
