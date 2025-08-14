@@ -1556,9 +1556,9 @@ checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.95"
+version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
+checksum = "d61789d7719defeb74ea5fe81f2fdfdbd28a803847077cecce2ff14e1472f6f1"
 dependencies = [
  "unicode-ident",
 ]
@@ -1983,9 +1983,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.104"
+version = "2.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b6f705963418cdb9927482fa304bc562ece2fdd4f616084c50b7023b435a40"
+checksum = "7bc3fcb250e53458e712715cf74285c1f889686520d79294a9ef3bd7aa1fc619"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2140,15 +2140,26 @@ dependencies = [
  "guillotiere",
  "image",
  "once_cell",
- "paste",
  "pollster",
  "swash",
  "thiserror 2.0.12",
+ "toolkit_macros",
  "ttf-parser 0.25.1",
  "wayland-backend",
  "wayland-client",
  "wgpu",
  "wl_client",
+]
+
+[[package]]
+name = "toolkit_macros"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs_macros",
+ "paste",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2640,7 +2651,9 @@ dependencies = [
 name = "widgets"
 version = "0.1.0"
 dependencies = [
+ "bevy_ecs",
  "toolkit",
+ "toolkit_macros",
 ]
 
 [[package]]

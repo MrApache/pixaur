@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 toolkit.workspace = true
+toolkit_macros.workspace = true
+bevy_ecs.workspace = true

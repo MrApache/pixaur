@@ -1,3 +1,4 @@
+use bevy_ecs::component::Component;
 use toolkit::{
     commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
     glam::{Vec2, Vec4},
@@ -5,6 +6,7 @@ use toolkit::{
     types::*,
     widget::{Container, DesiredSize, Widget},
 };
+use toolkit_macros::define_widget;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub enum LayoutMode {
@@ -29,6 +31,7 @@ pub enum VerticalAlign {
     End,
 }
 
+#[derive(Component)]
 pub struct Panel {
     id: Option<String>,
     rect: Rect,
@@ -248,4 +251,10 @@ impl Widget for TestPanelLayoutWidget {
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
     }
+}
+
+define_widget! {
+    Panel,
+    Color,
+    Texture,
 }

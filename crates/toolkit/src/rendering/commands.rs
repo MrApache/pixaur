@@ -5,7 +5,7 @@ use std::slice::IterMut;
 use wgpu::RenderPass;
 
 use crate::{
-    rendering::{instance::InstanceData, Gpu, Renderer}, types::{Color, Rect, Stroke, Texture}, ContentManager, FontHandle
+    rendering::{instance::InstanceData, Gpu, Renderer}, types::{Argb8888, Color, Rect, Stroke, Texture}, ContentManager, FontHandle
 };
 
 #[enum_dispatch(DrawCommand)]
@@ -104,7 +104,8 @@ impl DrawDispatcher for DrawTextureCommand {
             UV3,
             self.rect.position,
             self.rect.size,
-            &self.texture.color,
+            &Argb8888::WHITE.into(),
+            //&self.texture.color,
             Some(self.stroke.clone()),
             pipeline.projection,
         ));

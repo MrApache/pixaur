@@ -1,7 +1,15 @@
+use bevy_ecs::prelude::Component;
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawTextCommand}, fontdue::layout::{self, CoordinateSystem, Layout, LayoutSettings, TextStyle}, glam::Vec2, types::*, widget::{DesiredSize, Widget}, FontHandle
+    commands::{CommandBuffer, DrawCommand, DrawTextCommand},
+    fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
+    glam::Vec2,
+    types::*,
+    widget::{DesiredSize, Widget},
+    FontHandle,
 };
+use toolkit_macros::define_widget;
 
+#[derive(Component)]
 pub struct Text {
     id: Option<String>,
     font: FontHandle,
@@ -86,8 +94,7 @@ impl Widget for Text {
     fn id(&self) -> Option<&str> {
         if let Some(id) = &self.id {
             Some(id)
-        }
-        else {
+        } else {
             None
         }
     }
@@ -106,7 +113,7 @@ impl Widget for Text {
                     glyph.x + glyph.width as f32
                 })
                 .fold(0.0 / 0.0, |m, v| v.max(m)),
-            None => 0.0
+            None => 0.0,
         };
 
         self.layout.glyphs().iter().for_each(|c| {
@@ -148,4 +155,9 @@ impl Widget for Text {
 
         self.position = bounds.position;
     }
+}
+
+define_widget! {
+    Text,
+    Color
 }

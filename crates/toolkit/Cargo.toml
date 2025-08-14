@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+wl_client.workspace = true
+toolkit_macros.workspace = true
+
 wayland-client.workspace = true
 wayland-backend.workspace = true
-wl_client.workspace = true
 swash.workspace = true
 fontdue.workspace = true
 ttf-parser.workspace = true
@@ -23,4 +25,3 @@ derive_more.workspace = true
 
 #test
 bevy_ecs.workspace = true
-paste.workspace = true
