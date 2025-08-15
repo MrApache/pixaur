@@ -181,7 +181,7 @@ impl Widget for Panel {
                 max: Vec2::new(width, height),
             };
 
-            println!("Offset: {offset_x}x{offset_y}");
+            //println!("Offset: {offset_x}x{offset_y}");
 
 
             child.layout(child_bounds);

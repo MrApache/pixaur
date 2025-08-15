@@ -44,10 +44,10 @@ impl UserWindow<App> for MainWindow {
     }
 
     fn setup(&self, gui: &mut App) -> Box<dyn Container> {
-        let mut panel = Panel::new("Panel");
+        let mut panel = Panel::new();
         panel.background = Color::Simple(Argb8888::BLACK).into();
 
-        let mut subpanel = Panel::new("Subpanel");
+        let mut subpanel = Panel::new();
 
         let mut test_layout_widget = TestPanelLayoutWidget::default();
         test_layout_widget.min = Vec2::new(100.0, 100.0);
@@ -62,14 +62,15 @@ impl UserWindow<App> for MainWindow {
             .into();
         panel.add_child(Box::new(subpanel));
 
-        let mut subpanel = Panel::new("Subpanel");
+        let mut subpanel = Panel::new();
         subpanel.background =
             Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0))
                 .into();
         //subpanel.padding = Vec4::new(0.0, 0.0, 0.0, 0.0);
-        let mut text = Text::new(gui.font.clone(), "Label");
-        text.value =
-            "Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)".to_string();
+        let mut text = Text::default();
+        text.set_text("Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)");
+
+
         //text.value = "Hello, world!".to_string();
         text.color = Color::Simple(Argb8888::WHITE);
         //text.color = Color::LinearGradient(LinearGradient::new(Argb8888::RED, Argb8888::YELLOW));
@@ -101,11 +102,11 @@ impl UserWindow<App> for SmartPanel {
     }
 
     fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
-        let mut panel = Panel::new("Panel");
+        let mut panel = Panel::new();
         panel.background = Color::Simple(Argb8888::BLUE).into();
         panel.padding = Vec4::new(10.0, 10.0, 10.0, 10.0);
 
-        let mut child_panel = Panel::new("panel1");
+        let mut child_panel = Panel::new();
         child_panel.background = Color::Simple(Argb8888::RED).into();
         panel.add_child(Box::new(child_panel));
 
@@ -113,7 +114,7 @@ impl UserWindow<App> for SmartPanel {
         test_layout_widget.min = Vec2::new(10.0, 100.0);
         panel.add_child(Box::new(test_layout_widget));
 
-        let mut child_panel = Panel::new("panel1");
+        let mut child_panel = Panel::new();
         child_panel.background = Color::Simple(Argb8888::GREEN).into();
         panel.add_child(Box::new(child_panel));
 
