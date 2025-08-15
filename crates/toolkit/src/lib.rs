@@ -62,12 +62,11 @@ pub struct Windows {
     handle: QueueHandle<WlClient>,
     active: HashMap<WindowId, Window>,
     not_initalized: Vec<Box<dyn UserWindow>>,
-    can_draw: HashSet<WindowId>,
 }
 
 impl Windows {
     pub(crate) fn can_draw(&self, id: &WindowId) -> bool {
-        self.can_draw.contains(id)
+        self.active.get(id).unwrap().can_draw
     }
 }
 

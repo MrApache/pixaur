@@ -201,37 +201,34 @@ impl PackedGroup {
     }
 }
 
-#[derive(Default)]
-pub struct PackedMap {
-    pub inner: HashMap<WindowId, PackedGroup>,
-}
-
 #[derive(Default, Resource)]
 pub struct CommandBuffer {
-    packed_groups: Vec<PackedMap>,
-    active_group: HashMap<WindowId, PackedGroup>,
+    packed_groups: HashMap<WindowId, Vec<PackedGroup>>,
+    active_group: Vec<DrawCommand>,
 }
 
 impl CommandBuffer {
     pub fn push(&mut self, window_id: &WindowId, command: impl Into<DrawCommand>) {
         let command = command.into();
-        let last = self.get_mut_or_insert(window_id).inner.last();
+        let last = self.active_group.last();
         if let Some(last) = last {
             if !last.is_same_type(&command) {
-                self.pack_active_group();
+                self.pack_active_group(window_id);
             }
         }
-        self.get_mut_or_insert(window_id).inner.push(command);
+        self.active_group.push(command);
     }
 
-    pub fn pack_active_group(&mut self) {
+    pub fn pack_active_group(&mut self, window_id: &WindowId) {
         let group = std::mem::take(&mut self.active_group);
-        self.packed_groups.push(PackedMap { inner: group });
+        self.get_packed_group(window_id).push(PackedGroup {
+            inner: group,
+        });
     }
 
-    pub fn iter_mut(&mut self) -> CommandBufferIter<'_> {
+    pub fn iter_mut(&mut self, window_id: &WindowId) -> CommandBufferIter<'_> {
         CommandBufferIter {
-            iter: self.packed_groups.iter_mut(),
+            iter: self.packed_groups.get_mut(window_id).unwrap().iter_mut()
         }
     }
 
@@ -240,20 +237,20 @@ impl CommandBuffer {
         self.active_group.clear();
     }
 
-    fn get_mut_or_insert(&mut self, id: &WindowId) -> &mut PackedGroup {
-        if !self.active_group.contains_key(id) {
-            self.active_group.insert(id.clone(), PackedGroup::default());
+    fn get_packed_group(&mut self, id: &WindowId) -> &mut Vec<PackedGroup> {
+        if !self.packed_groups.contains_key(id) {
+            self.packed_groups.insert(id.clone(), vec![]);
         }
-        self.active_group.get_mut(id).unwrap()
+        self.packed_groups.get_mut(id).unwrap()
     }
 }
 
 pub struct CommandBufferIter<'a> {
-    iter: IterMut<'a, PackedMap>,
+    iter: IterMut<'a, PackedGroup>,
 }
 
 impl<'a> Iterator for CommandBufferIter<'a> {
-    type Item = &'a mut PackedMap;
+    type Item = &'a mut PackedGroup;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -273,7 +270,7 @@ impl UnsortedCommandBuffer {
         self.inner.get_mut(id).unwrap()
     }
 
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.inner.values_mut().for_each(|values| values.clear());
     }
 }
@@ -349,10 +346,16 @@ pub(super) fn sort_commands(
     mut unsorted: ResMut<UnsortedCommandBuffer>,
     mut sorted: ResMut<CommandBuffer>,
 ) {
+    let mut last_window_id = None;
     unsorted.inner.drain().for_each(|(window_id, mut buffer)| {
         buffer.sort_unstable_by_key(|&(key, _)| key);
         buffer.drain(..).for_each(|command| {
             sorted.push(&window_id, command.1);
         });
+        last_window_id = Some(window_id);
     });
+
+    if let Some(window_id) = last_window_id {
+        sorted.pack_active_group(&window_id);
+    }
 }

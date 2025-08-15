@@ -66,6 +66,7 @@ pub struct Window {
     pub(crate) surface: Surface<'static>,
     pub(crate) configuration: SurfaceConfiguration,
     pub(crate) _handle: Box<dyn UserWindow>,
+    pub(crate) can_draw: bool,
 }
 
 impl Window {
@@ -80,6 +81,7 @@ impl Window {
             _handle,
             surface,
             configuration,
+            can_draw: false,
         }
     }
 }

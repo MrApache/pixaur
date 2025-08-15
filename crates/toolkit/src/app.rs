@@ -12,6 +12,7 @@ use wgpu::{Instance, InstanceDescriptor};
 use wl_client::{window::WindowLayer, WlClient};
 
 use crate::{
+    debug::FpsCounter,
     rendering::{Gpu, Renderer, RendererPlugin},
     widget::Plugin,
     window::{Window, WindowPointer},
@@ -103,7 +104,6 @@ impl App {
             handle: app.event_queue.handle(),
             active: HashMap::new(),
             not_initalized: vec![],
-            can_draw: HashSet::default(),
         });
         app.insert_resource(client);
         app.insert_resource(gpu);
@@ -154,6 +154,7 @@ impl App {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
+        let mut fps = FpsCounter::new(144);
         self.world.run_schedule(Startup);
         loop {
             self.world.run_schedule(First);
@@ -163,6 +164,8 @@ impl App {
             self.world.run_schedule(Render);
             let mut client = self.world.resource_mut::<Client>();
             self.event_queue.blocking_dispatch(&mut client.inner)?;
+            let tick = fps.tick();
+            println!("FPS: {tick}");
         }
     }
 
@@ -175,7 +178,12 @@ impl App {
 
 static WINDOW_NEXT_ID: AtomicU16 = AtomicU16::new(0);
 
-fn init_windows(mut commands: Commands, mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: Res<Gpu>) {
+fn init_windows(
+    mut commands: Commands,
+    mut windows: ResMut<Windows>,
+    mut client: ResMut<Client>,
+    gpu: Res<Gpu>,
+) {
     let mut active = HashMap::with_capacity(windows.not_initalized.len());
 
     let qh = windows.handle.clone();
@@ -207,24 +215,19 @@ fn init_windows(mut commands: Commands, mut windows: ResMut<Windows>, mut client
 }
 
 fn update_windows(mut windows: ResMut<Windows>, gpu: Res<Gpu>) {
-    let mut can_draw = std::mem::take(&mut windows.can_draw);
-    can_draw.clear();
-    windows.active.iter_mut().for_each(|(id, window)| {
+    windows.active.values_mut().for_each(|window| {
         let mut backend = window.backend.lock().unwrap();
         if backend.can_resize() {
             window.configuration.width = backend.width as u32;
             window.configuration.height = backend.height as u32;
             gpu.confugure_surface(&window.surface, &window.configuration);
             backend.set_resized();
+            //backend.commit();
         }
 
         backend.frame();
-        if backend.can_draw() {
-            can_draw.insert(id.clone());
-        }
+        window.can_draw = backend.can_draw();
     });
-
-    windows.can_draw.extend(can_draw);
 }
 
 fn mark_roots(mut commands: Commands, query: Query<Entity, (Without<Children>, Without<Root>)>) {

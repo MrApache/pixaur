@@ -124,72 +124,71 @@ fn render(
     content: Res<ContentManager>,
     gpu: Res<Gpu>,
 ) {
-    commands.iter_mut().for_each(|command_group| {
-        command_group
-            .inner
-            .iter_mut()
-            .for_each(|(window_id, group)| {
-                let window = windows.active.get_mut(window_id).unwrap();
-                let texture = window.surface.get_current_texture().unwrap();
-                let image_view = texture
-                    .texture
-                    .create_view(&TextureViewDescriptor::default());
-                let color_attachment = RenderPassColorAttachment {
-                    view: &image_view,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(Color {
-                            r: 1.0,
-                            g: 1.0,
-                            b: 1.0,
-                            a: 1.0,
-                        }),
-                        store: StoreOp::Store,
-                    },
-                    depth_slice: None,
-                };
+    windows.active.iter().for_each(|(id, window)| {
+        if !window.can_draw {
+            return;
+        }
 
-                let render_pass_descriptor = RenderPassDescriptor {
-                    label: Some("Render Pass"),
-                    color_attachments: &[Some(color_attachment)],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                };
+        //let window = windows.active.get_mut(window_id).unwrap();
+        let texture = window.surface.get_current_texture().unwrap();
+        let image_view = texture
+            .texture
+            .create_view(&TextureViewDescriptor::default());
+        let color_attachment = RenderPassColorAttachment {
+            view: &image_view,
+            resolve_target: None,
+            ops: Operations {
+                load: LoadOp::Clear(Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 1.0,
+                }),
+                store: StoreOp::Store,
+            },
+            depth_slice: None,
+        };
 
-                let mut command_encoder =
-                    gpu.device
-                        .create_command_encoder(&CommandEncoderDescriptor {
-                            label: Some("Render Encoder"),
-                        });
+        let render_pass_descriptor = RenderPassDescriptor {
+            label: Some("Render Pass"),
+            color_attachments: &[Some(color_attachment)],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        };
 
-                {
-                    renderer.buffer_pool.clear();
-
-                    let mut renderpass = command_encoder.begin_render_pass(&render_pass_descriptor);
-                    renderpass.set_pipeline(&renderer.render_pipeline);
-                    renderpass.set_vertex_buffer(0, renderer.mesh.vertex_buffer.slice(..));
-                    renderpass.set_index_buffer(
-                        renderer.mesh.index_buffer.slice(..),
-                        IndexFormat::Uint16,
-                    );
-
-                    let projection = Mat4::orthographic_rh_gl(
-                        0.0,
-                        window.configuration.width as f32,
-                        window.configuration.height as f32,
-                        0.0,
-                        -1.0,
-                        1.0,
-                    );
-                    group.prepare_frame(&mut renderer, &content, &gpu, &mut renderpass, projection);
-                }
-
-                gpu.queue.submit(std::iter::once(command_encoder.finish()));
-                texture.present();
-
-                window.backend.lock().unwrap().commit();
+        let mut command_encoder = gpu
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
             });
+
+        {
+            renderer.buffer_pool.clear();
+
+            let mut renderpass = command_encoder.begin_render_pass(&render_pass_descriptor);
+            renderpass.set_pipeline(&renderer.render_pipeline);
+            renderpass.set_vertex_buffer(0, renderer.mesh.vertex_buffer.slice(..));
+            renderpass.set_index_buffer(renderer.mesh.index_buffer.slice(..), IndexFormat::Uint16);
+
+            let projection = Mat4::orthographic_rh_gl(
+                0.0,
+                window.configuration.width as f32,
+                window.configuration.height as f32,
+                0.0,
+                -1.0,
+                1.0,
+            );
+            commands.iter_mut(id).for_each(|group| {
+                group.prepare_frame(&mut renderer, &content, &gpu, &mut renderpass, projection);
+            });
+        }
+
+        gpu.queue.submit(std::iter::once(command_encoder.finish()));
+        println!("Present");
+        texture.present();
+
+        window.backend.lock().unwrap().commit();
     });
 }
 
@@ -197,7 +196,7 @@ fn cleanup(
     mut unsorted: ResMut<UnsortedCommandBuffer>,
     mut sorted: ResMut<super::commands::CommandBuffer>,
 ) {
-    unsorted.inner.clear();
+    unsorted.clear();
     sorted.clear();
 }
 
