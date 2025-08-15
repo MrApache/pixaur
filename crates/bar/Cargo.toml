@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 widgets.workspace = true
 toolkit.workspace = true
+bevy_ecs.workspace = true

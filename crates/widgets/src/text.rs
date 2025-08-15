@@ -12,6 +12,7 @@ use toolkit::{
 };
 use toolkit_macros::define_widget;
 
+//TODO fix
 #[derive(Component)]
 pub struct Text {
     font: FontHandle,

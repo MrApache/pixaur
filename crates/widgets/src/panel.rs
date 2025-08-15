@@ -174,6 +174,7 @@ define_widget! {
     Panel,
     Color,
     Texture,
+    Stroke,
 
     default: {
         desired_size: DesiredSize::Fill,

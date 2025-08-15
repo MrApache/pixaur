@@ -1,27 +1,16 @@
+use bevy_ecs::system::Commands;
 use toolkit::{
-    types::{Argb8888, Color, Stroke}, widget::Container, window::WindowRequest, Anchor, Error, EventLoop, SpecialOptions, TargetMonitor, UserWindow, WindowId, GUI
+    types::{Argb8888, Stroke},
+    window::WindowRequest,
+    Anchor, App, Error, SpecialOptions, TargetMonitor, UserWindow, WindowId,
 };
-use widgets::{panel::{HorizontalAlign, Panel, PanelBuilder, VerticalAlign}, text::Text};
+use widgets::panel::{HorizontalAlign, Panel, PanelBuilder, VerticalAlign};
 
-//#[derive(Default)]
-//struct App {}
-//
-//impl GUI for App {
-//    fn setup_windows(&mut self) -> Vec<Box<dyn toolkit::UserWindow<Self>>> {
-//        vec![Box::new(BarWindow)]
-//    }
-//}
-//
 //struct BarWindow;
 //
 //impl UserWindow<App> for BarWindow {
 //
 //    fn setup(&self, gui: &mut App) -> Box<dyn toolkit::widget::Container> {
-//        let mut root = Panel::new();
-//        root.background = Color::Simple(Argb8888::new(17, 17, 27, 255)).into();
-//        root.stroke = Stroke::none();
-//        root.vertical_align = VerticalAlign::Center;
-//        root.horizontal_align = HorizontalAlign::Center;
 //
 //        let mut time = Text::default();
 //        time.set_text("23:59");
@@ -33,13 +22,13 @@ use widgets::{panel::{HorizontalAlign, Panel, PanelBuilder, VerticalAlign}, text
 //        Box::new(root)
 //    }
 //
-//    fn update<'ctx>(&mut self, gui: &mut App, context: &'ctx mut toolkit::Context<'ctx>) {}
 //}
 
 fn main() -> Result<(), Error> {
-
+    let mut app = App::new()?;
+    app.add_window(BarWindow);
+    app.run()
 }
-
 
 pub struct BarWindow;
 
@@ -55,6 +44,14 @@ impl UserWindow for BarWindow {
     }
 
     fn setup(&self, commands: &mut Commands, window_id: WindowId) {
-        PanelBuilder
+        let root = PanelBuilder::new(window_id, commands)
+            .color(Argb8888::new(17, 17, 27, 255))
+            .stroke(Stroke::none())
+            .panel(Panel {
+                vertical_align: VerticalAlign::Center,
+                horizontal_align: HorizontalAlign::Center,
+                ..Default::default()
+            })
+            .build();
     }
 }

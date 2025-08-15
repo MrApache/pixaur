@@ -146,6 +146,7 @@ dependencies = [
 name = "bar"
 version = "0.1.0"
 dependencies = [
+ "bevy_ecs",
  "toolkit",
  "widgets",
 ]
