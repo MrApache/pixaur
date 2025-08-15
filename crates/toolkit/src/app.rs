@@ -8,11 +8,11 @@ use std::{
     sync::{atomic::AtomicU16, Arc},
 };
 use wayland_client::{Connection, EventQueue, Proxy};
+use wgpu::{Instance, InstanceDescriptor};
 use wl_client::{window::WindowLayer, WlClient};
 
 use crate::{
-    ecs_rendering::RendererPlugin,
-    rendering::{Gpu, Renderer},
+    rendering::{Gpu, Renderer, RendererPlugin},
     widget::Plugin,
     window::{Window, WindowPointer},
     Client, ContentPlugin, Error, Transform, UserWindow, WindowId, Windows,
@@ -28,7 +28,7 @@ pub struct App {
 }
 
 impl App {
-    fn init_client() -> Result<(EventQueue<WlClient>, Client, Gpu), Error> {
+    fn init_client() -> Result<(EventQueue<WlClient>, Client, Gpu, Renderer), Error> {
         let conn = Connection::connect_to_env()?;
 
         let display = conn.display();
@@ -43,21 +43,26 @@ impl App {
         event_queue.roundtrip(&mut client)?; //Register outputs
 
         //Fix egl error: BadDisplay
-        let (display_ptr, gpu) = {
+        let (display_ptr, gpu, renderer) = {
             let display_ptr = NonNull::new(display.id().as_ptr() as *mut c_void).unwrap();
             let dummy = client.create_window_backend(qh, "dummy", 1, 1, WindowLayer::default());
             event_queue.roundtrip(&mut client)?; //Init dummy
 
             let dummy_ptr = dummy.lock().unwrap().as_ptr();
             let ptr = WindowPointer::new(display_ptr, dummy_ptr);
-            let gpu = Gpu::new(ptr)?;
+
+            let instance = Instance::new(&InstanceDescriptor::default());
+            let surface = instance.create_surface(ptr)?;
+
+            let gpu = Gpu::new(instance, &surface)?;
+            let renderer = Renderer::new(&gpu, None, &surface)?;
 
             drop(dummy);
 
             client.destroy_window_backend("dummy");
             event_queue.roundtrip(&mut client)?; //Destroy dummy
 
-            (display_ptr, gpu)
+            (display_ptr, gpu, renderer)
         };
 
         let client = Client {
@@ -65,7 +70,7 @@ impl App {
             display_ptr,
         };
 
-        Ok((event_queue, client, gpu))
+        Ok((event_queue, client, gpu, renderer))
     }
 
     pub fn new() -> Result<Self, Error> {
@@ -84,7 +89,7 @@ impl App {
         schedules.insert(collect_draw_commands);
         schedules.insert(render);
 
-        let (event_queue, client, gpu) = Self::init_client()?;
+        let (event_queue, client, gpu, renderer) = Self::init_client()?;
 
         let mut app = Self {
             unique_plugins: Default::default(),
@@ -94,6 +99,7 @@ impl App {
             event_queue,
         };
 
+        app.insert_resource(renderer);
         app.insert_resource(Windows {
             handle: app.event_queue.handle(),
             active: HashMap::new(),
@@ -181,7 +187,6 @@ fn init_windows(mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: R
 
         let window_ptr = WindowPointer::new(client.display_ptr, surface_ptr);
         let (surface, configuration) = gpu.create_surface(window_ptr, width, height).unwrap();
-        let renderer = Renderer::new(&gpu, None, &surface).unwrap();
         let id = WindowId(WINDOW_NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
         let window = Window::new(backend, surface, configuration, handle);
 

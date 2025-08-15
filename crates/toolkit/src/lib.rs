@@ -49,6 +49,7 @@ use wl_client::WlClient;
 //Sort
 //Render
 //Commit
+//Command buffers cleanup
 //Window event queue
 
 pub trait UserWindow: Send + Sync + 'static {

@@ -1,8 +1,8 @@
 use bevy_ecs::resource::Resource;
 use wgpu::*;
 
-use crate::Error;
 use crate::window::WindowPointer;
+use crate::Error;
 
 #[derive(Resource)]
 pub struct Gpu {
@@ -13,13 +13,11 @@ pub struct Gpu {
 }
 
 impl Gpu {
-    pub fn new(dummy: WindowPointer) -> Result<Self, Error> {
-        let instance = Instance::new(&InstanceDescriptor::default());
-        let surface = instance.create_surface(dummy)?;
+    pub fn new(instance: Instance, dummy_surface: &Surface) -> Result<Self, Error> {
         let adapter = pollster::block_on(instance.request_adapter(&RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
             force_fallback_adapter: false,
-            compatible_surface: Some(&surface),
+            compatible_surface: Some(dummy_surface),
         }))?;
         let (device, queue) =
             pollster::block_on(adapter.request_device(&DeviceDescriptor::default()))?;
@@ -41,7 +39,9 @@ impl Gpu {
         let surface = self.instance.create_surface(ptr)?;
 
         let caps = surface.get_capabilities(&self.adapter);
-        let format = *caps.formats.iter()
+        let format = *caps
+            .formats
+            .iter()
             .find(|&&f| matches!(f, wgpu::TextureFormat::Rgba8Unorm))
             .unwrap_or(&caps.formats[0]);
 
