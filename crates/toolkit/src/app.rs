@@ -112,7 +112,7 @@ impl App {
         app.add_plugin(ContentPlugin);
 
         app.add_systems(Startup, init_windows);
-        app.add_systems(First, (mark_roots, remove_roots));
+        app.add_systems(First, (update_windows, mark_roots, remove_roots));
         app.add_systems(UpdateRoot, set_window_size_at_root);
 
         Ok(app)

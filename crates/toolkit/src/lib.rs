@@ -44,7 +44,7 @@ use wl_client::WlClient;
 //Load content
 //Resize
 //Set root size
-//Layout
+//Layout(Update)
 //Draw
 //Sort
 //Render
