@@ -1,10 +1,11 @@
 use bevy_ecs::{prelude::*, schedule::ScheduleLabel, system::ScheduleSystem};
+use glam::Vec2;
 use std::{
     any::{type_name, TypeId},
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     ffi::c_void,
     ptr::NonNull,
-    sync::Arc,
+    sync::{atomic::AtomicU16, Arc},
 };
 use wayland_client::{Connection, EventQueue, Proxy};
 use wl_client::{window::WindowLayer, WlClient};
@@ -14,7 +15,7 @@ use crate::{
     rendering::{Gpu, Renderer},
     widget::Plugin,
     window::{Window, WindowPointer},
-    Client, ContentPlugin, Error, UserWindow, Windows,
+    Client, ContentPlugin, Error, Transform, UserWindow, WindowId, Windows,
 };
 
 pub struct App {
@@ -71,7 +72,7 @@ impl App {
         let startup = Schedule::new(Startup);
         let first = Schedule::new(First);
         let update_schedule = Schedule::new(Update);
-        let update_transforms_schedule = Schedule::new(UpdateTransforms);
+        let update_transforms_schedule = Schedule::new(UpdateRoot);
         let collect_draw_commands = Schedule::new(CollectDrawCommands);
         let render = Schedule::new(Render);
 
@@ -90,13 +91,14 @@ impl App {
             world: World::new(),
             schedules,
 
-            event_queue
+            event_queue,
         };
 
         app.insert_resource(Windows {
             handle: app.event_queue.handle(),
-            active: vec![],
+            active: HashMap::new(),
             not_initalized: vec![],
+            can_draw: HashSet::default(),
         });
         app.insert_resource(client);
         app.insert_resource(gpu);
@@ -104,6 +106,8 @@ impl App {
         app.add_plugin(ContentPlugin);
 
         app.add_systems(Startup, init_windows);
+        app.add_systems(First, (mark_roots, remove_roots));
+        app.add_systems(UpdateRoot, set_window_size_at_root);
 
         Ok(app)
     }
@@ -138,14 +142,13 @@ impl App {
         self.world.run_schedule(Startup);
         loop {
             self.world.run_schedule(First);
-            self.world.run_schedule(UpdateTransforms);
+            self.world.run_schedule(UpdateRoot);
             self.world.run_schedule(Update);
             self.world.run_schedule(CollectDrawCommands);
             self.world.run_schedule(Render);
             let mut client = self.world.resource_mut::<Client>();
             self.event_queue.blocking_dispatch(&mut client.inner)?;
         }
-
     }
 
     pub fn add_window(&mut self, window: impl UserWindow) -> &mut Self {
@@ -155,8 +158,10 @@ impl App {
     }
 }
 
+static WINDOW_NEXT_ID: AtomicU16 = AtomicU16::new(0);
+
 fn init_windows(mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: Res<Gpu>) {
-    let mut active = Vec::with_capacity(windows.not_initalized.len());
+    let mut active = HashMap::with_capacity(windows.not_initalized.len());
 
     let qh = windows.handle.clone();
     windows.not_initalized.drain(..).for_each(|handle| {
@@ -177,13 +182,64 @@ fn init_windows(mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: R
         let window_ptr = WindowPointer::new(client.display_ptr, surface_ptr);
         let (surface, configuration) = gpu.create_surface(window_ptr, width, height).unwrap();
         let renderer = Renderer::new(&gpu, None, &surface).unwrap();
+        let id = WindowId(WINDOW_NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
         let window = Window::new(backend, surface, configuration, handle);
 
-        active.push(window);
+        active.insert(id, window);
     });
 
     windows.active.extend(active);
 }
+
+fn update_windows(mut windows: ResMut<Windows>, gpu: Res<Gpu>) {
+    let mut can_draw = std::mem::take(&mut windows.can_draw);
+    can_draw.clear();
+    windows.active.iter_mut().for_each(|(id, window)| {
+        let mut backend = window.backend.lock().unwrap();
+        if backend.can_resize() {
+            window.configuration.width = backend.width as u32;
+            window.configuration.height = backend.height as u32;
+            gpu.confugure_surface(&window.surface, &window.configuration);
+            backend.set_resized();
+        }
+
+        backend.frame();
+        if backend.can_draw() {
+            can_draw.insert(id.clone());
+        }
+    });
+
+    windows.can_draw.extend(can_draw);
+}
+
+fn mark_roots(mut commands: Commands, query: Query<Entity, (Without<Children>, Without<Root>)>) {
+    query.iter().for_each(|entity| {
+        commands.entity(entity).insert(Root);
+    });
+}
+
+fn remove_roots(mut commands: Commands, query: Query<Entity, (With<Children>, With<Root>)>) {
+    query.iter().for_each(|entity| {
+        commands.entity(entity).remove::<Root>();
+    });
+}
+
+fn set_window_size_at_root(
+    windows: Res<Windows>,
+    mut query: Query<(&mut Transform, &WindowId), With<Root>>,
+) {
+    query.iter_mut().for_each(|(mut transform, window_id)| {
+        let window = windows.active.get(window_id).unwrap();
+        transform.position = Vec2::ZERO;
+        transform.size = Vec2::new(
+            window.configuration.width as f32,
+            window.configuration.height as f32,
+        )
+    });
+}
+
+#[derive(Component)]
+pub(crate) struct Root;
 
 #[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct Startup;
@@ -192,10 +248,10 @@ pub struct Startup;
 pub struct First;
 
 #[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct Update;
+struct UpdateRoot;
 
 #[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
-struct UpdateTransforms;
+pub struct Update;
 
 #[derive(ScheduleLabel, Debug, Hash, PartialEq, Eq, Clone)]
 pub(crate) struct CollectDrawCommands;

@@ -1,13 +1,11 @@
 use std::collections::HashMap;
-
+use bevy_ecs::prelude::*;
 use crate::{
     ecs::{Text, ZOrder},
     types::{Color, Stroke},
     widget::Plugin,
-    CollectDrawCommands, Monitor, Render, TextureHandle, Transform,
+    CollectDrawCommands, Render, TextureHandle, Transform, WindowId, Windows,
 };
-use bevy_ecs::prelude::*;
-use wl_client::window::TargetMonitor;
 
 pub struct DrawRect {
     pub transform: Transform,
@@ -29,15 +27,15 @@ pub enum DrawRequest {
 
 #[derive(Default, Resource)]
 pub struct Commands {
-    pub inner: HashMap<TargetMonitor, Vec<(u32, DrawRequest)>>,
+    pub inner: HashMap<WindowId, Vec<(u16, DrawRequest)>>,
 }
 
 impl Commands {
-    fn get_mut_or_insert(&mut self, monitor: &TargetMonitor) -> &mut Vec<(u32, DrawRequest)> {
-        if self.inner.contains_key(monitor) {
-            self.inner.insert(monitor.clone(), vec![]);
+    fn get_mut_or_insert(&mut self, id: &WindowId) -> &mut Vec<(u16, DrawRequest)> {
+        if self.inner.contains_key(id) {
+            self.inner.insert(id.clone(), vec![]);
         }
-        self.inner.get_mut(monitor).unwrap()
+        self.inner.get_mut(id).unwrap()
     }
 
     fn clear(&mut self) {
@@ -46,11 +44,12 @@ impl Commands {
 }
 
 fn collect_draw_rect(
+    windows: Res<Windows>,
     mut commands: ResMut<Commands>,
     rects: Query<(
         &Transform,
         &Color,
-        &Monitor,
+        &WindowId,
         &ZOrder,
         Option<&TextureHandle>,
         Option<&Stroke>,
@@ -58,7 +57,11 @@ fn collect_draw_rect(
 ) {
     rects
         .iter()
-        .for_each(|(transform, color, monitor, z_order, texture, stroke)| {
+        .for_each(|(transform, color, window_id, z_order, texture, stroke)| {
+            if !windows.can_draw(window_id) {
+                return;
+            }
+
             let command = DrawRect {
                 transform: transform.clone(),
                 color: color.clone(),
@@ -66,25 +69,30 @@ fn collect_draw_rect(
                 texture: texture.cloned(),
             };
             commands
-                .get_mut_or_insert(&monitor.0)
+                .get_mut_or_insert(window_id)
                 .push((z_order.z, DrawRequest::Rect(command)));
         });
 }
 
 fn collect_draw_text(
+    windows: Res<Windows>,
     mut commands: ResMut<Commands>,
-    texts: Query<(&Transform, &Color, &Monitor, &ZOrder, &Text)>,
+    texts: Query<(&Transform, &Color, &WindowId, &ZOrder, &Text)>,
 ) {
     texts
         .iter()
-        .for_each(|(transform, color, monitor, z_order, text)| {
+        .for_each(|(transform, color, window_id, z_order, text)| {
+            if !windows.can_draw(window_id) {
+                return;
+            }
+
             let command = DrawText {
                 transform: transform.clone(),
                 color: color.clone(),
                 text: text.clone(),
             };
             commands
-                .get_mut_or_insert(&monitor.0)
+                .get_mut_or_insert(window_id)
                 .push((z_order.z, DrawRequest::Text(command)));
         });
 }

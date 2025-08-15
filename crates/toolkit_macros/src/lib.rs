@@ -107,6 +107,7 @@ const BUNDLE: &str = "bevy_ecs::prelude::Bundle";
 const DESIRED_SIZE: &str = "toolkit::widget::DesiredSize";
 const TARGET_MONITOR: &str = "toolkit::TargetMonitor";
 const MONITOR: &str = "toolkit::Monitor";
+const WINDOW_ID: &str = "toolkit::WindowId";
 
 #[proc_macro]
 pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -117,6 +118,7 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let desired_size_ty: Type = parse_str(DESIRED_SIZE).unwrap();
     let target_monitor_ty: Type = parse_str(TARGET_MONITOR).unwrap();
     let monitor_ty: Type = parse_str(MONITOR).unwrap();
+    let window_id_ty: Type = parse_str(WINDOW_ID).unwrap();
 
     let input = proc_macro2::TokenStream::from(input);
     let components: Components = syn::parse2(input).expect("dfsfs");
@@ -172,13 +174,15 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         }
 
         pub struct #builder_name<'commands, 'world, 'state> {
+            window_id: #window_id_ty,
             commands: &'commands mut #commands_ty,
             bundle: #bundle_name
         }
 
         impl<'commands, 'world, 'state> #builder_name<'commands, 'world, 'state> {
-            pub fn new(commands: &'commands mut #commands_ty) -> Self {
+            pub fn new(window_id: #window_id_ty, commands: &'commands mut #commands_ty) -> Self {
                 Self {
+                    window_id,
                     commands,
                     bundle: #bundle_name::default()
                 }
@@ -197,11 +201,11 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             }
 
             pub fn build_as_child_of(self, parent: #entity_ty) -> #entity_ty {
-                self.commands.spawn((self.bundle, #child_of_ty(parent))).id()
+                self.commands.spawn((self.window_id, self.bundle, #child_of_ty(parent))).id()
             }
 
             pub fn build(self) -> #entity_ty {
-                self.commands.spawn(self.bundle).id()
+                self.commands.spawn((self.window_id, self.bundle)).id()
             }
         }
     }

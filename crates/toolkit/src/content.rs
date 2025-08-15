@@ -1,4 +1,8 @@
-use bevy_ecs::{component::Component, resource::Resource, system::{Res, ResMut}};
+use bevy_ecs::{
+    component::Component,
+    resource::Resource,
+    system::{Res, ResMut},
+};
 use fontdue::{Font, FontSettings};
 use once_cell::sync::Lazy;
 use std::{
@@ -6,14 +10,16 @@ use std::{
     fs,
     path::PathBuf,
     sync::{
-        Arc,
         atomic::{AtomicUsize, Ordering},
+        Arc,
     },
 };
 use ttf_parser::Face;
 
 use crate::{
-    rendering::{material::Material, Gpu}, widget::Plugin, Error, First
+    rendering::{material::Material, Gpu},
+    widget::Plugin,
+    Error, First,
 };
 
 #[macro_export]

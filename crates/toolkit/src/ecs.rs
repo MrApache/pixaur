@@ -1,7 +1,6 @@
+use crate::widget::DesiredSize;
 use bevy_ecs::{component::HookContext, prelude::*, world::DeferredWorld};
 use glam::Vec2;
-use wl_client::window::TargetMonitor;
-use crate::widget::DesiredSize;
 
 #[derive(Default, Clone, Component)]
 pub struct Text {
@@ -12,7 +11,7 @@ pub struct Text {
 #[derive(Default, Clone, Component)]
 #[component(on_add = on_add_z_order)]
 pub(crate) struct ZOrder {
-    pub z: u32,
+    pub z: u16,
 }
 
 fn on_add_z_order(mut world: DeferredWorld, context: HookContext) {
@@ -41,14 +40,4 @@ pub struct WidgetBundle {
     order: ZOrder,
     transform: Transform,
     pub desired_size: DesiredSize,
-    pub monitor: Monitor,
-}
-
-#[derive(Default, Clone, Component)]
-pub struct Monitor(pub(crate) TargetMonitor);
-
-impl Monitor {
-    pub const fn new(monitor: TargetMonitor) -> Self {
-        Self(monitor)
-    }
 }

@@ -9,6 +9,7 @@ mod instance;
 mod text;
 mod vertex;
 
+use bevy_ecs::resource::Resource;
 pub use gpu::Gpu;
 
 use crate::error::Error;
@@ -24,6 +25,7 @@ use glam::Mat4;
 use std::collections::HashMap;
 use wgpu::*;
 
+#[derive(Resource)]
 pub struct Renderer {
     render_pipeline: RenderPipeline,
     mesh: QuadMesh,
