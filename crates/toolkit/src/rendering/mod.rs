@@ -118,9 +118,9 @@ impl Renderer {
 }
 
 fn render(
-    mut renderer: ResMut<Renderer>,
-    mut windows: ResMut<Windows>,
     mut commands: ResMut<super::commands::CommandBuffer>,
+    mut renderer: ResMut<Renderer>,
+    windows: Res<Windows>,
     content: Res<ContentManager>,
     gpu: Res<Gpu>,
 ) {
@@ -129,7 +129,6 @@ fn render(
             return;
         }
 
-        //let window = windows.active.get_mut(window_id).unwrap();
         let texture = window.surface.get_current_texture().unwrap();
         let image_view = texture
             .texture
@@ -185,7 +184,6 @@ fn render(
         }
 
         gpu.queue.submit(std::iter::once(command_encoder.finish()));
-        println!("Present");
         texture.present();
 
         window.backend.lock().unwrap().commit();

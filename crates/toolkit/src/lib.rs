@@ -37,7 +37,6 @@ pub use ecs::Transform;
 use crate::window::{Window, WindowRequest};
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::{ffi::c_void, ptr::NonNull};
 use wl_client::WlClient;
 
@@ -79,5 +78,5 @@ pub(crate) struct Client {
 unsafe impl Sync for Client {}
 unsafe impl Send for Client {}
 
-#[derive(Component, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Component, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct WindowId(pub(crate) u16);

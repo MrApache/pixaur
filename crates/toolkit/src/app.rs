@@ -222,7 +222,6 @@ fn update_windows(mut windows: ResMut<Windows>, gpu: Res<Gpu>) {
             window.configuration.height = backend.height as u32;
             gpu.confugure_surface(&window.surface, &window.configuration);
             backend.set_resized();
-            //backend.commit();
         }
 
         backend.frame();

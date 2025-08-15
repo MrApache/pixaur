@@ -4,7 +4,7 @@ use widgets::{
 };
 
 use toolkit::{
-    Anchor, ContentManager, Context, DesktopOptions, EventLoop, FontHandle, GUI, SpecialOptions,
+    Anchor, ContentManager, DesktopOptions, FontHandle, SpecialOptions,
     TextureHandle, UserWindow,
     glam::{Vec2, Vec4},
     include_asset,
