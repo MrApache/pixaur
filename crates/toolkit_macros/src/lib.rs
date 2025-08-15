@@ -116,8 +116,8 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let child_of_ty: Type = parse_str(CHILD_OF).unwrap();
     let bundle_ty: Type = parse_str(BUNDLE).unwrap();
     let desired_size_ty: Type = parse_str(DESIRED_SIZE).unwrap();
-    let target_monitor_ty: Type = parse_str(TARGET_MONITOR).unwrap();
-    let monitor_ty: Type = parse_str(MONITOR).unwrap();
+    //let target_monitor_ty: Type = parse_str(TARGET_MONITOR).unwrap();
+    //let monitor_ty: Type = parse_str(MONITOR).unwrap();
     let window_id_ty: Type = parse_str(WINDOW_ID).unwrap();
 
     let input = proc_macro2::TokenStream::from(input);
@@ -195,10 +195,10 @@ pub fn define_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 self
             }
 
-            pub fn target_monitor(mut self, value: #target_monitor_ty) -> Self {
-                self.bundle.widget_base.monitor = #monitor_ty::new(value);
-                self
-            }
+            //pub fn target_monitor(mut self, value: #target_monitor_ty) -> Self {
+            //    self.bundle.widget_base.monitor = #monitor_ty::new(value);
+            //    self
+            //}
 
             pub fn build_as_child_of(self, parent: #entity_ty) -> #entity_ty {
                 self.commands.spawn((self.window_id, self.bundle, #child_of_ty(parent))).id()

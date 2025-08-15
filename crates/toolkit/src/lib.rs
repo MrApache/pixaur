@@ -54,7 +54,7 @@ use wl_client::WlClient;
 
 pub trait UserWindow: Send + Sync + 'static {
     fn request(&self) -> WindowRequest;
-    fn setup(&self, commands: &mut Commands);
+    fn setup(&self, commands: &mut Commands, window_id: WindowId);
 }
 
 #[derive(Resource)]

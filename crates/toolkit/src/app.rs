@@ -166,7 +166,7 @@ impl App {
 
 static WINDOW_NEXT_ID: AtomicU16 = AtomicU16::new(0);
 
-fn init_windows(mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: Res<Gpu>) {
+fn init_windows(mut commands: Commands, mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: Res<Gpu>) {
     let mut active = HashMap::with_capacity(windows.not_initalized.len());
 
     let qh = windows.handle.clone();
@@ -188,6 +188,7 @@ fn init_windows(mut windows: ResMut<Windows>, mut client: ResMut<Client>, gpu: R
         let window_ptr = WindowPointer::new(client.display_ptr, surface_ptr);
         let (surface, configuration) = gpu.create_surface(window_ptr, width, height).unwrap();
         let id = WindowId(WINDOW_NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
+        handle.setup(&mut commands, id.clone());
         let window = Window::new(backend, surface, configuration, handle);
 
         active.insert(id, window);
