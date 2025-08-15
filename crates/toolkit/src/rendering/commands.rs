@@ -241,7 +241,7 @@ impl CommandBuffer {
     }
 
     fn get_mut_or_insert(&mut self, id: &WindowId) -> &mut PackedGroup {
-        if self.active_group.contains_key(id) {
+        if !self.active_group.contains_key(id) {
             self.active_group.insert(id.clone(), PackedGroup::default());
         }
         self.active_group.get_mut(id).unwrap()
@@ -267,7 +267,7 @@ pub struct UnsortedCommandBuffer {
 
 impl UnsortedCommandBuffer {
     fn get_mut_or_insert(&mut self, id: &WindowId) -> &mut Vec<(u16, DrawCommand)> {
-        if self.inner.contains_key(id) {
+        if !self.inner.contains_key(id) {
             self.inner.insert(id.clone(), vec![]);
         }
         self.inner.get_mut(id).unwrap()

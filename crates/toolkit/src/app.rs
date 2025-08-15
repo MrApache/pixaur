@@ -22,7 +22,6 @@ pub struct App {
     unique_plugins: HashSet<TypeId>,
 
     world: World,
-    schedules: Schedules,
 
     event_queue: EventQueue<WlClient>,
 }
@@ -94,11 +93,11 @@ impl App {
         let mut app = Self {
             unique_plugins: Default::default(),
             world: World::new(),
-            schedules,
 
             event_queue,
         };
 
+        app.insert_resource(schedules);
         app.insert_resource(renderer);
         app.insert_resource(Windows {
             handle: app.event_queue.handle(),
@@ -118,12 +117,22 @@ impl App {
         Ok(app)
     }
 
+    fn init_schedule(&mut self, label: impl ScheduleLabel) -> &mut Self {
+        let label = label.intern();
+        let mut schedules = self.world.resource_mut::<Schedules>();
+        if !schedules.contains(label) {
+            schedules.insert(Schedule::new(label));
+        }
+        self
+    }
+
     pub fn add_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
         systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
-        self.schedules.add_systems(schedule, systems);
+        let mut schedules = self.world.resource_mut::<Schedules>();
+        schedules.add_systems(schedule, systems);
         self
     }
 
