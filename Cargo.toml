@@ -3,6 +3,11 @@ default-members = ["crates/toolkit"]
 resolver = "2"
 members = [ "crates/*" ]
 
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+
 [workspace.dependencies]
 wl_client = {path = "crates/wl_client"}
 toolkit_macros = {path = "crates/toolkit_macros"}
@@ -45,3 +50,6 @@ paste = "1.0.15"
 syn = "2.0.105"
 quote = "1.0.40"
 proc-macro2 = "1.0.97"
+
+#debug
+tracy-client = "0.18.2"

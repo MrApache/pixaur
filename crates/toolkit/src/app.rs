@@ -157,6 +157,7 @@ impl App {
         let mut fps = FpsCounter::new(144);
         self.world.run_schedule(Startup);
         loop {
+            //tracy_client::Client::start();
             self.world.run_schedule(First);
             self.world.run_schedule(UpdateRoot);
             self.world.run_schedule(Update);
@@ -164,6 +165,7 @@ impl App {
             self.world.run_schedule(Render);
             let mut client = self.world.resource_mut::<Client>();
             self.event_queue.blocking_dispatch(&mut client.inner)?;
+            //self.event_queue.dispatch_pending(&mut client.inner)?;
             let tick = fps.tick();
             println!("FPS: {tick}");
         }

@@ -25,3 +25,6 @@ derive_more.workspace = true
 
 #test
 bevy_ecs.workspace = true
+
+#debug
+tracy-client.workspace = true
