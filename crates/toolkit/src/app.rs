@@ -165,7 +165,6 @@ impl App {
             self.world.run_schedule(Render);
             let mut client = self.world.resource_mut::<Client>();
             self.event_queue.blocking_dispatch(&mut client.inner)?;
-            //self.event_queue.dispatch_pending(&mut client.inner)?;
             let tick = fps.tick();
             println!("FPS: {tick}");
         }
