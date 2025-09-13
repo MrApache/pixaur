@@ -1,0 +1,95 @@
+name: Coverage
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Delete Deployment Environment
+        uses: strumwolf/delete-deployment-environment@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: github-pages
+          onlyRemoveDeployments: true
+  
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust (nightly)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - name: Install llvm-tools
+        run: rustup component add llvm-tools
+
+      - name: Install grcov
+        run: cargo install grcov --locked
+
+      - name: Build
+        env:
+          RUSTFLAGS: -Cinstrument-coverage
+        run: cargo build
+      - name: Test
+        env:
+          LLVM_PROFILE_FILE: grcov-%p-%m.profraw
+          RUSTFLAGS: -Cinstrument-coverage
+        run: cargo test
+
+      - name: Generate coverage report
+        run: |
+          mkdir -p target/coverage
+          grcov $(find . -name "grcov-*.profraw" -print) \
+            --binary-path ./target/debug/ \
+            -s . \
+            -t html \
+            --branch \
+            --ignore-not-existing \
+            --ignore "/*" \
+            -o target/coverage
+
+      - name: Move HTML report to root
+        run: |
+          mv ./target/coverage/html/* ./target/coverage/
+          rmdir ./target/coverage/html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/coverage
+          publish_branch: gh-pages
+
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup rust toolchain, cache and cargo-codspeed binary
+        uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-codspeed
+
+      - name: Build the benchmark target(s)
+        run: cargo codspeed build
+
+      - name: Run the benchmarks
+        uses: CodSpeedHQ/action@v3
+        with:
+          run: cargo codspeed run
+          token: ${{ secrets.CODSPEED_TOKEN }}
