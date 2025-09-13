@@ -1,7 +1,7 @@
 [workspace]
 default-members = ["crates/toolkit"]
 resolver = "2"
-members = [ "crates/*" ]
+members = [ "benchmarks/*", "crates/*" ]
 
 [workspace.dependencies]
 wl_client = {path = "crates/wl_client"}
@@ -36,6 +36,3 @@ glam = { version = "0.30.5", features = ["bytemuck"] }
 once_cell = "1.21.3"
 enum_dispatch = "0.3.13"
 derive_more = { version = "2.0.1", features = ["from"] }
-
-#test
-bevy_ecs = "0.16.1"

@@ -6,7 +6,7 @@ use widgets::{
 use toolkit::{
     glam::{Vec2, Vec4},
     include_asset,
-    types::*,
+    types::{Argb8888, Color, LinearGradient, Stroke, Texture},
     widget::Container,
     window::WindowRequest,
     Anchor, ContentManager, Context, DesktopOptions, EventLoop, FontHandle, SpecialOptions,
@@ -21,10 +21,7 @@ struct App {
 
 impl GUI for App {
     fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<App>>> {
-        vec![
-            Box::new(MainWindow::default()),
-            Box::new(SmartPanel)
-        ]
+        vec![Box::new(MainWindow::default()), Box::new(SmartPanel)]
     }
 
     fn load_content(&mut self, content: &mut ContentManager) {

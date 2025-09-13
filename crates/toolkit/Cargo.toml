@@ -20,6 +20,3 @@ guillotiere.workspace = true
 once_cell.workspace = true
 enum_dispatch.workspace = true
 derive_more.workspace = true
-
-#test
-bevy_ecs.workspace = true
