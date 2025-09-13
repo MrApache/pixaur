@@ -1,6 +1,7 @@
 @group(0) @binding(0) var texture: texture_2d<f32>;
 @group(0) @binding(1) var t_sampler: sampler;
 
+
 struct Instance {
     @location(1) uv: vec4<f32>,
     @location(2) size: vec2<f32>,
@@ -11,16 +12,20 @@ struct Instance {
     @location(6) model_matrix_3: vec4<f32>,
     @location(7) color: vec4<f32>,
 
-    @location(8) stroke_color: vec4<f32>,
-    @location(9) stroke_width: f32,
-    @location(10) stroke_corners: vec4<f32>,
+    @location(8) stroke_color_left: vec4<f32>,
+    @location(9) stroke_color_right: vec4<f32>,
+    @location(10) stroke_color_top: vec4<f32>,
+    @location(11) stroke_color_bottom: vec4<f32>,
 
-    @location(11) color_end: vec4<f32>,
-    @location(12) degree: f32,
+    @location(12) color_end: vec4<f32>,
 
-    @location(13) use_gradient: u32,
-    @location(14) support_stroke: u32,
+    //degree: f32, 
+    //use_gradient: u32,
+    //support_stroke: u32,
+    //stroke_width: f32,
+    @location(13) misc: vec4<f32>,
 };
+
 
 struct VertexPayload {
     @builtin(position) position: vec4<f32>,
@@ -28,14 +33,18 @@ struct VertexPayload {
     @location(1) size: vec2<f32>,
     @location(2) color: vec4<f32>,
 
-    @location(3) stroke_color: vec4<f32>,
-    @location(4) stroke_width: f32,
-    @location(5) stroke_corners: vec4<f32>,
-    @location(6) support_stroke: u32,
+    @location(3) stroke_color_left: vec4<f32>,
+    @location(4) stroke_color_right: vec4<f32>,
+    @location(5) stroke_color_top: vec4<f32>,
+    @location(6) stroke_color_bottom: vec4<f32>,
 
     @location(7) color_end: vec4<f32>,
-    @location(8) degree: f32,
-    @location(9) use_gradient: u32,
+
+    //degree: f32, 
+    //use_gradient: u32,
+    //support_stroke: u32,
+    //stroke_width: f32,
+    @location(8) misc: vec4<f32>,
 };
 
 struct Vertex {
@@ -68,25 +77,29 @@ fn vs_main(
     out.size = instance.size;
     out.color = instance.color;
 
-    out.stroke_color = instance.stroke_color;
-    out.stroke_width = instance.stroke_width;
-    out.stroke_corners = instance.stroke_corners;
-
+    out.stroke_color_left = instance.stroke_color_left;
+    out.stroke_color_right = instance.stroke_color_right;
+    out.stroke_color_top = instance.stroke_color_top;
+    out.stroke_color_bottom = instance.stroke_color_bottom;
     out.color_end = instance.color_end;
-    out.degree = instance.degree;
-    out.use_gradient = instance.use_gradient;
-    out.support_stroke = instance.support_stroke;
+    out.misc = instance.misc;
 
     return out;
 }
+
 
 @fragment
 fn fs_main(in: VertexPayload) -> @location(0) vec4<f32> {
     let texColor = textureSample(texture, t_sampler, in.uv);
     var baseColor = texColor * in.color;
 
-    if in.use_gradient >= 1u {
-        let angle = in.degree * 3.14159265 / 180.0;
+    let degree: f32 = in.misc.x;
+    let use_gradient: u32 = u32(in.misc.y);
+    let support_stroke: u32 = u32(in.misc.z);
+    let stroke_width: f32 = in.misc.w;
+
+    if use_gradient >= 1u {
+        let angle = degree * 3.14159265 / 180.0;
         let dir = vec2<f32>(cos(angle), sin(angle));
         let centered_uv = in.uv - vec2<f32>(0.5);
         let max_len = 0.707;
@@ -95,52 +108,28 @@ fn fs_main(in: VertexPayload) -> @location(0) vec4<f32> {
         baseColor = texColor * mix(in.color, in.color_end, t);
     }
 
-    if in.stroke_width > 0.0 && in.support_stroke >= 1u {
-        // Нормализация толщины (как в предыдущем решении)
+    if stroke_width > 0.0 && support_stroke >= 1u {
         let stroke_norm = vec2(
-            in.stroke_width / in.size.x,
-            in.stroke_width / in.size.y
+            stroke_width / in.size.x,
+            stroke_width / in.size.y
         );
 
-        // Расстояние до границ
-        let dist = vec2(
-            min(in.uv.x, 1.0 - in.uv.x),
-            min(in.uv.y, 1.0 - in.uv.y)
-        );
-        
-        // Основная обводка (жёсткий край)
-        let stroke_factor = 1.0 - smoothstep(
-            0.95,
-            1.05,
-            min(dist.x / stroke_norm.x, dist.y / stroke_norm.y)
-        );
-        
-        // Тень (мягкое свечение за обводкой)
-        let shadow_width = 1.5; // Пикселей
-        let shadow_norm = vec2(
-            (in.stroke_width + shadow_width) / in.size.x,
-            (in.stroke_width + shadow_width) / in.size.y
-        );
-        
-        let shadow_factor = 1.0 - smoothstep(
-            0.8, // Более плавный переход
-            1.2,
-            min(dist.x / shadow_norm.x, dist.y / shadow_norm.y)
-        );
-        
-        // Смешивание (основной цвет -> тень -> обводка)
-        let shadow_color = mix(
-            baseColor,
-            in.stroke_color * vec4(0.1, 0.1, 0.1, 1.0), // Затемнённый цвет обводки
-            shadow_factor - stroke_factor
-        );
-        
-        return mix(
-            shadow_color,
-            in.stroke_color,
-            stroke_factor
-        );
+        let left_factor = step(in.uv.x, stroke_norm.x);
+        let right_factor = step(1.0 - in.uv.x, stroke_norm.x);
+        let top_factor = step(in.uv.y, stroke_norm.y);
+        let bottom_factor = step(1.0 - in.uv.y, stroke_norm.y);
+
+        if (left_factor > 0.0) {
+            return in.stroke_color_left;
+        } else if (right_factor > 0.0) {
+            return in.stroke_color_right;
+        } else if (top_factor > 0.0) {
+            return in.stroke_color_top;
+        } else if (bottom_factor > 0.0) {
+            return in.stroke_color_bottom;
+        }
     }
 
     return baseColor;
 }
+

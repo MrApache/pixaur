@@ -4,13 +4,13 @@ use widgets::{
 };
 
 use toolkit::{
-    Anchor, ContentManager, Context, DesktopOptions, EventLoop, FontHandle, GUI, SpecialOptions,
-    TextureHandle, UserWindow,
     glam::{Vec2, Vec4},
     include_asset,
     types::*,
     widget::Container,
     window::WindowRequest,
+    Anchor, ContentManager, Context, DesktopOptions, EventLoop, FontHandle, SpecialOptions,
+    TextureHandle, UserWindow, GUI,
 };
 
 #[derive(Default)]
@@ -21,7 +21,10 @@ struct App {
 
 impl GUI for App {
     fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<App>>> {
-        vec![Box::new(MainWindow::default()), Box::new(SmartPanel)]
+        vec![
+            Box::new(MainWindow::default()),
+            Box::new(SmartPanel)
+        ]
     }
 
     fn load_content(&mut self, content: &mut ContentManager) {
@@ -70,7 +73,6 @@ impl UserWindow<App> for MainWindow {
         let mut text = Text::default();
         text.set_text("Hello, world! (1234567890-=_+qwertyuiop[]\\asd\nfghjkl;'zxcvbnm,./)");
 
-
         //text.value = "Hello, world!".to_string();
         text.color = Color::Simple(Argb8888::WHITE);
         //text.color = Color::LinearGradient(LinearGradient::new(Argb8888::RED, Argb8888::YELLOW));
@@ -96,27 +98,23 @@ impl UserWindow<App> for SmartPanel {
             .bottom(SpecialOptions {
                 anchor: Anchor::Top,
                 exclusive_zone: 35,
-                target: Default::default(),
+                target: toolkit::TargetMonitor::default(),
             })
-            .with_size(1920, 35)
+            .with_size(1920, 25)
     }
 
     fn setup(&self, _gui: &mut App) -> Box<dyn Container> {
         let mut panel = Panel::new();
-        panel.background = Color::Simple(Argb8888::BLUE).into();
-        panel.padding = Vec4::new(10.0, 10.0, 10.0, 10.0);
-
-        let mut child_panel = Panel::new();
-        child_panel.background = Color::Simple(Argb8888::RED).into();
-        panel.add_child(Box::new(child_panel));
-
-        let mut test_layout_widget = TestPanelLayoutWidget::default();
-        test_layout_widget.min = Vec2::new(10.0, 100.0);
-        panel.add_child(Box::new(test_layout_widget));
-
-        let mut child_panel = Panel::new();
-        child_panel.background = Color::Simple(Argb8888::GREEN).into();
-        panel.add_child(Box::new(child_panel));
+        panel.background = Color::Simple(Argb8888::new(212, 208, 200, 255)).into();
+        panel.padding = Vec4::ZERO;
+        panel.stroke = Stroke::none();
+        panel.stroke.width = 1.0;
+        panel.stroke.color = [
+            Argb8888::WHITE,
+            Argb8888::BLACK,
+            Argb8888::WHITE,
+            Argb8888::BLACK,
+        ];
 
         Box::new(panel)
     }

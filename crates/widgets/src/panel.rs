@@ -1,8 +1,8 @@
 use toolkit::{
     commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
     glam::{Vec2, Vec4},
-    types::styling::*,
-    types::*,
+    types::styling::BackgroundStyle,
+    types::{Argb8888, Color, Rect, Stroke},
     widget::{Container, DesiredSize, Widget},
 };
 
@@ -50,6 +50,7 @@ impl Default for Panel {
 }
 
 impl Panel {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             id: None,
@@ -85,8 +86,7 @@ impl Widget for Panel {
     fn id(&self) -> Option<&str> {
         if let Some(id) = &self.id {
             Some(id)
-        }
-        else {
+        } else {
             None
         }
     }
@@ -105,12 +105,16 @@ impl Widget for Panel {
 
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
         match &self.background {
-            BackgroundStyle::Color(color) => {
-                out.push(DrawRectCommand::new(self.rect.clone(), color.clone(), self.stroke.clone()))
-            }
-            BackgroundStyle::Texture(texture) => {
-                out.push(DrawTextureCommand::new(self.rect.clone(), texture.clone(), self.stroke.clone()))
-            }
+            BackgroundStyle::Color(color) => out.push(DrawRectCommand::new(
+                self.rect.clone(),
+                color.clone(),
+                self.stroke.clone(),
+            )),
+            BackgroundStyle::Texture(texture) => out.push(DrawTextureCommand::new(
+                self.rect.clone(),
+                texture.clone(),
+                self.stroke.clone(),
+            )),
         }
 
         self.content.iter().for_each(|w| {
@@ -118,13 +122,8 @@ impl Widget for Panel {
         });
     }
 
-
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
-        self.rect.min.x += self.stroke.width;
-        self.rect.min.y += self.stroke.width;
-        self.rect.max.x -= self.stroke.width;
-        self.rect.max.y -= self.stroke.width;
 
         // Учитываем padding с обеих сторон для вычисления внутренних границ
         let min_x = self.rect.min.x + self.padding.x; // left
@@ -161,7 +160,7 @@ impl Widget for Panel {
             let (width, height) = match child.desired_size() {
                 DesiredSize::Min(vec2) => (vec2.x, vec2.y.min(available_height)),
                 DesiredSize::Fill => (fill_width, available_height),
-                DesiredSize::FillMinY(y) => (fill_width, y.min(available_height))
+                DesiredSize::FillMinY(y) => (fill_width, y.min(available_height)),
             };
 
             let offset_y = match self.vertical_align {
@@ -182,7 +181,6 @@ impl Widget for Panel {
             };
 
             //println!("Offset: {offset_x}x{offset_y}");
-
 
             child.layout(child_bounds);
 

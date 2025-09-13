@@ -26,6 +26,7 @@ impl From<Corners> for Vec4 {
 }
 
 impl Corners {
+    #[must_use]
     pub fn none() -> Self {
         Self {
             left_top: 0.0,
