@@ -3,6 +3,13 @@ name = "example"
 version = "0.1.0"
 edition = "2024"
 
+[[bench]]
+name = "benchmark"
+harness = false
+
+[dev-dependencies]
+divan = { version = "3.0.5", package = "codspeed-divan-compat" }
+
 [dependencies]
 widgets.workspace = true
 toolkit.workspace = true

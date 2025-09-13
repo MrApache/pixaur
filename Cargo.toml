@@ -1,7 +1,7 @@
 [workspace]
 default-members = ["crates/toolkit"]
 resolver = "2"
-members = [ "benchmarks/*", "crates/*" ]
+members = [ "crates/*" ]
 
 [workspace.dependencies]
 wl_client = {path = "crates/wl_client"}
