@@ -1,6 +1,11 @@
 use glam::Vec2;
 
-use crate::{commands::CommandBuffer, types::Rect, widget::{Container, Widget}, Context, UserWindow, GUI};
+use crate::{
+    commands::CommandBuffer,
+    types::Rect,
+    widget::{Container, Widget},
+    Context, UserWindow, GUI,
+};
 
 struct HeadlessWindow<W: Widget, R: Container<W>, T: GUI<W, R>> {
     frontend: R,

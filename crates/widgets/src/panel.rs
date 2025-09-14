@@ -112,6 +112,9 @@ impl<W: Widget> Widget for Panel<W> {
     }
 
     fn layout(&mut self, bounds: Rect) {
+        if let Some(id) = &self.id && id == "Id" {
+            println!();
+        }
         self.rect = bounds;
 
         // Учитываем padding с обеих сторон для вычисления внутренних границ
@@ -178,7 +181,7 @@ impl<W: Widget> Widget for Panel<W> {
                 cursor_x += self.spacing;
             }
 
-            if cursor_x >= max_x {
+            if cursor_x >= max_x + min_x{
                 break;
             }
         }
