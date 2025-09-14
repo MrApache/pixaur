@@ -1,3 +1,4 @@
+/*
 use toolkit::{
     types::{Argb8888, Color, Stroke},
     widget::Container,
@@ -55,3 +56,7 @@ fn main() -> Result<(), Error> {
     let mut event_loop = EventLoop::new(App::default())?;
     event_loop.run()
 }
+
+*/
+
+fn main() {}

@@ -29,10 +29,10 @@ pub enum VerticalAlign {
     End,
 }
 
-pub struct Panel {
+pub struct Panel<W: Widget> {
     id: Option<String>,
     rect: Rect,
-    content: Vec<Box<dyn Widget>>,
+    content: Vec<W>,
     pub padding: Vec4,
     pub spacing: f32,
     pub mode: LayoutMode,
@@ -43,13 +43,13 @@ pub struct Panel {
     pub stroke: Stroke,
 }
 
-impl Default for Panel {
+impl<W: Widget> Default for Panel<W> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Panel {
+impl<W: Widget> Panel<W> {
     #[must_use]
     pub fn new() -> Self {
         Self::with_id(String::new())
@@ -71,7 +71,7 @@ impl Panel {
     }
 }
 
-impl Widget for Panel {
+impl<W: Widget> Widget for Panel<W> {
     fn id(&self) -> Option<&str> {
         if let Some(id) = &self.id {
             Some(id)
@@ -185,16 +185,16 @@ impl Widget for Panel {
     }
 }
 
-impl Container for Panel {
-    fn add_child(&mut self, child: Box<dyn Widget>) {
+impl<W: Widget> Container<W> for Panel<W> {
+    fn add_child(&mut self, child: W) {
         self.content.push(child);
     }
 
-    fn children(&self) -> &[Box<dyn Widget>] {
+    fn children(&self) -> &[W] {
         &self.content
     }
 
-    fn children_mut(&mut self) -> &mut [Box<dyn Widget>] {
+    fn children_mut(&mut self) -> &mut [W] {
         &mut self.content
     }
 }

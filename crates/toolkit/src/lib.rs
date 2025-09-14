@@ -35,12 +35,12 @@ pub use wl_client::{
 };
 
 #[allow(unused)]
-pub trait GUI {
+pub trait GUI<W: Widget, R: Container<W>> {
     fn load_content(&mut self, content: &mut ContentManager) {}
-    fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<Self>>>;
+    fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<W, R, Self>>>;
 }
 
-pub struct EventLoop<T: GUI> {
+pub struct EventLoop<W: Widget, R: Container<W>, T: GUI<W, R>> {
     gui: T,
     content: ContentManager,
 
@@ -49,9 +49,12 @@ pub struct EventLoop<T: GUI> {
     display_ptr: NonNull<c_void>,
 
     gpu: Gpu,
+
+    _phantom0: std::marker::PhantomData<W>,
+    _phantom1: std::marker::PhantomData<R>,
 }
 
-impl<T: GUI> EventLoop<T> {
+impl<W: Widget, R: Container<W>, T: GUI<W, R>> EventLoop<W, R ,T> {
     pub fn new(app: T) -> Result<Self, Error> {
         let conn = Connection::connect_to_env()?;
 
@@ -99,6 +102,8 @@ impl<T: GUI> EventLoop<T> {
             display_ptr,
 
             gpu,
+            _phantom0: std::marker::PhantomData,
+            _phantom1: std::marker::PhantomData,
         })
     }
 
@@ -133,6 +138,7 @@ impl<T: GUI> EventLoop<T> {
 
                     let mut context = Context {
                         root: &mut window.frontend,
+                        _phantom: std::marker::PhantomData,
                     };
 
                     window.handle.update(&mut self.gui, &mut context);
@@ -168,7 +174,7 @@ impl<T: GUI> EventLoop<T> {
         }
     }
 
-    fn init_windows_backends(&mut self) -> Result<Vec<Window<T>>, Error> {
+    fn init_windows_backends(&mut self) -> Result<Vec<Window<W, R, T>>, Error> {
         let user_windows = self.gui.setup_windows();
         let mut backends = Vec::with_capacity(user_windows.len());
         let qh = self.event_queue.handle();
@@ -206,18 +212,21 @@ impl<T: GUI> EventLoop<T> {
     }
 }
 
-pub trait UserWindow<T: GUI> {
+pub trait UserWindow<W: Widget, R: Container<W>, T: GUI<W, R>> {
     fn request(&self) -> WindowRequest;
-    fn setup(&self, gui: &mut T) -> Box<dyn Container>;
-    fn update<'ctx>(&mut self, gui: &mut T, context: &'ctx mut Context<'ctx>);
+    fn setup(&self, gui: &mut T) -> R;
+    fn update<'ctx>(&mut self, gui: &mut T, context: &'ctx mut Context<'ctx, W, R>);
 }
 
-pub struct Context<'a> {
-    root: &'a mut Box<dyn Container>,
+pub struct Context<'a, W: Widget, R: Container<W>> {
+    root: &'a mut R,
+    _phantom: std::marker::PhantomData<W>
 }
 
-impl<'a> Context<'a> {
-    fn internal_get_by_id<W: Widget>(container: &'a dyn Container, id: &str) -> Option<&'a W> {
+/*
+
+impl<'a, W: Widget, R: Container<W>> Context<'a, W, R> {
+    fn internal_get_by_id(container: &'a R, id: &str) -> Option<&'a W> {
         for w in container.children() {
             if let Some(w_id) = w.id() {
                 if w_id.eq(id) {
@@ -233,8 +242,8 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn internal_get_mut_by_id<W: Widget>(
-        container: &'a mut dyn Container,
+    fn internal_get_mut_by_id(
+        container: &'a mut R,
         id: &str,
     ) -> Option<&'a mut W> {
         for w in container.children_mut() {
@@ -253,11 +262,13 @@ impl<'a> Context<'a> {
     }
 
     #[must_use]
-    pub fn get_by_id<W: Widget>(&'a self, id: &str) -> Option<&'a W> {
+    pub fn get_by_id(&'a self, id: &str) -> Option<&'a W> {
         Self::internal_get_by_id(self.root.as_ref(), id)
     }
 
-    pub fn get_mut_by_id<W: Widget>(&'a mut self, id: &str) -> Option<&'a mut W> {
+    pub fn get_mut_by_id(&'a mut self, id: &str) -> Option<&'a mut W> {
         Self::internal_get_mut_by_id(self.root.as_mut(), id)
     }
 }
+
+*/

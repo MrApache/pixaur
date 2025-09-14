@@ -19,20 +19,20 @@ pub enum DesiredSize {
 pub trait Widget: Any + Sync + Send {
     fn id(&self) -> Option<&str>;
     fn desired_size(&self) -> DesiredSize;
-    fn as_container(&self) -> Option<&dyn Container> {
-        None
-    }
-    fn as_container_mut(&mut self) -> Option<&mut dyn Container> {
-        None
-    }
+    //fn as_container(&self) -> Option<&dyn Container> {
+    //    None
+    //}
+    //fn as_container_mut(&mut self) -> Option<&mut dyn Container> {
+    //    None
+    //}
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);
     fn layout(&mut self, bounds: Rect);
 }
 
-pub trait Container: Widget {
-    fn add_child(&mut self, child: Box<dyn Widget>);
-    fn children(&self) -> &[Box<dyn Widget>];
-    fn children_mut(&mut self) -> &mut [Box<dyn Widget>];
+pub trait Container<T: Widget>: Widget {
+    fn add_child(&mut self, child: T);
+    fn children(&self) -> &[T];
+    fn children_mut(&mut self) -> &mut [T];
 }

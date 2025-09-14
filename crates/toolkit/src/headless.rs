@@ -1,18 +1,18 @@
 use glam::Vec2;
 
-use crate::{commands::CommandBuffer, types::Rect, widget::Container, Context, UserWindow, GUI};
+use crate::{commands::CommandBuffer, types::Rect, widget::{Container, Widget}, Context, UserWindow, GUI};
 
-struct HeadlessWindow<T: GUI> {
-    frontend: Box<dyn Container>,
-    handle: Box<dyn UserWindow<T>>,
+struct HeadlessWindow<W: Widget, R: Container<W>, T: GUI<W, R>> {
+    frontend: R,
+    handle: Box<dyn UserWindow<W, R, T>>,
 }
 
-pub struct HeadlessEventLoop<T: GUI> {
+pub struct HeadlessEventLoop<W: Widget, R: Container<W>, T: GUI<W, R>> {
     gui: T,
-    windows: Vec<HeadlessWindow<T>>,
+    windows: Vec<HeadlessWindow<W, R, T>>,
 }
 
-impl<T: GUI> HeadlessEventLoop<T> {
+impl<W: Widget, R: Container<W>, T: GUI<W, R>> HeadlessEventLoop<W, R, T> {
     pub fn new(mut app: T) -> Self {
         let windows = app
             .setup_windows()
@@ -29,6 +29,7 @@ impl<T: GUI> HeadlessEventLoop<T> {
         for window in &mut self.windows {
             let mut context = Context {
                 root: &mut window.frontend,
+                _phantom: std::marker::PhantomData,
             };
 
             window.handle.update(&mut self.gui, &mut context);
