@@ -85,7 +85,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">use crate::{commands::CommandBuffer, types::Rect, widget::Container, Context, UserWindow, GUI};</pre>
+                <pre class="has-background-white py-0 px-2">use crate::{commands::CommandBuffer, types::Rect, widget::{Container, Widget}, Context, UserWindow, GUI};</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -117,7 +117,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">struct HeadlessWindow&lt;T: GUI&gt; {</pre>
+                <pre class="has-background-white py-0 px-2">struct HeadlessWindow&lt;W: Widget, R: Container&lt;W&gt;, T: GUI&lt;W, R&gt;&gt; {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -133,7 +133,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">    frontend: Box&lt;dyn Container&gt;,</pre>
+                <pre class="has-background-white py-0 px-2">    frontend: R,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -149,7 +149,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">    handle: Box&lt;dyn UserWindow&lt;T&gt;&gt;,</pre>
+                <pre class="has-background-white py-0 px-2">    handle: Box&lt;dyn UserWindow&lt;W, R, T&gt;&gt;,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -197,7 +197,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">pub struct HeadlessEventLoop&lt;T: GUI&gt; {</pre>
+                <pre class="has-background-white py-0 px-2">pub struct HeadlessEventLoop&lt;W: Widget, R: Container&lt;W&gt;, T: GUI&lt;W, R&gt;&gt; {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -229,7 +229,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">    windows: Vec&lt;HeadlessWindow&lt;T&gt;&gt;,</pre>
+                <pre class="has-background-white py-0 px-2">    windows: Vec&lt;HeadlessWindow&lt;W, R, T&gt;&gt;,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -277,7 +277,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">impl&lt;T: GUI&gt; HeadlessEventLoop&lt;T&gt; {</pre>
+                <pre class="has-background-white py-0 px-2">impl&lt;W: Widget, R: Container&lt;W&gt;, T: GUI&lt;W, R&gt;&gt; HeadlessEventLoop&lt;W, R, T&gt; {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -549,7 +549,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">            };</pre>
+                <pre class="has-background-danger-light py-0 px-2">                _phantom: std::marker::PhantomData,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -565,7 +565,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2"></pre>
+                <pre class="has-background-danger-light py-0 px-2">            };</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -828,7 +828,7 @@
         <footer class="footer">
             
                 <div class="content has-text-centered">
-                    <p class="heading">Date: 2025-09-14 13:46</p>
+                    <p class="heading">Date: 2025-09-14 16:25</p>
                 </div>
             
         </footer>
