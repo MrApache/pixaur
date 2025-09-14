@@ -1,11 +1,13 @@
-use std::collections::HashMap;
-
 use fontdue::{Font, Metrics};
 use glam::Vec4;
 use guillotiere::AtlasAllocator;
+use std::collections::HashMap;
 use wgpu::{FilterMode, TextureFormat};
 
-use crate::rendering::{Gpu, material::Material};
+use crate::rendering::{
+    material::{Material, MaterialDescriptor},
+    Gpu,
+};
 
 #[derive(Default)]
 pub struct FontAtlasSet {
@@ -99,12 +101,14 @@ impl FontAtlas {
     pub fn get_or_add_material(&mut self, gpu: &Gpu) -> &Material {
         if self.material.is_none() {
             self.material = Some(Material::from_pixels(
-                "Glyph atlas",
-                &self.texture,
-                (self.size, self.size),
-                TextureFormat::Rgba8Unorm,
-                FilterMode::Linear,
-                FilterMode::Nearest,
+                &MaterialDescriptor {
+                    label: "Glyph atlas",
+                    pixels: &self.texture,
+                    size: (self.size, self.size),
+                    format: TextureFormat::Rgba8Unorm,
+                    mag_filter: FilterMode::Linear,
+                    min_filter: FilterMode::Nearest,
+                },
                 &gpu.device,
                 &gpu.queue,
             ));

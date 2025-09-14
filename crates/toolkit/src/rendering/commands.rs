@@ -49,15 +49,14 @@ impl DrawDispatcher for DrawRectCommand {
     }
 
     fn prepare(&mut self, pipeline: &mut Renderer, _renderpass: &mut RenderPass) {
-        const UV0: Vec2 = Vec2::new(0.0, 0.0);
-        const UV1: Vec2 = Vec2::new(1.0, 0.0);
-        const UV2: Vec2 = Vec2::new(1.0, 1.0);
-        const UV3: Vec2 = Vec2::new(0.0, 1.0);
+        const UV: [Vec2; 4] = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(0.0, 1.0)
+        ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
-            UV0,
-            UV1,
-            UV2,
-            UV3,
+            UV,
             self.rect.min,
             self.rect.max,
             &self.color,
@@ -100,15 +99,14 @@ impl DrawDispatcher for DrawTextureCommand {
     }
 
     fn prepare(&mut self, pipeline: &mut Renderer, _renderpass: &mut RenderPass) {
-        const UV0: Vec2 = Vec2::new(0.0, 0.0);
-        const UV1: Vec2 = Vec2::new(1.0, 0.0);
-        const UV2: Vec2 = Vec2::new(1.0, 1.0);
-        const UV3: Vec2 = Vec2::new(0.0, 1.0);
+        const UV: [Vec2; 4] = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(0.0, 1.0)
+        ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
-            UV0,
-            UV1,
-            UV2,
-            UV3,
+            UV,
             self.rect.min,
             self.rect.max,
             &self.texture.color,

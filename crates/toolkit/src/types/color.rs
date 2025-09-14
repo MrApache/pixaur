@@ -39,31 +39,19 @@ impl Argb8888 {
     pub const PINK: Self = Self::new(255, 192, 203, 255);
     pub const TRANSPARENT: Self = Self::new(0, 0, 0, 0);
 
+    #[must_use]
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
-    }
-
-    pub fn lerp(&self, other: &Self, t: f32) -> Self {
-        fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
-            ((a as f32) + (b as f32 - a as f32) * t).round() as u8
-        }
-
-        Self {
-            a: lerp_u8(self.a, other.a, t),
-            r: lerp_u8(self.r, other.r, t),
-            g: lerp_u8(self.g, other.g, t),
-            b: lerp_u8(self.b, other.b, t),
-        }
     }
 }
 
 impl From<Argb8888> for wgpu::Color {
     fn from(value: Argb8888) -> wgpu::Color {
         wgpu::Color {
-            r: value.r as f64 / 255.0,
-            g: value.g as f64 / 255.0,
-            b: value.b as f64 / 255.0,
-            a: value.a as f64 / 255.0,
+            r: f64::from(value.r) / 255.0,
+            g: f64::from(value.g) / 255.0,
+            b: f64::from(value.b) / 255.0,
+            a: f64::from(value.a) / 255.0,
         }
     }
 }
@@ -77,10 +65,10 @@ impl From<Argb8888> for Vec4 {
 impl From<&Argb8888> for Vec4 {
     fn from(value: &Argb8888) -> Self {
         Vec4::new(
-            value.r as f32 / 255.0,
-            value.g as f32 / 255.0,
-            value.b as f32 / 255.0,
-            value.a as f32 / 255.0,
+            f32::from(value.r) / 255.0,
+            f32::from(value.g) / 255.0,
+            f32::from(value.b) / 255.0,
+            f32::from(value.a) / 255.0,
         )
     }
 }
@@ -93,6 +81,7 @@ pub struct LinearGradient {
 }
 
 impl LinearGradient {
+    #[must_use]
     pub const fn new(from: Argb8888, to: Argb8888, degree: f32) -> Self {
         Self { from, to, degree }
     }

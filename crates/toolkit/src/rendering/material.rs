@@ -8,36 +8,40 @@ use wgpu::{
     TextureViewDimension,
 };
 
+pub struct MaterialDescriptor<'a> {
+    pub label: &'static str,
+    pub pixels: &'a [u8],
+    pub size: (u32, u32),
+    pub format: TextureFormat,
+    pub mag_filter: FilterMode,
+    pub min_filter: FilterMode,
+}
+
 pub struct Material {
     pub bind_group: BindGroup,
 }
 
 impl Material {
     pub(crate) fn from_pixels(
-        label: &'static str,
-        pixels: &[u8],
-        size: (u32, u32),
-        format: TextureFormat,
-        mag_filter: FilterMode,
-        min_filter: FilterMode,
+        desc: &MaterialDescriptor,
         device: &Device,
         queue: &Queue,
     ) -> Self {
         let texture_size = Extent3d {
-            width: size.0,
-            height: size.1,
+            width: desc.size.0,
+            height: desc.size.1,
             depth_or_array_layers: 1,
         };
 
         let texture_descriptor = TextureDescriptor {
-            label: Some(label),
+            label: Some(desc.label),
             size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format,
+            format: desc.format,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-            view_formats: &[format],
+            view_formats: &[desc.format],
         };
 
         let texture = device.create_texture(&texture_descriptor);
@@ -48,11 +52,11 @@ impl Material {
                 origin: Origin3d::ZERO,
                 aspect: TextureAspect::All,
             },
-            pixels,
+            desc.pixels,
             TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(size.0 * 4),
-                rows_per_image: Some(size.1),
+                bytes_per_row: Some(desc.size.0 * 4),
+                rows_per_image: Some(desc.size.1),
             },
             texture_size,
         );
@@ -62,8 +66,8 @@ impl Material {
             address_mode_u: AddressMode::Repeat,
             address_mode_v: AddressMode::Repeat,
             address_mode_w: AddressMode::Repeat,
-            mag_filter,
-            min_filter,
+            mag_filter: desc.mag_filter,
+            min_filter: desc.min_filter,
             ..Default::default()
         };
         let sampler = device.create_sampler(&sampler_descriptor);
@@ -93,7 +97,7 @@ impl Material {
         let mut builder = BindGroupBuilder::new(device);
         builder.set_layout(&layout);
         builder.add_material(&view, &sampler);
-        let bind_group = builder.build(label);
+        let bind_group = builder.build(desc.label);
 
         Material { bind_group }
     }
@@ -106,12 +110,14 @@ impl Material {
         queue: &Queue,
     ) -> Self {
         Self::from_pixels(
-            label,
-            pixels,
-            size,
-            TextureFormat::Rgba8Unorm,
-            FilterMode::Linear,
-            FilterMode::Nearest,
+            &MaterialDescriptor {
+                label,
+                pixels,
+                size,
+                format: TextureFormat::Rgba8Unorm,
+                mag_filter: FilterMode::Linear,
+                min_filter: FilterMode::Nearest,
+            },
             device,
             queue,
         )

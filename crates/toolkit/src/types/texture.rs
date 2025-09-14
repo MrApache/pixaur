@@ -10,6 +10,7 @@ pub struct Texture {
 }
 
 impl Texture {
+    #[must_use]
     pub const fn new(handle: TextureHandle) -> Self {
         Self {
             color: Color::Simple(Argb8888::WHITE),
@@ -17,6 +18,7 @@ impl Texture {
         }
     }
 
+    #[must_use]
     pub fn with_color(mut self, color: impl Into<Color>) -> Self {
         self.color = color.into();
         self

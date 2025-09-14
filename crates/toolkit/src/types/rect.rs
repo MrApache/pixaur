@@ -7,6 +7,7 @@ pub struct Rect {
 }
 
 impl Rect {
+    #[must_use]
     pub fn new(position: Vec2, size: Vec2) -> Self {
         Self {
             min: position,
@@ -14,6 +15,7 @@ impl Rect {
         }
     }
 
+    #[must_use]
     pub const fn from_size(size: Vec2) -> Self {
         Self {
             min: Vec2::ZERO,
@@ -21,10 +23,12 @@ impl Rect {
         }
     }
 
+    #[must_use]
     pub const fn width(&self) -> f32 {
         self.max.x - self.min.x
     }
 
+    #[must_use]
     pub const fn height(&self) -> f32 {
         self.max.y - self.min.y
     }

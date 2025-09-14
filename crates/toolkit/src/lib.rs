@@ -15,7 +15,6 @@ pub mod widget;
 pub mod window;
 
 use crate::{
-    debug::FpsCounter,
     rendering::{commands::CommandBuffer, Gpu, Renderer},
     types::Rect,
     widget::{Container, Widget},

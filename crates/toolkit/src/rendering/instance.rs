@@ -106,20 +106,17 @@ impl InstanceData {
     }
 
     pub fn new_uv_2(
-        uv0: Vec2,
-        uv1: Vec2,
-        uv2: Vec2,
-        uv3: Vec2,
+        uv: [Vec2; 4],
         position: Vec2,
         size: Vec2,
         color: &types::Color,
         stroke: Option<Stroke>,
         proj: Mat4,
     ) -> Self {
-        let u_min = uv0.x.min(uv1.x).min(uv2.x).min(uv3.x);
-        let v_min = uv0.y.min(uv1.y).min(uv2.y).min(uv3.y);
-        let u_max = uv0.x.max(uv1.x).max(uv2.x).max(uv3.x);
-        let v_max = uv0.y.max(uv1.y).max(uv2.y).max(uv3.y);
+        let u_min = uv[0].x.min(uv[1].x).min(uv[2].x).min(uv[3].x);
+        let v_min = uv[0].y.min(uv[1].y).min(uv[2].y).min(uv[3].y);
+        let u_max = uv[0].x.max(uv[1].x).max(uv[2].x).max(uv[3].x);
+        let v_max = uv[0].y.max(uv[1].y).max(uv[2].y).max(uv[3].y);
 
         let uv_rect = Vec4::new(u_min, v_min, u_max, v_max);
 
