@@ -19,10 +19,7 @@ wayland-protocols = { version = "0.32.9", features = ["client"] }
 tempfile = "3.20.0"
 memmap2 = "0.9.7"
 
-uuid = { version = "1.17.0", features = ["v4"]}
-
 #GUI
-swash = "0.2.5"
 fontdue = "0.9.3"
 ttf-parser = "0.25.1"
 guillotiere = "0.6.2"
@@ -37,6 +34,5 @@ bytemuck = "1.23.1"
 image = "0.25.6"
 glam = { version = "0.30.5", features = ["bytemuck"] }
 
-once_cell = "1.21.3"
 enum_dispatch = "0.3.13"
 derive_more = { version = "2.0.1", features = ["from"] }

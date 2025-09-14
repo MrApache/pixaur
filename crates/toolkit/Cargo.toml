@@ -5,9 +5,7 @@ edition = "2024"
 
 [dependencies]
 wayland-client.workspace = true
-wayland-backend.workspace = true
 wl_client.workspace = true
-swash.workspace = true
 fontdue.workspace = true
 ttf-parser.workspace = true
 wgpu.workspace = true
@@ -17,6 +15,5 @@ bytemuck.workspace = true
 image.workspace = true
 glam.workspace = true
 guillotiere.workspace = true
-once_cell.workspace = true
 enum_dispatch.workspace = true
 derive_more.workspace = true
