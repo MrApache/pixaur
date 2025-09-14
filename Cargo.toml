@@ -3,6 +3,10 @@ default-members = ["crates/toolkit"]
 resolver = "2"
 members = [ "crates/*" ]
 
+[profile.release]
+lto = true
+codegen-units = 1
+
 [workspace.dependencies]
 wl_client = {path = "crates/wl_client"}
 toolkit = {path = "crates/toolkit"}

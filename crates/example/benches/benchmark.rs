@@ -11,8 +11,13 @@ fn event_loop_init() {
 }
 
 #[divan::bench]
-fn run_event_loop() {
+fn run_logic() {
     let mut event_loop = HeadlessEventLoop::new(App::default());
     event_loop.run_logic();
+}
+
+#[divan::bench]
+fn run_draw() {
+    let mut event_loop = HeadlessEventLoop::new(App::default());
     event_loop.run_draw();
 }
