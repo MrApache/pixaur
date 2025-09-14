@@ -1,6 +1,9 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_precision_loss)]
 
+#[cfg(feature = "derive")]
+pub use toolkit_derive::*;
+
 pub mod headless;
 
 mod content;
@@ -19,7 +22,6 @@ pub mod window;
 use crate::{
     rendering::{commands::CommandBuffer, Gpu, Renderer},
     types::Rect,
-    widget::{Container, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
 pub use error::*;
@@ -34,14 +36,8 @@ pub use wl_client::{
     Anchor,
 };
 
-#[allow(unused)]
-pub trait GUI<W: Widget, R: Container<W>> {
-    fn load_content(&mut self, content: &mut ContentManager) {}
-    fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<W, R, Self>>>;
-}
-
-pub struct EventLoop<W: Widget, R: Container<W>, T: GUI<W, R>> {
-    gui: T,
+pub struct EventLoop<G: GUI> {
+    gui: G,
     content: ContentManager,
 
     client: WlClient,
@@ -49,13 +45,10 @@ pub struct EventLoop<W: Widget, R: Container<W>, T: GUI<W, R>> {
     display_ptr: NonNull<c_void>,
 
     gpu: Gpu,
-
-    _phantom0: std::marker::PhantomData<W>,
-    _phantom1: std::marker::PhantomData<R>,
 }
 
-impl<W: Widget, R: Container<W>, T: GUI<W, R>> EventLoop<W, R ,T> {
-    pub fn new(app: T) -> Result<Self, Error> {
+impl<G: GUI> EventLoop<G> {
+    pub fn new(app: G) -> Result<Self, Error> {
         let conn = Connection::connect_to_env()?;
 
         let display = conn.display();
@@ -102,8 +95,6 @@ impl<W: Widget, R: Container<W>, T: GUI<W, R>> EventLoop<W, R ,T> {
             display_ptr,
 
             gpu,
-            _phantom0: std::marker::PhantomData,
-            _phantom1: std::marker::PhantomData,
         })
     }
 
@@ -136,12 +127,7 @@ impl<W: Widget, R: Container<W>, T: GUI<W, R>> EventLoop<W, R ,T> {
                         backend.set_resized();
                     }
 
-                    let mut context = Context {
-                        root: &mut window.frontend,
-                        _phantom: std::marker::PhantomData,
-                    };
-
-                    window.handle.update(&mut self.gui, &mut context);
+                    window.frontend.update(&mut self.gui);
 
                     backend.frame();
                     if !backend.can_draw() {
@@ -174,13 +160,13 @@ impl<W: Widget, R: Container<W>, T: GUI<W, R>> EventLoop<W, R ,T> {
         }
     }
 
-    fn init_windows_backends(&mut self) -> Result<Vec<Window<W, R, T>>, Error> {
+    fn init_windows_backends(&mut self) -> Result<Vec<Window<G>>, Error> {
         let user_windows = self.gui.setup_windows();
         let mut backends = Vec::with_capacity(user_windows.len());
         let qh = self.event_queue.handle();
 
-        user_windows.into_iter().try_for_each(|handle| {
-            let request = handle.request();
+        user_windows.into_iter().try_for_each(|mut frontend| {
+            let request = frontend.request();
             let backend = self.client.create_window_backend(
                 qh.clone(),
                 request.id,
@@ -199,9 +185,9 @@ impl<W: Widget, R: Container<W>, T: GUI<W, R>> EventLoop<W, R ,T> {
 
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
             let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
-            let frontend = handle.setup(&mut self.gui);
             let renderer = Renderer::new(&self.gpu, None, &surface)?;
-            let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
+            frontend.setup(&mut self.gui);
+            let window = Window::new(frontend, backend, surface, configuration, renderer);
 
             backends.push(window);
 
@@ -212,19 +198,28 @@ impl<W: Widget, R: Container<W>, T: GUI<W, R>> EventLoop<W, R ,T> {
     }
 }
 
-pub trait UserWindow<W: Widget, R: Container<W>, T: GUI<W, R>> {
-    fn request(&self) -> WindowRequest;
-    fn setup(&self, gui: &mut T) -> R;
-    fn update<'ctx>(&mut self, gui: &mut T, context: &'ctx mut Context<'ctx, W, R>);
+#[allow(unused)]
+pub trait GUI {
+    type Window: WindowRoot<Gui = Self>;
+    fn load_content(&mut self, content: &mut ContentManager) {}
+    fn setup_windows(&mut self) -> Vec<Self::Window>;
 }
 
-pub struct Context<'a, W: Widget, R: Container<W>> {
-    root: &'a mut R,
-    _phantom: std::marker::PhantomData<W>
+pub trait WindowRoot {
+    type Gui: GUI<Window = Self>;
+
+    fn request(&self) -> WindowRequest;
+    fn setup(&mut self, gui: &mut Self::Gui);
+    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);
+    fn layout(&mut self, bounds: Rect);
+    fn update(&mut self, gui: &mut Self::Gui);
 }
 
 /*
 
+pub struct Context<'a, W: WindowRoot> {
+    root: &'a mut W,
+}
 impl<'a, W: Widget, R: Container<W>> Context<'a, W, R> {
     fn internal_get_by_id(container: &'a R, id: &str) -> Option<&'a W> {
         for w in container.children() {

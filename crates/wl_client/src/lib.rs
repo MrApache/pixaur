@@ -324,7 +324,7 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
                         return;
                     }
                 } else {
-                    unreachable!();
+                    unreachable!("{:#?}", window.layer);
                 }
 
                 if width == 0 || height == 0 {

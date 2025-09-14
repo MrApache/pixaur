@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use toolkit::{
     commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
     glam::{Vec2, Vec4},
@@ -30,9 +31,6 @@ pub enum VerticalAlign {
 }
 
 pub struct Panel<W: Widget> {
-    id: Option<String>,
-    rect: Rect,
-    content: Vec<W>,
     pub padding: Vec4,
     pub spacing: f32,
     pub mode: LayoutMode,
@@ -41,6 +39,10 @@ pub struct Panel<W: Widget> {
 
     pub background: BackgroundStyle,
     pub stroke: Stroke,
+
+    id: Option<String>,
+    rect: Rect,
+    content: Vec<W>,
 }
 
 impl<W: Widget> Default for Panel<W> {
@@ -58,7 +60,7 @@ impl<W: Widget> Panel<W> {
     pub fn with_id(id: impl Into<String>) -> Self {
         Self {
             id: Some(id.into()),
-            content: vec![],
+            content: Vec::new(),
             rect: Rect::default(),
             background: Color::Simple(Argb8888::WHITE).into(),
             padding: Vec4::new(4.0, 4.0, 4.0, 4.0),

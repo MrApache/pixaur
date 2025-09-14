@@ -1,27 +1,44 @@
-/*
-use toolkit::{
-    types::{Argb8888, Color, Stroke},
-    widget::Container,
-    window::WindowRequest,
-    Anchor, Error, EventLoop, SpecialOptions, TargetMonitor, UserWindow, GUI,
-};
+use toolkit::{types::{Argb8888, Color, Stroke}, widget::{Container, Widget}, window::WindowRequest, Anchor, DesktopOptions, Error, EventLoop, SpecialOptions, TargetMonitor, WidgetEnum, WindowRoot, WindowRootEnum, GUI};
 use widgets::{
+    impl_empty_widget,
     panel::{HorizontalAlign, Panel, VerticalAlign},
     text::Text,
 };
 
+impl_empty_widget!(Empty);
+
 #[derive(Default)]
-struct App {}
+struct App;
 
 impl GUI for App {
-    fn setup_windows(&mut self) -> Vec<Box<dyn toolkit::UserWindow<Self>>> {
-        vec![Box::new(BarWindow)]
+    type Window = Windows;
+
+    fn setup_windows(&mut self) -> Vec<Self::Window> {
+        vec![
+            Windows::TestWindow(TestWindowImpl::default()),
+            Windows::BarWindow(BarWindowImpl::default()),
+        ]
     }
 }
 
-struct BarWindow;
+#[derive(WindowRootEnum)]
+#[window_gui(App)]
+enum Windows {
+    BarWindow(BarWindowImpl),
+    TestWindow(TestWindowImpl)
+}
 
-impl UserWindow<App> for BarWindow {
+#[derive(WidgetEnum)]
+enum BarWindow {
+    Text(Text),
+}
+
+#[derive(Default)]
+struct BarWindowImpl {
+    root: Panel<BarWindow>,
+}
+
+impl BarWindowImpl {
     fn request(&self) -> toolkit::window::WindowRequest {
         WindowRequest::new("bar")
             .with_size(1920, 35)
@@ -32,8 +49,8 @@ impl UserWindow<App> for BarWindow {
             })
     }
 
-    fn setup(&self, _gui: &mut App) -> Box<dyn toolkit::widget::Container> {
-        let mut root = Panel::new();
+    fn setup(&mut self, _: &mut App) {
+        let mut root = Panel::<BarWindow>::new();
         root.background = Color::Simple(Argb8888::new(17, 17, 27, 255)).into();
         root.stroke = Stroke::none();
         root.vertical_align = VerticalAlign::Center;
@@ -41,22 +58,59 @@ impl UserWindow<App> for BarWindow {
 
         let mut time = Text::default();
         time.set_text("23:59");
-        //time.set_text("qq");
-        //time.set_text("qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
         time.size = 16;
-        root.add_child(Box::new(time));
+        root.add_child(BarWindow::Text(time));
 
-        Box::new(root)
+        self.root = root;
     }
 
-    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut toolkit::Context<'ctx>) {}
+    fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
+        Widget::draw(&self.root, out);
+    }
+
+    fn layout(&mut self, bounds: toolkit::types::Rect) {
+        Widget::layout(&mut self.root, bounds);
+    }
+
+    fn update(&mut self, _: &mut App) {}
+}
+
+#[derive(Default)]
+pub struct TestWindowImpl {
+    root: Panel<Empty>
+}
+
+impl TestWindowImpl {
+    fn request(&self) -> toolkit::window::WindowRequest {
+        WindowRequest::new("panel")
+            .with_size(600, 600)
+            .desktop(DesktopOptions {
+                title: "Window".into(),
+                resizable: true,
+                decorations: false,
+            })
+    }
+
+    fn setup(&mut self, _: &mut App) {
+        let mut root = Panel::<Empty>::new();
+        root.background = Color::Simple(Argb8888::RED).into();
+        root.stroke = Stroke::none();
+
+        self.root = root;
+    }
+
+    fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
+        Widget::draw(&self.root, out);
+    }
+
+    fn layout(&mut self, bounds: toolkit::types::Rect) {
+        Widget::layout(&mut self.root, bounds);
+    }
+
+    fn update(&mut self, _: &mut App) {}
 }
 
 fn main() -> Result<(), Error> {
-    let mut event_loop = EventLoop::new(App::default())?;
+    let mut event_loop = EventLoop::new(App)?;
     event_loop.run()
 }
-
-*/
-
-fn main() {}

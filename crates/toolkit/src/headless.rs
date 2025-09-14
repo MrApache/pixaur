@@ -1,30 +1,24 @@
+use crate::{commands::CommandBuffer, types::Rect, WindowRoot, GUI};
 use glam::Vec2;
 
-use crate::{
-    commands::CommandBuffer,
-    types::Rect,
-    widget::{Container, Widget},
-    Context, UserWindow, GUI,
-};
-
-struct HeadlessWindow<W: Widget, R: Container<W>, T: GUI<W, R>> {
-    frontend: R,
-    handle: Box<dyn UserWindow<W, R, T>>,
+struct HeadlessWindow<G: GUI> {
+    frontend: G::Window,
+    _phantom: std::marker::PhantomData<G>,
 }
 
-pub struct HeadlessEventLoop<W: Widget, R: Container<W>, T: GUI<W, R>> {
-    gui: T,
-    windows: Vec<HeadlessWindow<W, R, T>>,
+pub struct HeadlessEventLoop<G: GUI> {
+    gui: G,
+    windows: Vec<HeadlessWindow<G>>,
 }
 
-impl<W: Widget, R: Container<W>, T: GUI<W, R>> HeadlessEventLoop<W, R, T> {
-    pub fn new(mut app: T) -> Self {
+impl<G: GUI> HeadlessEventLoop<G> {
+    pub fn new(mut app: G) -> Self {
         let windows = app
             .setup_windows()
             .into_iter()
-            .map(|w| HeadlessWindow {
-                frontend: w.setup(&mut app),
-                handle: w,
+            .map(|frontend| HeadlessWindow {
+                frontend,
+                _phantom: std::marker::PhantomData,
             })
             .collect::<Vec<_>>();
         Self { gui: app, windows }
@@ -32,12 +26,7 @@ impl<W: Widget, R: Container<W>, T: GUI<W, R>> HeadlessEventLoop<W, R, T> {
 
     pub fn run_logic(&mut self) {
         for window in &mut self.windows {
-            let mut context = Context {
-                root: &mut window.frontend,
-                _phantom: std::marker::PhantomData,
-            };
-            window.handle.update(&mut self.gui, &mut context);
-
+            window.frontend.update(&mut self.gui);
             window
                 .frontend
                 .layout(Rect::new(Vec2::ZERO, Vec2::new(1920.0, 1080.0)));

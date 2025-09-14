@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 toolkit.workspace = true
+smallvec.workspace = true

@@ -3,6 +3,13 @@ name = "toolkit"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+derive = ["toolkit-derive"]
+
+[dependencies.toolkit-derive]
+path = "../toolkit-derive"
+optional = true
+
 [dependencies]
 wayland-client.workspace = true
 wl_client.workspace = true

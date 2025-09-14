@@ -9,8 +9,7 @@ use wgpu::rwh::{
 };
 
 use crate::rendering::Renderer;
-use crate::widget::{Container, Widget};
-use crate::{GUI, UserWindow};
+use crate::{WindowRoot, GUI};
 
 pub struct WindowRequest {
     pub(crate) id: String,
@@ -67,23 +66,21 @@ impl WindowRequest {
     }
 }
 
-pub struct Window<W: Widget, R: Container<W>, T: GUI<W, R>> {
-    pub(crate) frontend: R,
+pub struct Window<G: GUI> {
+    pub(crate) frontend: G::Window,
     pub(crate) backend: WindowBackend,
     pub(crate) surface: Surface<'static>,
     pub(crate) configuration: SurfaceConfiguration,
-    pub(crate) handle: Box<dyn UserWindow<W, R, T>>,
     pub(crate) renderer: Renderer,
-    //_phantom: std::marker::PhantomData<W>
+    _phantom: std::marker::PhantomData<G>
 }
 
-impl<W: Widget, R: Container<W>, T: GUI<W, R>> Window<W, R, T> {
+impl<G: GUI> Window<G> {
     pub(crate) const fn new(
-        frontend: R,
+        frontend: G::Window,
         backend: WindowBackend,
         surface: Surface<'static>,
         configuration: SurfaceConfiguration,
-        handle: Box<dyn UserWindow<W, R ,T>>,
         renderer: Renderer,
     ) -> Self {
         Self {
@@ -91,8 +88,8 @@ impl<W: Widget, R: Container<W>, T: GUI<W, R>> Window<W, R, T> {
             backend,
             surface,
             configuration,
-            handle,
             renderer,
+            _phantom: std::marker::PhantomData,
         }
     }
 }
