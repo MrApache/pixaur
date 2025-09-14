@@ -2,8 +2,11 @@ name: Coverage
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - '**'   # любой пуш
   pull_request:
+    branches:
+      - '**'   # любой PR
 
 env:
   CARGO_TERM_COLOR: always
