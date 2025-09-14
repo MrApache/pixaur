@@ -32,15 +32,16 @@ impl<T: GUI> HeadlessEventLoop<T> {
             };
 
             window.handle.update(&mut self.gui, &mut context);
+
+            window
+                .frontend
+                .layout(Rect::new(Vec2::ZERO, Vec2::new(1920.0, 1080.0)));
         }
     }
 
     pub fn run_draw(&mut self) {
         for window in &mut self.windows {
             let mut commands = CommandBuffer::default();
-            window
-                .frontend
-                .layout(Rect::new(Vec2::ZERO, Vec2::new(1920.0, 1080.0)));
             window.frontend.draw(&mut commands);
             commands.pack_active_group();
         }
