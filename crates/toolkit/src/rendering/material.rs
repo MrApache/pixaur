@@ -1,6 +1,12 @@
 use crate::{error::Error, rendering::bind_group::BindGroupBuilder};
 use image::GenericImageView;
-use wgpu::*;
+use wgpu::{
+    AddressMode, BindGroup, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Device,
+    Extent3d, FilterMode, Origin3d, Queue, SamplerBindingType, SamplerDescriptor, ShaderStages,
+    TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor,
+    TextureViewDimension,
+};
 
 pub struct Material {
     pub bind_group: BindGroup,
@@ -58,8 +64,6 @@ impl Material {
             address_mode_w: AddressMode::Repeat,
             mag_filter,
             min_filter,
-            //mag_filter: FilterMode::Linear,
-            //min_filter: FilterMode::Nearest,
             ..Default::default()
         };
         let sampler = device.create_sampler(&sampler_descriptor);

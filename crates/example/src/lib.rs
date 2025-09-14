@@ -1,6 +1,5 @@
 use widgets::{
     panel::{Panel, TestPanelLayoutWidget},
-    text::Text,
 };
 use toolkit::{
     glam::Vec2,
@@ -15,7 +14,7 @@ use toolkit::{
 #[derive(Default)]
 pub struct App {
     texture: TextureHandle,
-    font: FontHandle,
+    _font: FontHandle,
 }
 
 impl GUI for App {

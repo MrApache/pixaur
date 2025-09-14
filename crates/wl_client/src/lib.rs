@@ -14,7 +14,6 @@ use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
 };
 
 use wayland_client::{
-    Connection, Dispatch, Proxy, QueueHandle,
     protocol::{
         wl_buffer::{Event as WlBufferEvent, WlBuffer},
         wl_callback::{Event as WlCallbackEvent, WlCallback},
@@ -25,6 +24,7 @@ use wayland_client::{
         wl_shm_pool::{Event as WlShmPoolEvent, WlShmPool},
         wl_surface::{Event as WlSurfaceEvent, WlSurface},
     },
+    Connection, Dispatch, Proxy, QueueHandle,
 };
 
 use wayland_protocols::xdg::shell::client::{
@@ -130,18 +130,18 @@ impl Dispatch<WlRegistry, WindowId> for WlClient {
             match interface.as_ref() {
                 "wl_compositor" => {
                     state.compositor =
-                        Some(registry.bind::<WlCompositor, _, _>(name, version, qh, id.clone()))
+                        Some(registry.bind::<WlCompositor, _, _>(name, version, qh, id.clone()));
                 }
                 "wl_shm" => {
-                    state.shm = Some(registry.bind::<WlShm, _, _>(name, version, qh, id.clone()))
+                    state.shm = Some(registry.bind::<WlShm, _, _>(name, version, qh, id.clone()));
                 }
                 "xdg_wm_base" => {
                     state.xdg_wm_base =
-                        Some(registry.bind::<XdgWmBase, _, _>(name, version, qh, id.clone()))
+                        Some(registry.bind::<XdgWmBase, _, _>(name, version, qh, id.clone()));
                 }
                 "zwlr_layer_shell_v1" => {
                     state.layer_shell =
-                        Some(registry.bind::<ZwlrLayerShellV1, _, _>(name, version, qh, id.clone()))
+                        Some(registry.bind::<ZwlrLayerShellV1, _, _>(name, version, qh, id.clone()));
                 }
                 "wl_output" => {
                     let output = registry.bind::<WlOutput, _, _>(name, version, qh, id.clone());
@@ -180,7 +180,6 @@ impl Dispatch<WlOutput, WindowId> for WlClient {
                 height,
                 refresh,
             } => {}
-            WlOutputEvent::Done => {}
             WlOutputEvent::Scale { factor } => {}
             WlOutputEvent::Name { name } => {
                 let id = output.id().to_string();
@@ -188,6 +187,7 @@ impl Dispatch<WlOutput, WindowId> for WlClient {
                 state.outputs.insert(name, output);
             }
             WlOutputEvent::Description { description } => {}
+            WlOutputEvent::Done |
             _ => {}
         }
     }
@@ -220,7 +220,7 @@ impl Dispatch<WlSurface, WindowId> for WlClient {
 
             WlSurfaceEvent::PreferredBufferScale { factor } => {
                 let mut window = state.windows.get_mut(id.as_str()).unwrap().lock().unwrap();
-                window.scale = factor
+                window.scale = factor;
             }
 
             WlSurfaceEvent::PreferredBufferTransform { transform } => {

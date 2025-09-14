@@ -1,7 +1,7 @@
 use glam::Vec3;
 use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
-use wgpu::*;
+use wgpu::{Buffer, Device, BufferUsages};
 
 use crate::rendering::Vertex;
 
@@ -12,23 +12,19 @@ pub struct QuadMesh {
 
 impl QuadMesh {
     pub fn new(device: &Device) -> Self {
+        const INDICES: [u16; 6] = [0, 1, 2, 2, 3, 0];
+
         let vertices = [
-            Vertex::new(Vec3::new(0.0, 0.0, 0.0)), // левый верх
-            Vertex::new(Vec3::new(0.0, 1.0, 0.0)), // левый низ
-            Vertex::new(Vec3::new(1.0, 1.0, 0.0)), // правый низ
-            Vertex::new(Vec3::new(1.0, 0.0, 0.0)), // правый верх
+            Vertex::new(Vec3::new(0.0, 0.0, 0.0)), // left top
+            Vertex::new(Vec3::new(0.0, 1.0, 0.0)), // left bottom
+            Vertex::new(Vec3::new(1.0, 1.0, 0.0)), // right bottom
+            Vertex::new(Vec3::new(1.0, 0.0, 0.0)), // right top
         ];
-        //Vec2::new(0.0, 0.0)
-        //Vec2::new(1.0, 0.0)
-        //Vec2::new(1.0, 1.0)
-        //Vec2::new(0.0, 1.0)
         let vertex_buffer_descriptor = BufferInitDescriptor {
             label: Some("Quad vertex buffer"),
             contents: bytemuck::cast_slice(&vertices),
             usage: BufferUsages::VERTEX,
         };
-
-        const INDICES: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
         let index_buffer_descriptor = BufferInitDescriptor {
             label: Some("Quad index buffer"),

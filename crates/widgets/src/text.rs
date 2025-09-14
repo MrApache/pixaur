@@ -1,5 +1,10 @@
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawTextCommand}, fontdue::layout::{self, CoordinateSystem, Layout, LayoutSettings, TextStyle}, glam::Vec2, types::*, widget::{DesiredSize, Widget}, FontHandle
+    commands::{CommandBuffer, DrawCommand, DrawTextCommand},
+    fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
+    glam::Vec2,
+    types::{Argb8888, Color, Rect},
+    widget::{DesiredSize, Widget},
+    FontHandle,
 };
 
 pub struct Text {
@@ -32,6 +37,7 @@ impl Default for Text {
 }
 
 impl Text {
+    #[must_use]
     pub fn new(font: FontHandle) -> Self {
         let mut instance = Self {
             id: None,
@@ -86,13 +92,11 @@ impl Widget for Text {
     fn id(&self) -> Option<&str> {
         if let Some(id) = &self.id {
             Some(id)
-        }
-        else {
+        } else {
             None
         }
     }
 
-    #[allow(clippy::eq_op)]
     fn desired_size(&self) -> DesiredSize {
         let font = self.font.as_ref();
         let mut x = 0.0;
@@ -105,8 +109,8 @@ impl Widget for Text {
                     let glyph = &glyphs[ln.glyph_end];
                     glyph.x + glyph.width as f32
                 })
-                .fold(0.0 / 0.0, |m, v| v.max(m)),
-            None => 0.0
+                .fold(f32::NAN, |m, v| v.max(m)),
+            None => 0.0,
         };
 
         self.layout.glyphs().iter().for_each(|c| {

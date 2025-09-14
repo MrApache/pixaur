@@ -24,7 +24,7 @@ pub struct InstanceData {
 
     color_end: Vec4,
 
-    //degree: f32, 
+    //degree: f32,
     //use_gradient: u32,
     //support_stroke: u32,
     //stroke_width: f32,
@@ -59,7 +59,6 @@ impl InstanceData {
             ),
         };
 
-        //let (stroke_color, stroke_width, stroke_corners, support_stroke) = {
         let (stroke_color, stroke_width, support_stroke) = {
             if let Some(stroke) = stroke {
                 (
@@ -70,7 +69,6 @@ impl InstanceData {
                         stroke.color[3].clone().into(),
                     ],
                     stroke.width,
-                    //stroke.corners.into(),
                     1,
                 )
             } else {
@@ -78,11 +76,16 @@ impl InstanceData {
             }
         };
 
-        //degree: f32, 
+        //degree: f32,
         //use_gradient: u32,
         //support_stroke: u32,
         //stroke_width: f32,
-        let misc = Vec4::new(degree, use_gradient as f32, support_stroke as f32, stroke_width);
+        let misc = Vec4::new(
+            degree,
+            use_gradient as f32,
+            support_stroke as f32,
+            stroke_width,
+        );
 
         Self {
             uv,
@@ -123,47 +126,97 @@ impl InstanceData {
         Self::new_uv_4(uv_rect, position, size, color, stroke, proj)
     }
 
-
     pub const fn get_layout() -> wgpu::VertexBufferLayout<'static> {
         use wgpu::{
             VertexAttribute,
             VertexFormat::{Float32x2, Float32x4},
             VertexStepMode,
         };
-    
+
         const ATTRIBUTES: &[VertexAttribute] = &[
-            VertexAttribute { offset: 0,   shader_location: 1, format: Float32x4 }, // uv
-            VertexAttribute { offset: 16,  shader_location: 2, format: Float32x2 }, // size
-            VertexAttribute { offset: 32,  shader_location: 3, format: Float32x4 }, // model_matrix_0
-            VertexAttribute { offset: 48,  shader_location: 4, format: Float32x4 }, // model_matrix_1
-            VertexAttribute { offset: 64,  shader_location: 5, format: Float32x4 }, // model_matrix_2
-            VertexAttribute { offset: 80,  shader_location: 6, format: Float32x4 }, // model_matrix_3
-            VertexAttribute { offset: 96,  shader_location: 7, format: Float32x4 }, // color
-            VertexAttribute { offset: 112, shader_location: 8, format: Float32x4 }, // stroke_color_left
-            VertexAttribute { offset: 128, shader_location: 9, format: Float32x4 }, // stroke_color_right
-            VertexAttribute { offset: 144, shader_location: 10, format: Float32x4 }, // stroke_color_top
-            VertexAttribute { offset: 160, shader_location: 11, format: Float32x4 }, // stroke_color_bottom
-            VertexAttribute { offset: 176, shader_location: 12, format: Float32x4 }, // color_end
+            VertexAttribute {
+                offset: 0,
+                shader_location: 1,
+                format: Float32x4,
+            }, // uv
+            VertexAttribute {
+                offset: 16,
+                shader_location: 2,
+                format: Float32x2,
+            }, // size
+            VertexAttribute {
+                offset: 32,
+                shader_location: 3,
+                format: Float32x4,
+            }, // model_matrix_0
+            VertexAttribute {
+                offset: 48,
+                shader_location: 4,
+                format: Float32x4,
+            }, // model_matrix_1
+            VertexAttribute {
+                offset: 64,
+                shader_location: 5,
+                format: Float32x4,
+            }, // model_matrix_2
+            VertexAttribute {
+                offset: 80,
+                shader_location: 6,
+                format: Float32x4,
+            }, // model_matrix_3
+            VertexAttribute {
+                offset: 96,
+                shader_location: 7,
+                format: Float32x4,
+            }, // color
+            VertexAttribute {
+                offset: 112,
+                shader_location: 8,
+                format: Float32x4,
+            }, // stroke_color_left
+            VertexAttribute {
+                offset: 128,
+                shader_location: 9,
+                format: Float32x4,
+            }, // stroke_color_right
+            VertexAttribute {
+                offset: 144,
+                shader_location: 10,
+                format: Float32x4,
+            }, // stroke_color_top
+            VertexAttribute {
+                offset: 160,
+                shader_location: 11,
+                format: Float32x4,
+            }, // stroke_color_bottom
+            VertexAttribute {
+                offset: 176,
+                shader_location: 12,
+                format: Float32x4,
+            }, // color_end
             // degree: f32,
             // use_gradient: u32,
             // support_stroke: u32,
             // stroke_width: f32,
-            VertexAttribute { offset: 192, shader_location: 13, format: Float32x4 },
+            VertexAttribute {
+                offset: 192,
+                shader_location: 13,
+                format: Float32x4,
+            },
         ];
-    
+
         VertexBufferLayout {
             array_stride: std::mem::size_of::<InstanceData>() as wgpu::BufferAddress,
             step_mode: VertexStepMode::Instance,
             attributes: ATTRIBUTES,
         }
     }
-
 }
 
 struct InstanceBuffer {
     instances: Vec<InstanceData>,
-    instance_buffer: Buffer,
-    instance_buffer_len: usize,
+    inner: Buffer,
+    inner_len: usize,
 }
 
 impl InstanceBuffer {
@@ -177,8 +230,8 @@ impl InstanceBuffer {
 
         Self {
             instances: Vec::with_capacity(instance_buffer_size),
-            instance_buffer,
-            instance_buffer_len: instance_buffer_size,
+            inner: instance_buffer,
+            inner_len: instance_buffer_size,
         }
     }
 
@@ -190,29 +243,26 @@ impl InstanceBuffer {
             mapped_at_creation: false,
         });
 
-        self.instance_buffer = instance_buffer;
-        self.instance_buffer_len = size;
+        self.inner = instance_buffer;
+        self.inner_len = size;
     }
 
     fn resize_buffer_if_needed(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
-        if self.instances.capacity() > self.instance_buffer_len {
+        if self.instances.capacity() > self.inner_len {
             self.create_instance_buffer(gpu, self.instances.capacity());
-            renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            renderpass.set_vertex_buffer(1, self.inner.slice(..));
         }
     }
 
     fn write_instance_buffer(&self, gpu: &Gpu) {
-        gpu.queue.write_buffer(
-            &self.instance_buffer,
-            0,
-            bytemuck::cast_slice(&self.instances),
-        );
+        gpu.queue
+            .write_buffer(&self.inner, 0, bytemuck::cast_slice(&self.instances));
     }
 
     fn draw_instances(&mut self, gpu: &Gpu, renderpass: &mut RenderPass) {
         self.resize_buffer_if_needed(gpu, renderpass);
         self.write_instance_buffer(gpu);
-        renderpass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        renderpass.set_vertex_buffer(1, self.inner.slice(..));
         renderpass.draw_indexed(0..6, 0, 0..self.instances.len() as u32);
     }
 

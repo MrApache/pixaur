@@ -52,18 +52,7 @@ impl Default for Panel {
 impl Panel {
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            id: None,
-            content: vec![],
-            rect: Rect::default(),
-            background: Color::Simple(Argb8888::WHITE).into(),
-            padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
-            spacing: 4.0,
-            mode: LayoutMode::Vertical,
-            stroke: Stroke::default(),
-            horizontal_align: HorizontalAlign::Center,
-            vertical_align: VerticalAlign::Center,
-        }
+        Self::with_id(String::new())
     }
 
     pub fn with_id(id: impl Into<String>) -> Self {
@@ -148,7 +137,7 @@ impl Widget for Panel {
             .iter()
             .for_each(|widget| match widget.desired_size() {
                 DesiredSize::Min(size) => total_min_width += size.x,
-                DesiredSize::Fill => fill_count += 1,
+                DesiredSize::Fill |
                 DesiredSize::FillMinY(_) => fill_count += 1,
             });
 
@@ -170,9 +159,8 @@ impl Widget for Panel {
             };
 
             let offset_x = match self.horizontal_align {
-                HorizontalAlign::Start => 0.0,
                 HorizontalAlign::Center => width - (width / 2.0),
-                HorizontalAlign::End => 0.0,
+                HorizontalAlign::Start | HorizontalAlign::End => 0.0,
             };
 
             let child_bounds = Rect {

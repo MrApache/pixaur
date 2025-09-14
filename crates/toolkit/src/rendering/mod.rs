@@ -18,11 +18,16 @@ use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
 use crate::rendering::text::FontAtlasSet;
 use crate::rendering::vertex::Vertex;
-use crate::{ContentManager, include_asset_content, load_asset_str};
-
+use crate::{include_asset_content, load_asset_str, ContentManager};
 use glam::Mat4;
 use std::collections::HashMap;
-use wgpu::*;
+use wgpu::{
+    BlendState, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Face,
+    FragmentState, FrontFace, IndexFormat, LoadOp, MultisampleState, Operations,
+    PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    ShaderModuleDescriptor, ShaderSource, StoreOp, Surface, TextureViewDescriptor, VertexState,
+};
 
 pub struct Renderer {
     render_pipeline: RenderPipeline,
@@ -60,7 +65,9 @@ impl Renderer {
             });
 
         let caps = surface.get_capabilities(&gpu.adapter);
-        let format = caps.formats.iter()
+        let format = caps
+            .formats
+            .iter()
             .find(|&&f| matches!(f, wgpu::TextureFormat::Rgba8Unorm))
             .unwrap_or(&caps.formats[0]);
 
@@ -72,13 +79,13 @@ impl Renderer {
                 vertex: VertexState {
                     module: &shader,
                     entry_point: Some("vs_main"),
-                    compilation_options: Default::default(),
+                    compilation_options: PipelineCompilationOptions::default(),
                     buffers: &[Vertex::get_layout(), InstanceData::get_layout()],
                 },
                 fragment: Some(FragmentState {
                     module: &shader,
                     entry_point: Some("fs_main"),
-                    compilation_options: Default::default(),
+                    compilation_options: PipelineCompilationOptions::default(),
                     targets: &[Some(ColorTargetState {
                         //format: surface.get_capabilities(&gpu.adapter).formats[0],
                         format: *format,

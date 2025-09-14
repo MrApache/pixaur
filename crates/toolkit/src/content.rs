@@ -1,20 +1,18 @@
+use crate::{
+    rendering::{material::Material, Gpu},
+    Error,
+};
 use fontdue::{Font, FontSettings};
-use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
     fs,
     path::PathBuf,
     sync::{
-        Arc,
         atomic::{AtomicUsize, Ordering},
+        Arc,
     },
 };
 use ttf_parser::Face;
-
-use crate::{
-    Error,
-    rendering::{Gpu, material::Material},
-};
 
 #[macro_export]
 macro_rules! include_asset {
@@ -30,7 +28,7 @@ macro_rules! include_asset_content {
     };
 }
 
-static DEFAULT_FONT: Lazy<Arc<Font>> = Lazy::new(|| {
+static DEFAULT_FONT: std::sync::LazyLock<Arc<Font>> = std::sync::LazyLock::new(|| {
     let bytes = include_asset!("Ubuntu-Regular.ttf");
     let font = Font::from_bytes(bytes.as_ref(), FontSettings::default()).unwrap();
     Arc::new(font)
@@ -153,18 +151,27 @@ fn font_name(data: &[u8]) -> Option<String> {
         .and_then(|name| name.to_string())
 }
 
+/// # Errors
+///
+/// This function will return an error if `path` does not already exist.
 pub fn load_asset(path: &str) -> Result<Vec<u8>, Error> {
     let asset_path = get_asset_path().join(path);
     Ok(fs::read(asset_path)?)
 }
 
+/// # Errors
+///
+/// This function will return an error if `path` does not already exist.
+///
+/// If the contents of the file are not valid UTF-8, then an error will also be
+/// returned.
 pub fn load_asset_str(path: &str) -> Result<String, Error> {
     let asset_path = get_asset_path().join(path);
     Ok(fs::read_to_string(asset_path)?)
 }
 
 fn get_asset_path() -> PathBuf {
-    // В debug используем путь относительно корня проекта
+    // Debug
     #[cfg(debug_assertions)]
     {
         use std::path::Path;
@@ -172,7 +179,7 @@ fn get_asset_path() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("assets")
     }
 
-    // В release — рядом с бинарником
+    // Release
     #[cfg(not(debug_assertions))]
     {
         std::env::current_exe()

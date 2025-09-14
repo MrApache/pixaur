@@ -7,8 +7,8 @@ use transform::Transform;
 
 use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{
-    Proxy, QueueHandle,
     protocol::{wl_buffer::WlBuffer, wl_surface::WlSurface},
+    Proxy, QueueHandle,
 };
 
 use wayland_protocols::xdg::shell::client::{
@@ -88,7 +88,7 @@ pub struct Window {
     pub(crate) can_draw: bool,
     pub(crate) can_resize: bool,
 
-    _unused: Unused,
+    unused: Unused,
 }
 
 impl Window {
@@ -102,19 +102,20 @@ impl Window {
         self.buffer.destroy();
         self.pool.destroy();
         self.surface.destroy();
-        if let Some(surface) = self._unused.layer_surface {
+        if let Some(surface) = self.unused.layer_surface {
             surface.destroy();
         }
 
-        if let Some(surface) = self._unused.xdg_surface {
+        if let Some(surface) = self.unused.xdg_surface {
             surface.destroy();
         }
 
-        if let Some(xdg_toplevel) = self._unused.xdg_toplevel {
+        if let Some(xdg_toplevel) = self.unused.xdg_toplevel {
             xdg_toplevel.destroy();
         }
     }
 
+    #[must_use]
     pub fn new(
         ls: Option<&ZwlrLayerShellV1>, // 'Some' when WindowLayer is not a WindowLayer::Desktop
         xdg_wm_base: Option<&XdgWmBase>, // 'Some' when WindowLayer is a WindowLayer::Desktop
@@ -143,7 +144,7 @@ impl Window {
             transform: Transform::Normal0,
             can_draw: false,
             can_resize: false,
-            _unused: Unused::default(),
+            unused: Unused::default(),
         };
 
         instance.init(ls, xdg_wm_base);
@@ -155,20 +156,20 @@ impl Window {
     fn init(&mut self, ls: Option<&ZwlrLayerShellV1>, xdg_wm_base: Option<&XdgWmBase>) {
         match self.layer.clone() {
             WindowLayer::Desktop(_) => self.init_desktop(xdg_wm_base.unwrap()),
-            WindowLayer::Top(options) => self.init_layer_shell(ls.unwrap(), Layer::Top, options),
+            WindowLayer::Top(options) => self.init_layer_shell(ls.unwrap(), Layer::Top, &options),
             WindowLayer::Bottom(options) => {
-                self.init_layer_shell(ls.unwrap(), Layer::Bottom, options)
+                self.init_layer_shell(ls.unwrap(), Layer::Bottom, &options);
             }
             WindowLayer::Overlay(options) => {
-                self.init_layer_shell(ls.unwrap(), Layer::Overlay, options)
+                self.init_layer_shell(ls.unwrap(), Layer::Overlay, &options);
             }
             WindowLayer::Background(options) => {
-                self.init_layer_shell(ls.unwrap(), Layer::Background, options)
+                self.init_layer_shell(ls.unwrap(), Layer::Background, &options);
             }
-        };
+        }
     }
 
-    fn init_layer_shell(&mut self, ls: &ZwlrLayerShellV1, layer: Layer, options: SpecialOptions) {
+    fn init_layer_shell(&mut self, ls: &ZwlrLayerShellV1, layer: Layer, options: &SpecialOptions) {
         let layer_surface = ls.get_layer_surface(
             &self.surface,
             None, //TODO fix
@@ -182,16 +183,17 @@ impl Window {
         layer_surface.set_anchor(options.anchor);
         layer_surface.set_exclusive_zone(options.exclusive_zone as i32);
 
-        self._unused.layer_surface = Some(layer_surface);
+        self.unused.layer_surface = Some(layer_surface);
     }
 
     fn init_desktop(&mut self, xdg_wm_base: &XdgWmBase) {
         let xdg_surface = xdg_wm_base.get_xdg_surface(&self.surface, &self.qh, self.id.clone());
         let xdg_toplevel = xdg_surface.get_toplevel(&self.qh, self.id.clone());
-        self._unused.xdg_surface = Some(xdg_surface);
-        self._unused.xdg_toplevel = Some(xdg_toplevel);
+        self.unused.xdg_surface = Some(xdg_surface);
+        self.unused.xdg_toplevel = Some(xdg_toplevel);
     }
 
+    #[must_use]
     pub fn can_draw(&self) -> bool {
         self.can_draw
     }
@@ -235,10 +237,12 @@ impl Window {
             .draw_text_at(x, y, self.width as usize, self.height as usize, coverage);
     }
 
+    #[must_use]
     pub fn as_ptr(&self) -> NonNull<c_void> {
-        NonNull::new(self.surface.id().as_ptr() as *mut c_void).unwrap()
+        NonNull::new(self.surface.id().as_ptr().cast::<c_void>()).unwrap()
     }
 
+    #[must_use]
     pub fn can_resize(&self) -> bool {
         self.can_resize
     }

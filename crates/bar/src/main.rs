@@ -4,7 +4,10 @@ use toolkit::{
     window::WindowRequest,
     Anchor, Error, EventLoop, SpecialOptions, TargetMonitor, UserWindow, GUI,
 };
-use widgets::{panel::{HorizontalAlign, Panel, VerticalAlign}, text::Text};
+use widgets::{
+    panel::{HorizontalAlign, Panel, VerticalAlign},
+    text::Text,
+};
 
 #[derive(Default)]
 struct App {}
@@ -28,7 +31,7 @@ impl UserWindow<App> for BarWindow {
             })
     }
 
-    fn setup(&self, gui: &mut App) -> Box<dyn toolkit::widget::Container> {
+    fn setup(&self, _gui: &mut App) -> Box<dyn toolkit::widget::Container> {
         let mut root = Panel::new();
         root.background = Color::Simple(Argb8888::new(17, 17, 27, 255)).into();
         root.stroke = Stroke::none();
@@ -45,7 +48,7 @@ impl UserWindow<App> for BarWindow {
         Box::new(root)
     }
 
-    fn update<'ctx>(&mut self, gui: &mut App, context: &'ctx mut toolkit::Context<'ctx>) {}
+    fn update<'ctx>(&mut self, _gui: &mut App, _context: &'ctx mut toolkit::Context<'ctx>) {}
 }
 
 fn main() -> Result<(), Error> {

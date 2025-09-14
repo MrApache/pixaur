@@ -1,14 +1,12 @@
 use std::ffi::c_void;
 use std::ptr::NonNull;
-
+use wgpu::{Surface, SurfaceConfiguration};
+use wl_client::WindowBackend;
+use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 use wgpu::rwh::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, RawDisplayHandle,
     RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle, WindowHandle,
 };
-
-use wgpu::{Surface, SurfaceConfiguration};
-use wl_client::WindowBackend;
-use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 
 use crate::rendering::Renderer;
 use crate::widget::Container;
@@ -31,32 +29,38 @@ impl WindowRequest {
         }
     }
 
+    #[must_use]
     pub fn with_size(mut self, width: u32, height: u32) -> Self {
         self.width = width;
         self.height = height;
         self
     }
 
+    #[must_use]
     pub fn desktop(mut self, options: DesktopOptions) -> Self {
         self.layer = WindowLayer::Desktop(options);
         self
     }
 
+    #[must_use]
     pub fn top(mut self, options: SpecialOptions) -> Self {
         self.layer = WindowLayer::Top(options);
         self
     }
 
+    #[must_use]
     pub fn bottom(mut self, options: SpecialOptions) -> Self {
         self.layer = WindowLayer::Bottom(options);
         self
     }
 
+    #[must_use]
     pub fn overlay(mut self, options: SpecialOptions) -> Self {
         self.layer = WindowLayer::Overlay(options);
         self
     }
 
+    #[must_use]
     pub fn background(mut self, options: SpecialOptions) -> Self {
         self.layer = WindowLayer::Background(options);
         self
@@ -84,9 +88,9 @@ impl<T: GUI> Window<T> {
         Self {
             frontend,
             backend,
-            handle,
             surface,
             configuration,
+            handle,
             renderer,
         }
     }
@@ -98,6 +102,7 @@ pub struct WindowPointer {
 }
 
 impl WindowPointer {
+    #[must_use]
     pub const fn new(display_ptr: NonNull<c_void>, surface_ptr: NonNull<c_void>) -> Self {
         Self {
             display_ptr,

@@ -1,4 +1,7 @@
-use wgpu::*;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindingResource, Device,
+    Sampler, TextureView,
+};
 
 pub struct BindGroupBuilder<'a> {
     entries: Vec<BindGroupEntry<'a>>,

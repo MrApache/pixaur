@@ -1,3 +1,6 @@
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_precision_loss)]
+
 mod content;
 mod debug;
 mod error;
@@ -11,27 +14,24 @@ pub use glam;
 pub mod widget;
 pub mod window;
 
-pub use rendering::commands;
-
-pub use wl_client::window::TargetMonitor;
-pub use error::*;
-pub use wl_client::{
-    Anchor,
-    window::{DesktopOptions, SpecialOptions},
-};
-
 use crate::{
     debug::FpsCounter,
-    rendering::{Gpu, Renderer, commands::CommandBuffer},
+    rendering::{commands::CommandBuffer, Gpu, Renderer},
     types::Rect,
     widget::{Container, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
-
+pub use error::*;
 use glam::Vec2;
+pub use rendering::commands;
 use std::{ffi::c_void, ptr::NonNull, sync::Arc};
 use wayland_client::{Connection, EventQueue, Proxy};
-use wl_client::{WlClient, window::WindowLayer};
+pub use wl_client::window::TargetMonitor;
+use wl_client::{window::WindowLayer, WlClient};
+pub use wl_client::{
+    window::{DesktopOptions, SpecialOptions},
+    Anchor,
+};
 
 #[allow(unused)]
 pub trait GUI {
@@ -58,7 +58,7 @@ impl<T: GUI> EventLoop<T> {
         let mut event_queue = conn.new_event_queue();
         let qh = event_queue.handle();
 
-        let _registry = display.get_registry(&qh, Arc::new("".to_string()));
+        let _registry = display.get_registry(&qh, Arc::new(String::new()));
 
         let mut client = WlClient::default();
 
@@ -69,11 +69,15 @@ impl<T: GUI> EventLoop<T> {
 
         //Fix egl error: BadDisplay
         let (display_ptr, gpu) = {
-            let display_ptr = NonNull::new(display.id().as_ptr() as *mut c_void).unwrap();
+            let display_ptr = NonNull::new(display.id().as_ptr().cast::<c_void>())
+                .ok_or(Error::DisplayNullPointer)?;
             let dummy = client.create_window_backend(qh, "dummy", 1, 1, WindowLayer::default());
             event_queue.roundtrip(&mut client)?; //Init dummy
 
-            let dummy_ptr = dummy.lock().unwrap().as_ptr();
+            let dummy_ptr = dummy
+                .lock()
+                .map_err(|e| Error::LockFailed(e.to_string()))?
+                .as_ptr();
             let ptr = WindowPointer::new(display_ptr, dummy_ptr);
             let gpu = Gpu::new(ptr)?;
 
@@ -98,10 +102,8 @@ impl<T: GUI> EventLoop<T> {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-
         self.gui.load_content(&mut self.content);
         let mut windows = self.init_windows_backends()?;
-        let mut counter = FpsCounter::new(144);
 
         loop {
             self.content.dispath_queue(&self.gpu)?;
@@ -109,12 +111,22 @@ impl<T: GUI> EventLoop<T> {
             windows
                 .iter_mut()
                 .try_for_each(|window| -> Result<(), Error> {
-                    let mut backend = window.backend.lock().unwrap();
+                    let mut backend = window
+                        .backend
+                        .lock()
+                        .map_err(|e| Error::LockFailed(e.to_string()))?;
                     if backend.can_resize() {
-                        window.configuration.width = backend.width as u32;
-                        window.configuration.height = backend.height as u32;
-                        self.gpu
-                            .confugure_surface(&window.surface, &window.configuration);
+                        window.configuration.width = backend
+                            .width
+                            .try_into()
+                            .map_err(|_| Error::NegativeWidth(backend.width))?;
+
+                        window.configuration.height = backend
+                            .height
+                            .try_into()
+                            .map_err(|_| Error::NegativeHeight(backend.height))?;
+
+                        self.gpu.confugure_surface(&window.surface, &window.configuration);
                         backend.set_resized();
                     }
 
@@ -128,9 +140,6 @@ impl<T: GUI> EventLoop<T> {
                     if !backend.can_draw() {
                         return Ok(());
                     }
-
-                    let fps = counter.tick();
-                    println!("FPS: {fps:.1}");
 
                     let mut commands = CommandBuffer::default();
                     window.frontend.layout(Rect::new(
@@ -175,7 +184,10 @@ impl<T: GUI> EventLoop<T> {
 
             let (width, height, surface_ptr) = {
                 let guard = backend.lock().unwrap();
-                (guard.width as u32, guard.height as u32, guard.as_ptr())
+
+                let width: u32 = guard.width.try_into().expect("width must be >= 0");
+                let height: u32 = guard.height.try_into().expect("height must be >= 0");
+                (width, height, guard.as_ptr())
             };
 
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
@@ -239,6 +251,7 @@ impl<'a> Context<'a> {
         None
     }
 
+    #[must_use]
     pub fn get_by_id<W: Widget>(&'a self, id: &str) -> Option<&'a W> {
         Self::internal_get_by_id(self.root.as_ref(), id)
     }

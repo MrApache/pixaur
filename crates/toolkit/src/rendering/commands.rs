@@ -5,7 +5,9 @@ use std::slice::IterMut;
 use wgpu::RenderPass;
 
 use crate::{
-    rendering::{instance::InstanceData, Gpu, Renderer}, types::{Color, Rect, Stroke, Texture}, ContentManager, FontHandle
+    rendering::{instance::InstanceData, Gpu, Renderer},
+    types::{Color, Rect, Stroke, Texture},
+    ContentManager, FontHandle,
 };
 
 #[enum_dispatch(DrawCommand)]
@@ -76,8 +78,13 @@ pub struct DrawTextureCommand {
 }
 
 impl DrawTextureCommand {
+    #[must_use]
     pub fn new(rect: Rect, texture: Texture, stroke: Stroke) -> Self {
-        Self { rect, texture, stroke }
+        Self {
+            rect,
+            texture,
+            stroke,
+        }
     }
 }
 
@@ -141,7 +148,7 @@ impl<'frame> DrawTextCommand<'frame> {
     }
 }
 
-impl<'frame> DrawDispatcher for DrawTextCommand<'frame> {
+impl DrawDispatcher for DrawTextCommand<'_> {
     fn start(&mut self, _: &mut Renderer, _: &ContentManager, _: &mut RenderPass) {}
 
     fn prepare(&mut self, pipeline: &mut Renderer, _: &mut RenderPass) {
@@ -194,7 +201,7 @@ pub enum DrawCommand<'frame> {
 
 impl DrawCommand<'_> {
     fn is_same_type(&self, other: &DrawCommand) -> bool {
-        use DrawCommand::*;
+        use DrawCommand::{Rect, Text, Texture};
         matches!(
             (self, other),
             (Rect(_), Rect(_)) | (Texture(_), Texture(_)) | (Text(_), Text(_))
@@ -207,7 +214,7 @@ pub struct PackedGroup<'frame> {
     inner: Vec<DrawCommand<'frame>>,
 }
 
-impl<'frame> PackedGroup<'frame> {
+impl PackedGroup<'_> {
     pub fn prepare_frame(
         &mut self,
         pipeline: &mut Renderer,
@@ -262,6 +269,14 @@ impl<'frame> CommandBuffer<'frame> {
         CommandBufferIter {
             iter: self.packed_groups.iter_mut(),
         }
+    }
+}
+
+impl<'a, 'frame> IntoIterator for &'a mut CommandBuffer<'frame> {
+    type Item = &'a mut PackedGroup<'frame>;
+    type IntoIter = CommandBufferIter<'a, 'frame>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
     }
 }
 

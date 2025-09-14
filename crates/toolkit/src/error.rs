@@ -28,4 +28,16 @@ pub enum Error {
     //Std
     #[error("{0}")]
     IO(#[from] std::io::Error),
+
+    #[error("Display pointer is null")]
+    DisplayNullPointer,
+
+    #[error("{0}")]
+    LockFailed(String),
+
+    #[error("Width must be >= 0. Actual value {0}")]
+    NegativeWidth(i32),
+
+    #[error("Height must be >= 0. Actual value {0}")]
+    NegativeHeight(i32)
 }

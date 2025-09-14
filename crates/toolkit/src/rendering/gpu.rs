@@ -1,7 +1,10 @@
-use wgpu::*;
+use wgpu::{
+    Adapter, Device, DeviceDescriptor, Instance, InstanceDescriptor, PresentMode, Queue,
+    RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
+};
 
-use crate::Error;
 use crate::window::WindowPointer;
+use crate::Error;
 
 pub struct Gpu {
     pub instance: Instance,
@@ -39,7 +42,9 @@ impl Gpu {
         let surface = self.instance.create_surface(ptr)?;
 
         let caps = surface.get_capabilities(&self.adapter);
-        let format = *caps.formats.iter()
+        let format = *caps
+            .formats
+            .iter()
             .find(|&&f| matches!(f, wgpu::TextureFormat::Rgba8Unorm))
             .unwrap_or(&caps.formats[0]);
 
