@@ -1,5 +1,6 @@
 use derive_more::From;
 use glam::Vec4;
+use rand::Rng;
 
 #[derive(Debug, Clone, From)]
 pub enum Color {
@@ -42,6 +43,22 @@ impl Argb8888 {
     #[must_use]
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
+    }
+
+    #[must_use]
+    pub fn random() -> Self {
+        let mut rng = rand::rng();
+        let r: u8 = rng.random_range(0..=255);
+        let g: u8 = rng.random_range(0..=255);
+        let b: u8 = rng.random_range(0..=255);
+        let a: u8 = rng.random_range(0..=255);
+
+        Self {
+            r,
+            g,
+            b,
+            a,
+        }
     }
 }
 
