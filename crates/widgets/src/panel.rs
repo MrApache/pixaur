@@ -178,7 +178,7 @@ impl Widget for Panel {
                 cursor_x += self.spacing;
             }
 
-            if cursor_x >= max_x {
+            if cursor_x >= max_x + min_x {
                 break;
             }
         }
