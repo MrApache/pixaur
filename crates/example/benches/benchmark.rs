@@ -1,5 +1,5 @@
 use example::App;
-use toolkit::EventLoop;
+use toolkit::{headless::HeadlessEventLoop};
 
 fn main() {
     divan::main();
@@ -7,11 +7,12 @@ fn main() {
 
 #[divan::bench]
 fn event_loop_init() {
-    EventLoop::new(App::default()).unwrap();
+    HeadlessEventLoop::new(App::default());
 }
 
 #[divan::bench]
-fn run_main_afk() {
-    let mut event_loop = EventLoop::new(App::default()).unwrap();
-    event_loop.run().unwrap();
+fn run_event_loop() {
+    let mut event_loop = HeadlessEventLoop::new(App::default());
+    event_loop.run_logic();
+    event_loop.run_draw();
 }
