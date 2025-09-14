@@ -1,6 +1,4 @@
-use widgets::{
-    panel::{Panel, TestPanelLayoutWidget},
-};
+use widgets::panel::{HorizontalAlign, Panel, TestPanelLayoutWidget};
 use toolkit::{
     glam::Vec2,
     include_asset,
@@ -42,22 +40,66 @@ impl UserWindow<App> for MainWindow {
 
     fn setup(&self, gui: &mut App) -> Box<dyn Container> {
         let mut panel = Panel::new();
+        panel.horizontal_align = HorizontalAlign::Start;
         panel.background = Color::Simple(Argb8888::BLACK).into();
 
-        let mut subpanel = Panel::new();
+        {
+            let mut inner_panel = Panel::new();
+            inner_panel.background = Color::Simple(Argb8888::WHITE).into();
+            inner_panel.horizontal_align = HorizontalAlign::Start;
+            {
+                for _ in 0..10 {
+                    let mut empty_panel = Panel::new();
+                    empty_panel.background = Color::Simple(Argb8888::random()).into();
+                    inner_panel.add_child(Box::new(empty_panel));
+                }
+            }
+            panel.add_child(Box::new(inner_panel));
+        }
 
-        let mut test_layout_widget = TestPanelLayoutWidget::default();
-        test_layout_widget.min = Vec2::new(100.0, 100.0);
-        subpanel.add_child(Box::new(test_layout_widget));
+        {
+            let mut inner_panel = Panel::new();
+            inner_panel.background = Texture::new(gui.texture).into();
 
-        subpanel.background = Texture::new(gui.texture).into();
-        panel.add_child(Box::new(subpanel));
+            {
+                let mut test_layout_widget = TestPanelLayoutWidget::default();
+                test_layout_widget.min = Vec2::new(100.0, 100.0);
+                inner_panel.add_child(Box::new(test_layout_widget));
+            }
 
-        let mut subpanel = Panel::new();
-        subpanel.background =
-            Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0))
-                .into();
-        panel.add_child(Box::new(subpanel));
+            panel.add_child(Box::new(inner_panel));
+        }
+
+        {
+            let mut inner_panel = Panel::new();
+            inner_panel.background = Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0)).into();
+            inner_panel.horizontal_align = HorizontalAlign::Start;
+            inner_panel.spacing = 10.0;
+            {
+                for _ in 0..5 {
+                    let mut empty_panel = Panel::new();
+                    empty_panel.background = Color::Simple(Argb8888::random()).into();
+                    inner_panel.add_child(Box::new(empty_panel));
+                }
+            }
+            panel.add_child(Box::new(inner_panel));
+        }
+
+        {
+            let mut inner_panel = Panel::with_id("Id");
+            inner_panel.background = Color::Simple(Argb8888::WHITE).into();
+            inner_panel.horizontal_align = HorizontalAlign::Start;
+            {
+                for _ in 0..10 {
+                    let mut empty_panel = Panel::new();
+                    empty_panel.background = Color::Simple(Argb8888::random()).into();
+                    inner_panel.add_child(Box::new(empty_panel));
+                }
+            }
+
+            panel.add_child(Box::new(inner_panel));
+        }
+
 
         Box::new(panel)
     }
