@@ -11,13 +11,23 @@ fn event_loop_init() {
 }
 
 #[divan::bench]
-fn run_logic() {
-    let mut event_loop = HeadlessEventLoop::new(App::default());
-    event_loop.run_logic();
+fn run_logic(bencher: divan::Bencher) {
+    bencher
+        .with_inputs(|| {
+            HeadlessEventLoop::new(App::default())
+        })
+        .bench_values(|mut event_loop| {
+            event_loop.run_logic();
+        });
 }
 
 #[divan::bench]
-fn run_draw() {
-    let mut event_loop = HeadlessEventLoop::new(App::default());
-    event_loop.run_draw();
+fn run_draw(bencher: divan::Bencher) {
+    bencher
+        .with_inputs(|| {
+            HeadlessEventLoop::new(App::default())
+        })
+        .bench_values(|mut event_loop| {
+            event_loop.run_draw();
+        });
 }

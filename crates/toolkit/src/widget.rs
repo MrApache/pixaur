@@ -16,7 +16,7 @@ pub enum DesiredSize {
     Fill,
 }
 
-pub trait Widget: Any {
+pub trait Widget: Any + Sync + Send {
     fn id(&self) -> Option<&str>;
     fn desired_size(&self) -> DesiredSize;
     fn as_container(&self) -> Option<&dyn Container> {
