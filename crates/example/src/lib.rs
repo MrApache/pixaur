@@ -7,14 +7,13 @@ use toolkit::{
     types::{Argb8888, Color, LinearGradient, Texture},
     widget::Container,
     window::WindowRequest,
-    ContentManager, Context, DesktopOptions, FontHandle,
+    ContentManager, Context, DesktopOptions,
     TextureHandle, UserWindow, GUI,
 };
 
 #[derive(Default)]
 pub struct App {
     texture: TextureHandle,
-    _font: FontHandle,
 }
 
 impl GUI for App {
