@@ -112,9 +112,10 @@ impl<W: Widget> Widget for Panel<W> {
     }
 
     fn layout(&mut self, bounds: Rect) {
-        if let Some(id) = &self.id && id == "Id" {
-            println!();
-        }
+        //Debugging
+        //if let Some(id) = &self.id && id == "Id" {
+        //    println!();
+        //}
         self.rect = bounds;
 
         // Учитываем padding с обеих сторон для вычисления внутренних границ
