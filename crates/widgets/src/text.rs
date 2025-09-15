@@ -27,6 +27,7 @@ impl Default for Text {
             font: FontHandle::default(),
             size: 12,
             color: Color::Simple(Argb8888::WHITE),
+            color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
         };
@@ -45,6 +46,7 @@ impl Text {
             font,
             size: 12,
             color: Color::Simple(Argb8888::WHITE),
+            color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
         };
@@ -60,6 +62,7 @@ impl Text {
             font,
             size: 12,
             color: Color::Simple(Argb8888::WHITE),
+            color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
         };
