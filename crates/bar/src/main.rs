@@ -35,7 +35,7 @@ impl GUI for App {
 
     fn load_content(&mut self, content: &mut toolkit::ContentManager) {
         self.font = content.include_font(include_asset!("MSW98UI-Regular.ttf"));
-        self.icon = content.include_svg_as_texture(include_asset!("arch.svg"), 25, 25);
+        self.icon = content.include_svg_as_texture(include_asset!("arch.svg"), 16, 16);
     }
 }
 
@@ -66,10 +66,10 @@ struct BarWindowImpl {
 impl BarWindowImpl {
     fn request(&self) -> toolkit::window::WindowRequest {
         WindowRequest::new("bar")
-            .with_size(1920, 35)
+            .with_size(1920, 30)
             .bottom(SpecialOptions {
                 anchor: Anchor::Top,
-                exclusive_zone: 35,
+                exclusive_zone: 30,
                 target: TargetMonitor::Primary,
             })
     }
@@ -88,8 +88,9 @@ impl BarWindowImpl {
         root.add_child(BarWindow::Text(time));
 
         let mut button: Button<ButtonMockCallbacks, Image> = Button::new();
+        button.size = Vec2::new(24.0, 24.0);
         let content = button.content_mut();
-        content.size = Vec2::new(25.0, 25.0);
+        content.size = Vec2::new(16.0, 16.0);
         content.handle = Some(Handle::Svg(app.icon));
         button.normal.background = Argb8888::new(212, 208, 200, 255).into();
         button.normal.stroke.width = 1.0;
