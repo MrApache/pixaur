@@ -4,6 +4,7 @@ pub mod panel;
 pub mod text;
 pub mod button;
 pub mod rectangle;
+pub mod image;
 
 #[macro_export]
 macro_rules! impl_empty_widget {

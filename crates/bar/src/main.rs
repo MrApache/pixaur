@@ -87,6 +87,32 @@ impl BarWindowImpl {
         time.color = Argb8888::BLACK.into();
         root.add_child(BarWindow::Text(time));
 
+        let mut button: Button<ButtonMockCallbacks, Image> = Button::new();
+        let content = button.content_mut();
+        content.size = Vec2::new(25.0, 25.0);
+        content.handle = Some(Handle::Svg(app.icon));
+        button.normal.background = Argb8888::new(212, 208, 200, 255).into();
+        button.normal.stroke.width = 1.0;
+        button.normal.stroke.color = [
+            Argb8888::WHITE,
+            Argb8888::BLACK,
+            Argb8888::WHITE,
+            Argb8888::BLACK,
+        ];
+
+        button.hover = button.normal.clone();
+
+        button.pressed.background = Argb8888::new(192, 192, 192, 255).into();
+        button.pressed.stroke.width = 1.0;
+        button.pressed.stroke.color = [
+            Argb8888::new(128, 128, 128, 255),
+            Argb8888::WHITE,
+            Argb8888::new(128, 128, 128, 255),
+            Argb8888::WHITE,
+        ];
+
+        root.add_child(BarWindow::Button(button));
+
         self.root = root;
     }
 
