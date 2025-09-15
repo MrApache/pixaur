@@ -1,11 +1,11 @@
-use smallvec::SmallVec;
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
+    commands::{CommandBuffer, DrawCommand, DrawRectCommand},
     glam::{Vec2, Vec4},
-    types::styling::BackgroundStyle,
-    types::{Argb8888, Color, Rect, Stroke},
+    types::{Argb8888, Rect, Stroke},
     widget::{Container, DesiredSize, Widget},
 };
+
+use crate::rectangle::Rectangle;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub enum LayoutMode {
@@ -36,9 +36,7 @@ pub struct Panel<W: Widget> {
     pub mode: LayoutMode,
     pub vertical_align: VerticalAlign,
     pub horizontal_align: HorizontalAlign,
-
-    pub background: BackgroundStyle,
-    pub stroke: Stroke,
+    pub rectangle: Rectangle,
 
     id: Option<String>,
     rect: Rect,
@@ -59,16 +57,16 @@ impl<W: Widget> Panel<W> {
 
     pub fn with_id(id: impl Into<String>) -> Self {
         Self {
-            id: Some(id.into()),
-            content: Vec::new(),
-            rect: Rect::default(),
-            background: Color::Simple(Argb8888::WHITE).into(),
             padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
             spacing: 4.0,
             mode: LayoutMode::Vertical,
-            stroke: Stroke::default(),
             horizontal_align: HorizontalAlign::Center,
             vertical_align: VerticalAlign::Center,
+            rectangle: Rectangle::default(),
+
+            id: Some(id.into()),
+            rect: Rect::default(),
+            content: Vec::new(),
         }
     }
 }
@@ -95,29 +93,14 @@ impl<W: Widget> Widget for Panel<W> {
     }
 
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        match &self.background {
-            BackgroundStyle::Color(color) => out.push(DrawRectCommand::new(
-                self.rect.clone(),
-                color.clone(),
-                self.stroke.clone(),
-            )),
-            BackgroundStyle::Texture(texture) => out.push(DrawTextureCommand::new(
-                self.rect.clone(),
-                texture.clone(),
-                self.stroke.clone(),
-            )),
-        }
-
+        self.rectangle.draw(out);
         self.content.iter().for_each(|w| {
             w.draw(out);
         });
     }
 
     fn layout(&mut self, bounds: Rect) {
-        //Debugging
-        //if let Some(id) = &self.id && id == "Id" {
-        //    println!();
-        //}
+        self.rectangle.layout(bounds.clone());
         self.rect = bounds;
 
         // Учитываем padding с обеих сторон для вычисления внутренних границ
@@ -143,8 +126,7 @@ impl<W: Widget> Widget for Panel<W> {
             .iter()
             .for_each(|widget| match widget.desired_size() {
                 DesiredSize::Min(size) => total_min_width += size.x,
-                DesiredSize::Fill |
-                DesiredSize::FillMinY(_) => fill_count += 1,
+                DesiredSize::Fill | DesiredSize::FillMinY(_) => fill_count += 1,
             });
 
         let total_spacing = self.spacing * len.saturating_sub(1) as f32;
@@ -184,10 +166,16 @@ impl<W: Widget> Widget for Panel<W> {
                 cursor_x += self.spacing;
             }
 
-            if cursor_x >= max_x + min_x{
+            if cursor_x >= max_x + min_x {
                 break;
             }
         }
+    }
+
+    fn update(&mut self, ctx: &toolkit::widget::FrameContext) {
+        self.content.iter_mut().for_each(|w| {
+            w.update(ctx);
+        });
     }
 }
 
@@ -239,5 +227,8 @@ impl Widget for TestPanelLayoutWidget {
 
     fn layout(&mut self, bounds: Rect) {
         self.rect = bounds;
+    }
+
+    fn update(&mut self, _: &toolkit::widget::FrameContext) {
     }
 }

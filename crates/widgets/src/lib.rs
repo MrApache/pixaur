@@ -2,6 +2,7 @@
 
 pub mod panel;
 pub mod text;
+pub mod rectangle;
 
 #[macro_export]
 macro_rules! impl_empty_widget {

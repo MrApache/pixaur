@@ -8,13 +8,12 @@ use toolkit::{
 };
 
 pub struct Text {
-    id: Option<String>,
-    font: FontHandle,
-
-    value: String,
     pub size: u32,
     pub color: Color,
+    font: FontHandle,
 
+    id: Option<String>,
+    value: String,
     layout: Layout,
     position: Vec2,
 }
@@ -26,7 +25,6 @@ impl Default for Text {
             value: String::new(),
             font: FontHandle::default(),
             size: 12,
-            color: Color::Simple(Argb8888::WHITE),
             color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
@@ -45,7 +43,6 @@ impl Text {
             value: String::new(),
             font,
             size: 12,
-            color: Color::Simple(Argb8888::WHITE),
             color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
@@ -61,7 +58,6 @@ impl Text {
             value: String::new(),
             font,
             size: 12,
-            color: Color::Simple(Argb8888::WHITE),
             color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             position: Vec2::ZERO,
@@ -123,7 +119,7 @@ impl Widget for Text {
         });
 
         let y = self.layout.height();
-        DesiredSize::Min(Vec2::new(x.floor(), y))
+        DesiredSize::Min(Vec2::new(x.floor() + 10.0, y))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -154,5 +150,8 @@ impl Widget for Text {
         self.refresh_layout();
 
         self.position = bounds.min;
+    }
+
+    fn update(&mut self, _: &toolkit::widget::FrameContext) {
     }
 }
