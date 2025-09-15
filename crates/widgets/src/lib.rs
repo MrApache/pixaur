@@ -2,6 +2,7 @@
 
 pub mod panel;
 pub mod text;
+pub mod button;
 pub mod rectangle;
 
 #[macro_export]

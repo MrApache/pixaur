@@ -7,6 +7,7 @@ use toolkit::{
     ContentManager, DesktopOptions, Handle, SvgHandle, TextureHandle, WidgetEnum, WindowRoot, GUI,
 };
 use widgets::{
+    button::{Button, ButtonCallbacks},
     impl_empty_widget,
     panel::{HorizontalAlign, Panel, TestPanelLayoutWidget},
 };
@@ -57,16 +58,16 @@ impl WindowRoot for MainWindow {
     fn setup(&mut self, gui: &mut Self::Gui) {
         let mut panel = Panel::<Root>::new();
         panel.horizontal_align = HorizontalAlign::Start;
-        panel.background = Color::Simple(Argb8888::BLACK).into();
+        panel.rectangle.background = Argb8888::BLACK.into();
 
         {
             let mut inner_panel = Panel::<Root>::new();
-            inner_panel.background = Color::Simple(Argb8888::WHITE).into();
+            inner_panel.rectangle.background = Argb8888::WHITE.into();
             inner_panel.horizontal_align = HorizontalAlign::Start;
             {
                 for _ in 0..10 {
                     let mut empty_panel = Panel::<Empty>::new();
-                    empty_panel.background = Color::Simple(Argb8888::random()).into();
+                    empty_panel.rectangle.background = Argb8888::random().into();
                     inner_panel.add_child(Root::Empty(empty_panel));
                 }
             }
@@ -76,12 +77,16 @@ impl WindowRoot for MainWindow {
 
         {
             let mut inner_panel = Panel::<Root>::new();
-            inner_panel.background = Texture::new(gui.texture).into();
+            inner_panel.rectangle.background = Texture::new(Handle::Svg(gui.icon)).into();
 
             {
                 let mut test_layout_widget = TestPanelLayoutWidget::default();
                 test_layout_widget.min = Vec2::new(100.0, 100.0);
                 inner_panel.add_child(Root::TestPanel(test_layout_widget));
+            }
+            {
+                let button: Button<TestCallbacks, Empty> = Button::new();
+                inner_panel.add_child(Root::Button(button));
             }
 
             panel.add_child(Root::Panel(inner_panel));
@@ -89,7 +94,7 @@ impl WindowRoot for MainWindow {
 
         {
             let mut inner_panel = Panel::<Root>::new();
-            inner_panel.background =
+            inner_panel.rectangle.background =
                 Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0))
                     .into();
             inner_panel.horizontal_align = HorizontalAlign::Start;
@@ -97,7 +102,7 @@ impl WindowRoot for MainWindow {
             {
                 for _ in 0..5 {
                     let mut empty_panel = Panel::<Empty>::new();
-                    empty_panel.background = Color::Simple(Argb8888::random()).into();
+                    empty_panel.rectangle.background = Argb8888::random().into();
                     inner_panel.add_child(Root::Empty(empty_panel));
                 }
             }
@@ -106,12 +111,12 @@ impl WindowRoot for MainWindow {
 
         {
             let mut inner_panel = Panel::<Root>::with_id("Id");
-            inner_panel.background = Color::Simple(Argb8888::WHITE).into();
+            inner_panel.rectangle.background = Argb8888::WHITE.into();
             inner_panel.horizontal_align = HorizontalAlign::Start;
             {
                 for _ in 0..10 {
                     let mut empty_panel = Panel::<Empty>::new();
-                    empty_panel.background = Color::Simple(Argb8888::random()).into();
+                    empty_panel.rectangle.background = Argb8888::random().into();
                     inner_panel.add_child(Root::Empty(empty_panel));
                 }
             }
@@ -132,6 +137,18 @@ pub enum Root {
     Panel(Panel<Root>),
     TestPanel(TestPanelLayoutWidget),
     Empty(Panel<Empty>),
+    Button(Button<TestCallbacks, Empty>),
+}
+
+impl Default for Root {
+    fn default() -> Self {
+        Self::Panel(Panel::default())
+    }
 }
 
 impl_empty_widget!(Empty);
+
+#[derive(Default)]
+pub struct TestCallbacks;
+
+impl ButtonCallbacks for TestCallbacks {}

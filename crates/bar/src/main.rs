@@ -8,6 +8,8 @@ use toolkit::{
     TargetMonitor, WidgetEnum, WindowRoot, WindowRootEnum, GUI,
 };
 use widgets::{
+    button::{Button, ButtonMockCallbacks},
+    image::Image,
     impl_empty_widget,
     panel::{HorizontalAlign, Panel, VerticalAlign},
     text::Text,
@@ -47,6 +49,13 @@ enum Windows {
 #[derive(WidgetEnum)]
 enum BarWindow {
     Text(Text),
+    Button(Button<ButtonMockCallbacks, Image>),
+}
+
+impl Default for BarWindow {
+    fn default() -> Self {
+        Self::Text(Text::default())
+    }
 }
 
 #[derive(Default)]
@@ -67,8 +76,8 @@ impl BarWindowImpl {
 
     fn setup(&mut self, app: &mut App) {
         let mut root = Panel::<BarWindow>::new();
-        root.background = Color::Simple(Argb8888::new(17, 17, 27, 255)).into();
-        root.stroke = Stroke::none();
+        root.rectangle.background = Argb8888::new(212, 208, 200, 255).into();
+        root.rectangle.stroke = Stroke::none();
         root.vertical_align = VerticalAlign::Center;
         root.horizontal_align = HorizontalAlign::Center;
 
@@ -112,8 +121,8 @@ impl TestWindowImpl {
 
     fn setup(&mut self, _: &mut App) {
         let mut root = Panel::<Empty>::new();
-        root.background = Color::Simple(Argb8888::RED).into();
-        root.stroke = Stroke::none();
+        root.rectangle.background = Argb8888::RED.into();
+        root.rectangle.stroke = Stroke::none();
 
         self.root = root;
     }
