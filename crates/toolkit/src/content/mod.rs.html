@@ -15,7 +15,7 @@
         <div>
             <p class="heading">Lines</p>
             <p class="title has-text-danger">
-                <abbr title="0 / 120">0 %</abbr></p>
+                <abbr title="0 / 119">0 %</abbr></p>
         </div>
     </div>
 
@@ -767,13 +767,13 @@
                 <a href="#46">46</a>
             </div>
             <div
-                class="column is-1 is-narrow p-0 has-text-centered has-text-danger-light has-background-danger"
-                role="cell" aria-label="0">
+                class="column is-1 is-narrow p-0 has-text-centered has-text-white has-background-white"
+                role="cell" aria-label="no coverage">
                 
             </div>
-            <div class="column has-background-danger-light p-0"
+            <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    let bytes = include_asset!(&quot;Ubuntu-Regular.ttf&quot;);</pre>
+                <pre class="has-background-white py-0 px-2">    const BYTES: &amp;[u8; 299_684] = include_asset!(&quot;Ubuntu-Regular.ttf&quot;);</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -789,7 +789,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    let font = Font::from_bytes(bytes.as_ref(), FontSettings::default()).unwrap();</pre>
+                <pre class="has-background-danger-light py-0 px-2">    let font = Font::from_bytes(BYTES.as_ref(), FontSettings::default()).unwrap();</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -4108,7 +4108,7 @@
         <footer class="footer">
             
                 <div class="content has-text-centered">
-                    <p class="heading">Date: 2025-09-15 19:35</p>
+                    <p class="heading">Date: 2025-09-15 19:49</p>
                 </div>
             
         </footer>
