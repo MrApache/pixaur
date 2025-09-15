@@ -72,11 +72,7 @@ impl<W: Widget> Panel<W> {
 
 impl<W: Widget> Widget for Panel<W> {
     fn id(&self) -> Option<&str> {
-        if let Some(id) = &self.id {
-            Some(id)
-        } else {
-            None
-        }
+        self.id.as_deref()
     }
 
     fn desired_size(&self) -> DesiredSize {
