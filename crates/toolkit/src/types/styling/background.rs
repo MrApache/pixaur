@@ -1,7 +1,6 @@
 use derive_more::From;
 use crate::{
-    TextureHandle,
-    types::{Argb8888, Color, Texture},
+    types::{Argb8888, Color, Texture}, Handle, SvgHandle, TextureHandle
 };
 
 #[derive(Debug, Clone, From)]
@@ -20,7 +19,16 @@ impl From<TextureHandle> for BackgroundStyle {
     fn from(value: TextureHandle) -> Self {
         BackgroundStyle::Texture(Texture {
             color: Argb8888::WHITE.into(),
-            handle: value,
+            handle: Handle::Texture(value),
+        })
+    }
+}
+
+impl From<SvgHandle> for BackgroundStyle {
+    fn from(value: SvgHandle) -> Self {
+        BackgroundStyle::Texture(Texture {
+            color: Argb8888::WHITE.into(),
+            handle: Handle::Svg(value),
         })
     }
 }

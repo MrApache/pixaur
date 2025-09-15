@@ -19,7 +19,6 @@ pub enum DesiredSize {
     Fill,
 }
 
-pub trait Widget: Any + Sync + Send {
 #[derive(Default)]
 pub struct FrameContext {
     pub(crate) delta_time: f32,
@@ -44,6 +43,7 @@ impl FrameContext {
     }
 }
 
+pub trait Widget: Any + Sync + Send + Default {
     fn id(&self) -> Option<&str>;
     fn desired_size(&self) -> DesiredSize;
     fn as_any(&self) -> &dyn Any;

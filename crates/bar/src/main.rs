@@ -1,4 +1,12 @@
-use toolkit::{types::{Argb8888, Color, Stroke}, widget::{Container, Widget}, window::WindowRequest, Anchor, DesktopOptions, Error, EventLoop, SpecialOptions, TargetMonitor, WidgetEnum, WindowRoot, WindowRootEnum, GUI};
+use toolkit::{
+    glam::Vec2,
+    include_asset,
+    types::{Argb8888, Stroke},
+    widget::{Container, FrameContext, Widget},
+    window::WindowRequest,
+    Anchor, DesktopOptions, Error, EventLoop, FontHandle, Handle, SpecialOptions, SvgHandle,
+    TargetMonitor, WidgetEnum, WindowRoot, WindowRootEnum, GUI,
+};
 use widgets::{
     impl_empty_widget,
     panel::{HorizontalAlign, Panel, VerticalAlign},
@@ -8,16 +16,24 @@ use widgets::{
 impl_empty_widget!(Empty);
 
 #[derive(Default)]
-struct App;
+struct App {
+    font: FontHandle,
+    icon: SvgHandle,
+}
 
 impl GUI for App {
     type Window = Windows;
 
     fn setup_windows(&mut self) -> Vec<Self::Window> {
         vec![
-            Windows::TestWindow(TestWindowImpl::default()),
+            //Windows::TestWindow(TestWindowImpl::default()),
             Windows::BarWindow(BarWindowImpl::default()),
         ]
+    }
+
+    fn load_content(&mut self, content: &mut toolkit::ContentManager) {
+        self.font = content.include_font(include_asset!("MSW98UI-Regular.ttf"));
+        self.icon = content.include_svg_as_texture(include_asset!("arch.svg"), 25, 25);
     }
 }
 
@@ -25,7 +41,7 @@ impl GUI for App {
 #[window_gui(App)]
 enum Windows {
     BarWindow(BarWindowImpl),
-    TestWindow(TestWindowImpl)
+    TestWindow(TestWindowImpl),
 }
 
 #[derive(WidgetEnum)]
@@ -49,16 +65,17 @@ impl BarWindowImpl {
             })
     }
 
-    fn setup(&mut self, _: &mut App) {
+    fn setup(&mut self, app: &mut App) {
         let mut root = Panel::<BarWindow>::new();
         root.background = Color::Simple(Argb8888::new(17, 17, 27, 255)).into();
         root.stroke = Stroke::none();
         root.vertical_align = VerticalAlign::Center;
         root.horizontal_align = HorizontalAlign::Center;
 
-        let mut time = Text::default();
+        let mut time = Text::new(app.font.clone());
         time.set_text("23:59");
-        time.size = 16;
+        time.size = 14;
+        time.color = Argb8888::BLACK.into();
         root.add_child(BarWindow::Text(time));
 
         self.root = root;
@@ -79,7 +96,7 @@ impl BarWindowImpl {
 
 #[derive(Default)]
 pub struct TestWindowImpl {
-    root: Panel<Empty>
+    root: Panel<Empty>,
 }
 
 impl TestWindowImpl {
@@ -115,6 +132,6 @@ impl TestWindowImpl {
 }
 
 fn main() -> Result<(), Error> {
-    let mut event_loop = EventLoop::new(App)?;
+    let mut event_loop = EventLoop::new(App::default())?;
     event_loop.run()
 }

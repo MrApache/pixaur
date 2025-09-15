@@ -1,4 +1,7 @@
+mod svg;
+
 use crate::{
+    content::svg::{SvgData, SvgRequest},
     rendering::{material::Material, Gpu},
     Error,
 };
@@ -12,7 +15,7 @@ use std::{
         Arc,
     },
 };
-use ttf_parser::Face;
+pub use svg::SvgHandle;
 
 #[macro_export]
 macro_rules! include_asset {
@@ -26,6 +29,17 @@ macro_rules! include_asset_content {
     ($path:expr) => {
         include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/", $path))
     };
+}
+
+enum Request {
+    Texture(TextureRequest),
+    Svg(SvgRequest),
+}
+
+#[derive(Debug, Clone)]
+pub enum Handle {
+    Texture(TextureHandle),
+    Svg(SvgHandle),
 }
 
 static DEFAULT_FONT: std::sync::LazyLock<Arc<Font>> = std::sync::LazyLock::new(|| {
@@ -67,8 +81,9 @@ pub struct TextureHandle {
 pub struct ContentManager {
     static_font: HashMap<String, Arc<Font>>,
     static_textures: Vec<Material>,
+    svg: Vec<SvgData>,
 
-    queue: Vec<TextureRequest>,
+    queue: Vec<Request>,
 }
 
 pub(crate) struct TextureRequest {
@@ -80,19 +95,19 @@ pub(crate) struct TextureRequest {
 #[allow(dead_code)]
 impl ContentManager {
     pub fn include_font(&mut self, bytes: &'static [u8]) -> FontHandle {
-        let font_name = font_name(bytes).unwrap();
         let font = Font::from_bytes(bytes, FontSettings::default()).unwrap();
+        let name = font.name().unwrap().to_string();
         let font_handle = Arc::new(font);
-        self.static_font.insert(font_name, font_handle.clone());
+        self.static_font.insert(name, font_handle.clone());
         FontHandle { inner: font_handle }
     }
 
     pub fn static_load_font(&mut self, path: &'static str) -> FontHandle {
         let bytes: &'static [u8] = Box::leak(std::fs::read(path).unwrap().into_boxed_slice());
-        let font_name = font_name(bytes).unwrap();
         let font = Font::from_bytes(bytes, FontSettings::default()).unwrap();
+        let name = font.name().unwrap().to_string();
         let font_handle = Arc::new(font);
-        self.static_font.insert(font_name, font_handle.clone());
+        self.static_font.insert(name, font_handle.clone());
         FontHandle { inner: font_handle }
     }
 
@@ -102,11 +117,11 @@ impl ContentManager {
 
     pub fn include_texture(&mut self, bytes: &'static [u8]) -> TextureHandle {
         let handle_id = next_handle_id();
-        self.queue.push(TextureRequest {
+        self.queue.push(Request::Texture(TextureRequest {
             bytes,
             handle_id,
             is_static: true,
-        });
+        }));
 
         TextureHandle { id: handle_id }
     }
@@ -122,33 +137,81 @@ impl ContentManager {
             id: request.handle_id,
         });
 
-        self.queue.push(request);
+        self.queue.push(Request::Texture(request));
         result
+    }
+
+    pub fn include_svg_as_texture(
+        &mut self,
+        bytes: &'static [u8],
+        width: u32,
+        height: u32,
+    ) -> SvgHandle {
+        let mut svg_handle = self.load_svg_from_bytes(bytes).unwrap();
+        svg_handle.width = width;
+        svg_handle.height = height;
+
+        let request = self.create_static_texture(svg_handle, width, height);
+        self.queue.push(Request::Svg(request));
+
+        svg_handle
     }
 
     pub(crate) fn dispath_queue(&mut self, gpu: &Gpu) -> Result<(), Error> {
         self.queue
             .drain(..)
             .try_for_each(|request| -> Result<(), Error> {
-                let material = Material::from_bytes(request.bytes, &gpu.device, &gpu.queue)?;
-                if request.is_static {
-                    self.static_textures.push(material);
+                match request {
+                    Request::Texture(texture_request) => {
+                        let material =
+                            Material::from_bytes(texture_request.bytes, &gpu.device, &gpu.queue)?;
+                        if texture_request.is_static {
+                            self.static_textures.push(material);
+                        } else {
+                            todo!();
+                        }
+                    }
+                    Request::Svg(svg_request) => {
+                        let material = Material::from_rgba_pixels(
+                            "svg",
+                            svg_request.pixmap.data(),
+                            (svg_request.width, svg_request.height),
+                            &gpu.device,
+                            &gpu.queue,
+                        );
+                        self.svg.get_mut(svg_request.id).unwrap().textures.insert(
+                            (svg_request.width, svg_request.height),
+                            TextureHandle {
+                                id: next_handle_id(),
+                            },
+                        );
+
+                        if svg_request.is_static {
+                            self.static_textures.push(material);
+                        } else {
+                            todo!();
+                        }
+                    }
                 }
                 Ok(())
             })
     }
 
-    pub(crate) fn get_texture(&self, handle: TextureHandle) -> &Material {
-        self.static_textures.get(handle.id).unwrap()
+    pub(crate) fn get_texture(&self, handle: &Handle) -> &Material {
+        match handle {
+            Handle::Texture(handle) => self.static_textures.get(handle.id).unwrap(),
+            Handle::Svg(handle) => {
+                let handle = self
+                    .svg
+                    .get(handle.id)
+                    .unwrap()
+                    .textures
+                    .get(&(handle.width, handle.height))
+                    .unwrap();
+                self.static_textures.get(handle.id).unwrap()
+            }
+        }
     }
-}
-
-fn font_name(data: &[u8]) -> Option<String> {
-    let face = Face::parse(data, 0).ok()?;
-    face.names()
-        .into_iter()
-        .find(|name| name.name_id == ttf_parser::name_id::FULL_NAME)
-        .and_then(|name| name.to_string())
 }
 
 /// # Errors

@@ -4,7 +4,7 @@ use toolkit::{
     types::{Argb8888, Color, LinearGradient, Texture},
     widget::{Container, FrameContext, Widget},
     window::WindowRequest,
-    ContentManager, DesktopOptions, TextureHandle, WidgetEnum, WindowRoot, GUI,
+    ContentManager, DesktopOptions, Handle, SvgHandle, TextureHandle, WidgetEnum, WindowRoot, GUI,
 };
 use widgets::{
     impl_empty_widget,
@@ -14,6 +14,7 @@ use widgets::{
 #[derive(Default)]
 pub struct App {
     texture: TextureHandle,
+    icon: SvgHandle,
 }
 
 impl GUI for App {
@@ -21,6 +22,7 @@ impl GUI for App {
 
     fn load_content(&mut self, content: &mut ContentManager) {
         self.texture = content.include_texture(include_asset!("billy.jpg"));
+        self.icon = content.include_svg_as_texture(include_asset!("arch.svg"), 50, 50);
     }
 
     fn setup_windows(&mut self) -> Vec<MainWindow> {

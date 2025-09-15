@@ -94,7 +94,7 @@ impl DrawDispatcher for DrawTextureCommand {
         content: &ContentManager,
         renderpass: &mut RenderPass,
     ) {
-        let material = content.get_texture(self.texture.handle);
+        let material = content.get_texture(&self.texture.handle);
         renderpass.set_bind_group(0, &material.bind_group, &[]);
     }
 
