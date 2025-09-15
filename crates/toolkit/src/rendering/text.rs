@@ -1,13 +1,12 @@
+use crate::rendering::{
+    material::{Material, MaterialDescriptor},
+    Gpu,
+};
 use fontdue::{Font, Metrics};
 use glam::Vec4;
 use guillotiere::AtlasAllocator;
 use std::collections::HashMap;
 use wgpu::{FilterMode, TextureFormat};
-
-use crate::rendering::{
-    material::{Material, MaterialDescriptor},
-    Gpu,
-};
 
 #[derive(Default)]
 pub struct FontAtlasSet {
@@ -32,6 +31,7 @@ pub struct FontAtlas {
     texture: Vec<u8>,
     size: u32,
     material: Option<Material>,
+    recreate_material: bool,
 }
 
 impl FontAtlas {
@@ -42,6 +42,7 @@ impl FontAtlas {
             texture: vec![0; 512 * 512 * 4],
             size: 512,
             material: None,
+            recreate_material: true,
         }
     }
 
@@ -93,27 +94,33 @@ impl FontAtlas {
             metrics,
         };
 
+        //println!("Create glpyh '{char}. UV: {}'", data.uv);
+        self.recreate_material = true;
         self.inner.insert(char, data.clone());
 
         data
     }
 
     pub fn get_or_add_material(&mut self, gpu: &Gpu) -> &Material {
-        if self.material.is_none() {
-            self.material = Some(Material::from_pixels(
-                &MaterialDescriptor {
-                    label: "Glyph atlas",
-                    pixels: &self.texture,
-                    size: (self.size, self.size),
-                    format: TextureFormat::Rgba8Unorm,
-                    mag_filter: FilterMode::Linear,
-                    min_filter: FilterMode::Nearest,
-                },
-                &gpu.device,
-                &gpu.queue,
-            ));
+        if self.material.is_none() || self.recreate_material {
+            self.create_material(gpu);
+            self.recreate_material = false;
         }
-
         self.material.as_ref().unwrap()
+    }
+
+    fn create_material(&mut self, gpu: &Gpu) {
+        self.material = Some(Material::from_pixels(
+            &MaterialDescriptor {
+                label: "Glyph atlas",
+                pixels: &self.texture,
+                size: (self.size, self.size),
+                format: TextureFormat::Rgba8Unorm,
+                mag_filter: FilterMode::Nearest,
+                min_filter: FilterMode::Nearest,
+            },
+            &gpu.device,
+            &gpu.queue,
+        ));
     }
 }
