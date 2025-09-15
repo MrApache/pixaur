@@ -1,5 +1,5 @@
 use example::App;
-use toolkit::{headless::HeadlessEventLoop};
+use toolkit::{headless::HeadlessEventLoop, FontHandle};
 
 fn main() {
     divan::main();
@@ -30,4 +30,9 @@ fn run_draw(bencher: divan::Bencher) {
         .bench_values(|mut event_loop| {
             event_loop.run_draw();
         });
+}
+
+#[divan::bench]
+fn default_font_load() {
+    FontHandle::default();
 }
