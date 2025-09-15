@@ -1,6 +1,6 @@
 use crate::{ContentManager, Error, TextureHandle};
 use resvg::{
-    tiny_skia::{IntSize, Pixmap},
+    tiny_skia::Pixmap,
     usvg::{Options, Transform, Tree},
 };
 use std::{
@@ -30,6 +30,7 @@ pub struct SvgRequest {
 
 pub struct SvgData {
     pub tree: Tree,
+    pub original_size: (u32, u32),
     pub textures: HashMap<(u32, u32), TextureHandle>,
 }
 
@@ -43,11 +44,9 @@ impl ContentManager {
         let mut xd = Pixmap::new(512, 512).unwrap();
         resvg::render(&tree, Transform::default(), &mut xd.as_mut());
 
-        xd.save_png("/home/irisu/blha.png");
-
-
         self.svg.push(SvgData {
             tree,
+            original_size,
             textures: HashMap::new(),
         });
 
@@ -69,11 +68,13 @@ impl ContentManager {
             .ok_or("Failed to create pixmap")
             .unwrap();
 
-        pixmap.fill(resvg::tiny_skia::Color::TRANSPARENT);
-
-        resvg::render(&svg_data.tree, Transform::default(), &mut pixmap.as_mut());
-
-        pixmap.save_png("home/irisu/svg.png");
+        let scale_x = width as f32 / svg_data.original_size.0 as f32;
+        let scale_y = height as f32 / svg_data.original_size.1 as f32;
+        resvg::render(
+            &svg_data.tree,
+            Transform::from_scale(scale_x, scale_y),
+            &mut pixmap.as_mut(),
+        );
 
         SvgRequest {
             width,
@@ -85,55 +86,7 @@ impl ContentManager {
     }
 }
 
-pub struct SvgManager {
-    svgs: Vec<SvgData>,
-}
-
-impl SvgManager {
-    pub fn new() -> Self {
-        Self { svgs: Vec::new() }
-    }
-
-    // Загрузить SVG из файла
-    //pub fn load_svg_from_file(&mut self, path: &str) -> Result<TextureHandle, Error> {
-    //    let bytes = std::fs::read(path)?;
-    //    self.load_svg(bytes)
-    //}
-
-    /*
-    /// Рендерить SVG в текстуру с сохранением пропорций
-    pub fn render_to_texture_fit(
-        &self,
-        handle: SvgHandle,
-        max_width: u32,
-        max_height: u32,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) -> Result<Material, Box<dyn Error>> {
-        let svg_data = self.get_svg(handle);
-        let (orig_width, orig_height) = svg_data.original_size;
-
-        // Сохраняем пропорции
-        let ratio = orig_width as f32 / orig_height as f32;
-        let (width, height) = if max_width as f32 / max_height as f32 > ratio {
-            // Ограничение по высоте
-            ((max_height as f32 * ratio) as u32, max_height)
-        } else {
-            // Ограничение по ширине
-            (max_width, (max_width as f32 / ratio) as u32)
-        };
-
-        self.render_to_texture(handle, width, height, device, queue)
-    }
-    */
-
-    // Получить оригинальный размер SVG
-    //pub fn get_original_size(&self, handle: TextureHandle) -> (u32, u32) {
-    //    self.svgs[handle.id].original_size
-    //}
-
-    // Получить данные SVG
-    //fn get_svg(&self, handle: SvgHandle) -> &SvgData {
-    //    &self.svgs[handle.id]
-    //}
-}
+//pub fn load_svg_from_file(&mut self, path: &str) -> Result<TextureHandle, Error> {
+//    let bytes = std::fs::read(path)?;
+//    self.load_svg(bytes)
+//}
