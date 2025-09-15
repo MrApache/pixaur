@@ -11,3 +11,4 @@ wayland-backend.workspace = true
 memmap2.workspace = true
 tempfile.workspace = true
 rayon.workspace = true
+glam.workspace = true
