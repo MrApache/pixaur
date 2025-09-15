@@ -1,8 +1,8 @@
 use toolkit::{
-    commands::{DrawRectCommand, DrawTextureCommand},
-    glam::Vec2,
     types::{styling::BackgroundStyle, Argb8888, Corners, Rect, Stroke},
+    commands::{DrawRectCommand, DrawTextureCommand},
     widget::{DesiredSize, Widget},
+    glam::Vec2,
 };
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -21,6 +21,26 @@ pub trait ButtonCallbacks: Default + Send + Sync + 'static {
     fn on_clicked(&self) {}
 }
 
+#[derive(Default, Clone, Copy, Debug)]
+pub struct Padding {
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32,
+}
+
+impl Padding {
+    #[must_use]
+    pub const fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct ButtonStyle {
     pub background: BackgroundStyle,
@@ -31,18 +51,35 @@ pub struct ButtonStyle {
 pub struct ButtonMockCallbacks;
 impl ButtonCallbacks for ButtonMockCallbacks {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum Alignment {
+    #[default]
+    TopLeft,
+    TopCenter,
+    TopRight,
+    CenterLeft,
+    Center,
+    CenterRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+}
+
 #[derive(Default)]
 pub struct Button<C: ButtonCallbacks, T: Widget> {
     pub size: Vec2,
     pub normal: ButtonStyle,
     pub hover: ButtonStyle,
     pub pressed: ButtonStyle,
+    pub alignment: Alignment,
+    pub padding: Padding,
 
     rect: Rect,
+    id: Option<String>,
+    state: ButtonFsm,
+
     content: T,
     callbacks: C,
-    state: ButtonFsm,
-    id: Option<String>,
 }
 
 impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
@@ -87,6 +124,13 @@ impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
             callbacks: C::default(),
             state: ButtonFsm::Normal,
             rect: Rect::default(),
+            alignment: Alignment::Center,
+            padding: Padding {
+                left: 2.0,
+                right: 2.0,
+                top: 2.0,
+                bottom: 2.0,
+            },
         }
     }
 
@@ -135,7 +179,54 @@ impl<C: ButtonCallbacks, T: Widget> Widget for Button<C, T> {
 
     fn layout(&mut self, bounds: toolkit::types::Rect) {
         self.rect = bounds.clone();
-        self.content.layout(bounds);
+
+        let content_size = match self.content.desired_size() {
+            DesiredSize::Min(min) => Vec2::new(
+                min.x
+                    .min(self.size.x - self.padding.left - self.padding.right),
+                min.y
+                    .min(self.size.y - self.padding.top - self.padding.bottom),
+            ),
+            DesiredSize::FillMinY(y) => Vec2::new(
+                self.size.x - self.padding.left - self.padding.right,
+                y.max(self.size.y - self.padding.top - self.padding.bottom),
+            ),
+            DesiredSize::Fill => Vec2::new(
+                self.size.x - self.padding.left - self.padding.right,
+                self.size.y - self.padding.top - self.padding.bottom,
+            ),
+        };
+
+        let content_x = match self.alignment {
+            Alignment::TopLeft | Alignment::CenterLeft | Alignment::BottomLeft => {
+                self.rect.min.x + self.padding.left
+            }
+            Alignment::TopCenter | Alignment::Center | Alignment::BottomCenter => {
+                self.rect.min.x + (self.size.x - content_size.x) / 2.0
+            }
+            Alignment::TopRight | Alignment::CenterRight | Alignment::BottomRight => {
+                self.rect.min.x + self.size.x - content_size.x - self.padding.right
+            }
+        };
+
+        let content_y = match self.alignment {
+            Alignment::TopLeft | Alignment::TopCenter | Alignment::TopRight => {
+                self.rect.min.y + self.padding.top
+            }
+            Alignment::CenterLeft | Alignment::Center | Alignment::CenterRight => {
+                self.rect.min.y + (self.size.y - content_size.y) / 2.0
+            }
+            Alignment::BottomLeft | Alignment::BottomCenter | Alignment::BottomRight => {
+                self.rect.min.y + self.size.y - content_size.y - self.padding.bottom
+            }
+        };
+
+        let content_rect = Rect {
+            min: Vec2::new(content_x, content_y),
+            max: Vec2::new(content_size.x, content_size.y),
+        };
+
+        self.content.layout(content_rect);
     }
 
     fn update(&mut self, ctx: &toolkit::widget::FrameContext) {
