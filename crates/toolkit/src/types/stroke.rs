@@ -2,6 +2,7 @@ use super::{Argb8888, Corners};
 
 #[derive(Clone)]
 pub struct Stroke {
+    ///Left, Right, Top, Bottom
     pub color: [Argb8888; 4],
     pub width: f32,
     pub corners: Corners,
