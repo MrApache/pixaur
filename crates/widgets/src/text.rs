@@ -21,7 +21,6 @@ pub struct Text {
 
 impl Default for Text {
     fn default() -> Self {
-            size: 12,
         Self::new()
     }
 }
