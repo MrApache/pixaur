@@ -3,6 +3,26 @@ use glam::Vec2;
 use wl_client::ButtonState;
 use std::any::Any;
 
+#[derive(Default, Clone, Copy, Debug)]
+pub struct Padding {
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32,
+}
+
+impl Padding {
+    #[must_use]
+    pub const fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Spacing {
     pub top: f32,

@@ -1,11 +1,10 @@
+use crate::rectangle::Rectangle;
 use toolkit::{
     commands::{CommandBuffer, DrawCommand, DrawRectCommand},
-    glam::{Vec2, Vec4},
+    glam::Vec2,
     types::{Argb8888, Rect, Stroke},
-    widget::{Container, DesiredSize, Widget},
+    widget::{Container, DesiredSize, Padding, Widget},
 };
-
-use crate::rectangle::Rectangle;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub enum LayoutMode {
@@ -31,7 +30,7 @@ pub enum VerticalAlign {
 }
 
 pub struct Panel<W: Widget> {
-    pub padding: Vec4,
+    pub padding: Padding,
     pub spacing: f32,
     pub mode: LayoutMode,
     pub vertical_align: VerticalAlign,
@@ -57,7 +56,7 @@ impl<W: Widget> Panel<W> {
 
     pub fn with_id(id: impl Into<String>) -> Self {
         Self {
-            padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
+            padding: Padding::new(4.0, 4.0, 4.0, 4.0),
             spacing: 4.0,
             mode: LayoutMode::Vertical,
             horizontal_align: HorizontalAlign::Center,
@@ -103,11 +102,10 @@ impl<W: Widget> Widget for Panel<W> {
         self.rectangle.layout(bounds.clone());
         self.rect = bounds;
 
-        // Учитываем padding с обеих сторон для вычисления внутренних границ
-        let min_x = self.rect.min.x + self.padding.x; // left
-        let min_y = self.rect.min.y + self.padding.y; // bottom
-        let max_x = self.rect.max.x - self.padding.z; // right
-        let max_y = self.rect.max.y - self.padding.w; // top
+        let min_x = self.rect.min.x + self.padding.left;
+        let min_y = self.rect.min.y + self.padding.top;
+        let max_x = self.rect.max.x - self.padding.right;
+        let max_y = self.rect.max.y - self.padding.bottom;
 
         let len = self.content.len();
         let available_width = max_x;
@@ -130,7 +128,7 @@ impl<W: Widget> Widget for Panel<W> {
             });
 
         let total_spacing = self.spacing * len.saturating_sub(1) as f32;
-        let total_available_width = max_x - total_spacing - total_min_width - self.padding.z;
+        let total_available_width = max_x - total_spacing - total_min_width - self.padding.right;
         let fill_width = total_available_width / fill_count as f32;
 
         for (i, child) in self.content.iter_mut().enumerate() {
@@ -229,6 +227,5 @@ impl Widget for TestPanelLayoutWidget {
         self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext) {
-    }
+    fn update(&mut self, _: &toolkit::widget::FrameContext) {}
 }
