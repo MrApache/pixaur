@@ -3,6 +3,9 @@ default-members = ["crates/toolkit"]
 resolver = "2"
 members = [ "crates/*" ]
 
+[profile.dev.package."ttf-parser"]
+opt-level = 3
+
 [profile.release]
 lto = true
 codegen-units = 1
