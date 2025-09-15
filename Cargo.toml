@@ -19,27 +19,25 @@ smithay-client-toolkit = "0.20.0"
 wayland-client = "0.31.11"
 wayland-backend = { version = "0.3.11", features=["client_system", "rwh_06"] }
 wayland-protocols = { version = "0.32.9", features = ["client"] }
-tempfile = "3.20.0"
-memmap2 = "0.9.7"
+tempfile = "3.22.0"
+memmap2 = "0.9.8"
 
 #GUI
 fontdue = {version = "0.9.3", features = ["simd", "parallel"] }
 guillotiere = "0.6.2"
 
-thiserror = "2.0.12"
+thiserror = "2.0.16"
 
-rayon = "1.10.0"
+rayon = "1.11.0"
 wgpu = "26.0.1"
 pollster = "0.4.0"
 
-bytemuck = "1.23.1"
+bytemuck = "1.23.2"
 glam = { version = "0.30.5", features = ["bytemuck"] }
 
 #Images
-image = "0.25.6"
+image = "0.25.8"
 resvg = "0.45.1"
-usvg = "0.45.1"
-
 
 enum_dispatch = "0.3.13"
 derive_more = { version = "2.0.1", features = ["from"] }
