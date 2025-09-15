@@ -43,8 +43,8 @@ pub enum Handle {
 }
 
 static DEFAULT_FONT: std::sync::LazyLock<Arc<Font>> = std::sync::LazyLock::new(|| {
-    let bytes = include_asset!("Ubuntu-Regular.ttf");
-    let font = Font::from_bytes(bytes.as_ref(), FontSettings::default()).unwrap();
+    const BYTES: &[u8; 299_684] = include_asset!("Ubuntu-Regular.ttf");
+    let font = Font::from_bytes(BYTES.as_ref(), FontSettings::default()).unwrap();
     Arc::new(font)
 });
 
