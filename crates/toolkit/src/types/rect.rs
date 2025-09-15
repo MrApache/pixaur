@@ -7,6 +7,11 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub const ZERO: Rect = Self {
+        min: Vec2::ZERO,
+        max: Vec2::ZERO,
+    };
+
     #[must_use]
     pub fn new(position: Vec2, size: Vec2) -> Self {
         Self {
