@@ -2,7 +2,7 @@ use toolkit::{
     glam::Vec2,
     include_asset,
     types::{Argb8888, Color, LinearGradient, Texture},
-    widget::{Container, Widget},
+    widget::{Container, FrameContext, Widget},
     window::WindowRequest,
     ContentManager, DesktopOptions, TextureHandle, WidgetEnum, WindowRoot, GUI,
 };
@@ -120,7 +120,9 @@ impl WindowRoot for MainWindow {
         self.root = panel;
     }
 
-    fn update(&mut self, _: &mut Self::Gui) {}
+    fn update(&mut self, _: &mut Self::Gui, ctx: &FrameContext) {
+        self.root.update(ctx);
+    }
 }
 
 #[derive(WidgetEnum)]

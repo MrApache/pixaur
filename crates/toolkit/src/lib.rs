@@ -22,6 +22,7 @@ pub mod window;
 use crate::{
     rendering::{commands::CommandBuffer, Gpu, Renderer},
     types::Rect,
+    widget::FrameContext,
     window::{Window, WindowPointer, WindowRequest},
 };
 pub use error::*;
@@ -102,7 +103,12 @@ impl<G: GUI> EventLoop<G> {
         self.gui.load_content(&mut self.content);
         let mut windows = self.init_windows_backends()?;
 
+        let mut frame_ctx = FrameContext::default();
+
         loop {
+            frame_ctx.position = self.client.pointer().position();
+            frame_ctx.buttons = self.client.pointer().buttons();
+
             self.content.dispath_queue(&self.gpu)?;
 
             windows
@@ -123,11 +129,12 @@ impl<G: GUI> EventLoop<G> {
                             .try_into()
                             .map_err(|_| Error::NegativeHeight(backend.height))?;
 
-                        self.gpu.confugure_surface(&window.surface, &window.configuration);
+                        self.gpu
+                            .confugure_surface(&window.surface, &window.configuration);
                         backend.set_resized();
                     }
 
-                    window.frontend.update(&mut self.gui);
+                    window.frontend.update(&mut self.gui, &frame_ctx);
 
                     backend.frame();
                     if !backend.can_draw() {
@@ -212,7 +219,7 @@ pub trait WindowRoot {
     fn setup(&mut self, gui: &mut Self::Gui);
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);
     fn layout(&mut self, bounds: Rect);
-    fn update(&mut self, gui: &mut Self::Gui);
+    fn update(&mut self, gui: &mut Self::Gui, ctx: &FrameContext);
 }
 
 /*

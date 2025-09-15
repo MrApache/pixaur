@@ -1,4 +1,4 @@
-use crate::{commands::CommandBuffer, types::Rect, WindowRoot, GUI};
+use crate::{commands::CommandBuffer, types::Rect, widget::FrameContext, WindowRoot, GUI};
 use glam::Vec2;
 
 struct HeadlessWindow<G: GUI> {
@@ -25,8 +25,9 @@ impl<G: GUI> HeadlessEventLoop<G> {
     }
 
     pub fn run_logic(&mut self) {
+        let frame_context = FrameContext::default();
         for window in &mut self.windows {
-            window.frontend.update(&mut self.gui);
+            window.frontend.update(&mut self.gui, &frame_context);
             window
                 .frontend
                 .layout(Rect::new(Vec2::ZERO, Vec2::new(1920.0, 1080.0)));

@@ -72,7 +72,9 @@ impl BarWindowImpl {
         Widget::layout(&mut self.root, bounds);
     }
 
-    fn update(&mut self, _: &mut App) {}
+    fn update(&mut self, _: &mut App, ctx: &FrameContext) {
+        Widget::update(&mut self.root, ctx);
+    }
 }
 
 #[derive(Default)]
@@ -107,7 +109,9 @@ impl TestWindowImpl {
         Widget::layout(&mut self.root, bounds);
     }
 
-    fn update(&mut self, _: &mut App) {}
+    fn update(&mut self, _: &mut App, ctx: &FrameContext) {
+        Widget::update(&mut self.root, ctx);
+    }
 }
 
 fn main() -> Result<(), Error> {

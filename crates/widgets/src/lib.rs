@@ -6,6 +6,7 @@ pub mod text;
 #[macro_export]
 macro_rules! impl_empty_widget {
     ($name:ident) => {
+        #[derive(Default)]
         pub struct $name;
         impl toolkit::widget::Widget for $name {
             fn id(&self) -> Option<&str> {
@@ -28,6 +29,10 @@ macro_rules! impl_empty_widget {
             }
 
             fn layout(&mut self, _: toolkit::types::Rect) {
+            }
+
+            fn update(&mut self, _: &toolkit::widget::FrameContext) {
+
             }
         }
     };

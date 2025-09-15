@@ -46,6 +46,10 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
         quote! { #name::#vname(inner) => inner.layout(bounds), }
     });
 
+    let update_match = variants.iter().map(|(vname, _)| {
+        quote! { #name::#vname(inner) => inner.update(ctx), }
+    });
+
     let expanded = quote! {
         impl toolkit::widget::Widget for #name {
             fn id(&self) -> Option<&str> {
@@ -81,6 +85,12 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
             fn layout(&mut self, bounds: toolkit::types::Rect) {
                 match self {
                     #(#layout_match)*
+                }
+            }
+
+            fn update(&mut self, ctx: &toolkit::widget::FrameContext) {
+                match self {
+                    #(#update_match)*
                 }
             }
         }
@@ -139,7 +149,7 @@ pub fn derive_window_root_enum(input: TokenStream) -> TokenStream {
     let arms_update = variants.iter().map(|v| {
         let vname = &v.ident;
         quote! {
-            #enum_name::#vname(inner) => inner.update(gui)
+            #enum_name::#vname(inner) => inner.update(gui, ctx)
         }
     });
 
@@ -171,7 +181,7 @@ pub fn derive_window_root_enum(input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn update(&mut self, gui: &mut #gui_type) {
+            fn update(&mut self, gui: &mut #gui_type, ctx: &toolkit::widget::FrameContext) {
                 match self {
                     #(#arms_update),*
                 }
