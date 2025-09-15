@@ -1,9 +1,9 @@
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawTextCommand},
+    commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextCommand},
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
-    glam::Vec2,
-    types::{Argb8888, Color, Rect},
+    types::{Argb8888, Color, Rect, Stroke},
     widget::{DesiredSize, Widget},
+    glam::Vec2,
     FontHandle,
 };
 
@@ -15,56 +15,47 @@ pub struct Text {
     id: Option<String>,
     value: String,
     layout: Layout,
-    position: Vec2,
+    //position: Vec2,
+    rect: Rect,
 }
 
 impl Default for Text {
     fn default() -> Self {
-        let mut instance = Self {
-            id: None,
-            value: String::new(),
-            font: FontHandle::default(),
             size: 12,
-            color: Argb8888::WHITE.into(),
-            layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
-        };
-
-        instance.refresh_layout();
-        instance
+        Self::new()
     }
 }
 
 impl Text {
     #[must_use]
-    pub fn new(font: FontHandle) -> Self {
+    pub fn new() -> Self {
+        Self::new_with_id(None)
+    }
+
+    #[must_use]
+    pub fn with_id(id: impl Into<String>) -> Self {
+        Self::new_with_id(Some(id.into()))
+    }
+
+    fn new_with_id(id: Option<String>) -> Self {
         let mut instance = Self {
-            id: None,
+            id,
             value: String::new(),
-            font,
+            font: FontHandle::default(),
             size: 12,
             color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
+            rect: Rect::ZERO,
+            //position: Vec2::ZERO,
         };
 
         instance.refresh_layout();
         instance
     }
 
-    pub fn with_id(font: FontHandle, id: impl Into<String>) -> Self {
-        let mut instance = Self {
-            id: Some(id.into()),
-            value: String::new(),
-            font,
-            size: 12,
-            color: Argb8888::WHITE.into(),
-            layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
-        };
-
-        instance.refresh_layout();
-        instance
+    pub fn set_font(&mut self, font: FontHandle) {
+        self.font = font;
+        self.refresh_layout();
     }
 
     pub fn set_text(&mut self, value: &str) {
@@ -89,11 +80,7 @@ impl Text {
 
 impl Widget for Text {
     fn id(&self) -> Option<&str> {
-        if let Some(id) = &self.id {
-            Some(id)
-        } else {
-            None
-        }
+        self.id.as_deref()
     }
 
     fn desired_size(&self) -> DesiredSize {
@@ -119,7 +106,7 @@ impl Widget for Text {
         });
 
         let y = self.layout.height();
-        DesiredSize::Min(Vec2::new(x.floor() + 10.0, y))
+        DesiredSize::Min(Vec2::new(text_width, y))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -134,7 +121,7 @@ impl Widget for Text {
         out.push(DrawCommand::Text(DrawTextCommand::new(
             self.size,
             self.color.clone(),
-            self.position,
+            self.rect.min,
             &self.font,
             &self.layout,
         )));
@@ -142,16 +129,15 @@ impl Widget for Text {
 
     fn layout(&mut self, bounds: Rect) {
         self.layout.reset(&LayoutSettings {
-            max_width: Some(bounds.max.x),
+            max_width: Some(bounds.max.x + bounds.min.x),
             max_height: Some(bounds.max.y),
             ..LayoutSettings::default()
         });
 
         self.refresh_layout();
 
-        self.position = bounds.min;
+        self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext) {
-    }
+    fn update(&mut self, _: &toolkit::widget::FrameContext) {}
 }

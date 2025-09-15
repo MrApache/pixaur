@@ -81,8 +81,9 @@ impl BarWindowImpl {
         root.vertical_align = VerticalAlign::Center;
         root.horizontal_align = HorizontalAlign::Center;
 
-        let mut time = Text::new(app.font.clone());
-        time.set_text("23:59");
+        let mut time = Text::new();
+        time.set_font(app.font.clone());
+        time.set_text("left: true false");
         time.size = 14;
         time.color = Argb8888::BLACK.into();
         root.add_child(BarWindow::Text(time));
@@ -127,6 +128,10 @@ impl BarWindowImpl {
 
     fn update(&mut self, _: &mut App, ctx: &FrameContext) {
         Widget::update(&mut self.root, ctx);
+        if let Some(BarWindow::Text(text)) = self.root.children_mut().first_mut() {
+            let local: chrono::DateTime<chrono::Local> = chrono::Local::now();
+            text.set_text(&format!("{}", local.format("%Y-%m-%d %H:%M:%S")));
+        }
     }
 }
 
