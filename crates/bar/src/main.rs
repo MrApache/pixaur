@@ -76,6 +76,8 @@ impl BarWindowImpl {
 
     fn setup(&mut self, app: &mut App) {
         let mut root = Panel::<BarWindow>::new();
+        root.padding.left = 6.0;
+        root.padding.right = 6.0;
         root.rectangle.background = Argb8888::new(212, 208, 200, 255).into();
         root.rectangle.stroke = Stroke::none();
         root.vertical_align = VerticalAlign::Center;
