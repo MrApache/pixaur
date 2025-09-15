@@ -32,4 +32,12 @@ impl Rect {
     pub const fn height(&self) -> f32 {
         self.max.y - self.min.y
     }
+
+    #[must_use]
+    pub const fn contains(&self, point: Vec2) -> bool {
+        point.x > self.min.x
+            && point.x <= self.max.x + self.min.x
+            && point.y > self.min.y
+            && point.y <= self.max.y + self.min.y
+    }
 }
