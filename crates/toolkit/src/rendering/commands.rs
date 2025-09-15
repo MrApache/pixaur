@@ -168,7 +168,7 @@ impl DrawDispatcher for DrawTextCommand<'_> {
             let data = atlas.get_or_add_glyph(glyph.parent, self.size, &self.font.inner);
             pipeline.buffer_pool.push(InstanceData::new_uv_4(
                 data.uv,
-                Vec2::new(self.position.x + glyph.x, self.position.y + glyph.y),
+                Vec2::new((self.position.x + glyph.x).round(), (self.position.y + glyph.y).round()),
                 Vec2::new(data.metrics.width as f32, data.metrics.height as f32),
                 &self.color,
                 None,
