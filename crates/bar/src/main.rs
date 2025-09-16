@@ -2,15 +2,15 @@ use toolkit::{
     glam::Vec2,
     include_asset,
     types::{Argb8888, Stroke},
-    widget::{Container, FrameContext, Widget},
+    widget::{Container, Context},
     window::WindowRequest,
-    Anchor, DesktopOptions, Error, EventLoop, FontHandle, Handle, SpecialOptions, SvgHandle,
-    TargetMonitor, WidgetEnum, WindowRoot, WindowRootEnum, GUI,
+    Anchor, Error, EventLoop, FontHandle, Handle, SpecialOptions, SvgHandle, TargetMonitor,
+    WidgetEnum, WindowRoot, GUI,
 };
 use widgets::{
     button::{Button, ButtonMockCallbacks},
     image::Image,
-    impl_empty_widget,
+    impl_empty_widget, impl_proxy_widget,
     panel::{HorizontalAlign, Panel, VerticalAlign},
     text::Text,
 };
@@ -23,14 +23,11 @@ struct App {
     icon: SvgHandle,
 }
 
-impl GUI for App {
-    type Window = Windows;
+impl GUI<BarWindowContext, Root> for App {
+    type Window = Root;
 
     fn setup_windows(&mut self) -> Vec<Self::Window> {
-        vec![
-            //Windows::TestWindow(TestWindowImpl::default()),
-            Windows::BarWindow(BarWindowImpl::default()),
-        ]
+        vec![Root::default()]
     }
 
     fn load_content(&mut self, content: &mut toolkit::ContentManager) {
@@ -39,58 +36,68 @@ impl GUI for App {
     }
 }
 
-#[derive(WindowRootEnum)]
-#[window_gui(App)]
-enum Windows {
-    BarWindow(BarWindowImpl),
-    TestWindow(TestWindowImpl),
+enum BarWindowContext {
+    UpdateClock(String),
+}
+
+impl Context for BarWindowContext {
+    fn execute(&self) {
+        match self {
+            BarWindowContext::UpdateClock(id) => {
+                //let local: chrono::DateTime<chrono::Local> = chrono::Local::now();
+                //text.set_text(&format!("{}", local.format("%Y-%m-%d %H:%M:%S")));
+            }
+        }
+    }
 }
 
 #[derive(WidgetEnum)]
-enum BarWindow {
-    Text(Text),
-    Button(Button<ButtonMockCallbacks, Image>),
+#[context(BarWindowContext)]
+enum BarWindowElements {
+    Text(Text<BarWindowContext>),
+    Button(Button<BarWindowContext, Image, ButtonMockCallbacks>),
 }
 
-impl Default for BarWindow {
+impl Default for BarWindowElements {
     fn default() -> Self {
         Self::Text(Text::default())
     }
 }
 
 #[derive(Default)]
-struct BarWindowImpl {
-    root: Panel<BarWindow>,
-}
+pub struct Root(Panel<BarWindowContext, BarWindowElements>);
+impl_proxy_widget!(Root, BarWindowContext);
 
-impl BarWindowImpl {
+impl WindowRoot<BarWindowContext, Root> for Root {
+    type Gui = App;
+
     fn request(&self) -> toolkit::window::WindowRequest {
         WindowRequest::new("bar")
             .with_size(1920, 30)
             .bottom(SpecialOptions {
-                anchor: Anchor::Top,
+                anchor: Anchor::Bottom,
                 exclusive_zone: 30,
                 target: TargetMonitor::Primary,
             })
     }
 
     fn setup(&mut self, app: &mut App) {
-        let mut root = Panel::<BarWindow>::new();
+        let mut root = Panel::<BarWindowContext, BarWindowElements>::new();
         root.padding.left = 6.0;
         root.padding.right = 6.0;
         root.rectangle.background = Argb8888::new(212, 208, 200, 255).into();
-        root.rectangle.stroke = Stroke::none();
+        root.rectangle.stroke = Stroke::NONE;
         root.vertical_align = VerticalAlign::Center;
         root.horizontal_align = HorizontalAlign::Center;
 
-        let mut time = Text::new();
+        let mut time = Text::with_id("Clock");
         time.set_font(app.font.clone());
         time.set_text("left: true false");
         time.size = 14;
         time.color = Argb8888::BLACK.into();
-        root.add_child(BarWindow::Text(time));
+        root.add_child(BarWindowElements::Text(time));
 
-        let mut button: Button<ButtonMockCallbacks, Image> = Button::new();
+        let mut button: Button<BarWindowContext, Image, ButtonMockCallbacks> = Button::new();
         button.size = Vec2::new(24.0, 24.0);
         let content = button.content_mut();
         content.size = Vec2::new(16.0, 16.0);
@@ -115,62 +122,13 @@ impl BarWindowImpl {
             Argb8888::WHITE,
         ];
 
-        root.add_child(BarWindow::Button(button));
+        root.add_child(BarWindowElements::Button(button));
 
-        self.root = root;
+        self.0 = root;
     }
 
-    fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
-        Widget::draw(&self.root, out);
-    }
-
-    fn layout(&mut self, bounds: toolkit::types::Rect) {
-        Widget::layout(&mut self.root, bounds);
-    }
-
-    fn update(&mut self, _: &mut App, ctx: &FrameContext) {
-        Widget::update(&mut self.root, ctx);
-        if let Some(BarWindow::Text(text)) = self.root.children_mut().first_mut() {
-            let local: chrono::DateTime<chrono::Local> = chrono::Local::now();
-            text.set_text(&format!("{}", local.format("%Y-%m-%d %H:%M:%S")));
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct TestWindowImpl {
-    root: Panel<Empty>,
-}
-
-impl TestWindowImpl {
-    fn request(&self) -> toolkit::window::WindowRequest {
-        WindowRequest::new("panel")
-            .with_size(600, 600)
-            .desktop(DesktopOptions {
-                title: "Window".into(),
-                resizable: true,
-                decorations: false,
-            })
-    }
-
-    fn setup(&mut self, _: &mut App) {
-        let mut root = Panel::<Empty>::new();
-        root.rectangle.background = Argb8888::RED.into();
-        root.rectangle.stroke = Stroke::none();
-
-        self.root = root;
-    }
-
-    fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
-        Widget::draw(&self.root, out);
-    }
-
-    fn layout(&mut self, bounds: toolkit::types::Rect) {
-        Widget::layout(&mut self.root, bounds);
-    }
-
-    fn update(&mut self, _: &mut App, ctx: &FrameContext) {
-        Widget::update(&mut self.root, ctx);
+    fn root(&mut self) -> &mut Root {
+        self
     }
 }
 

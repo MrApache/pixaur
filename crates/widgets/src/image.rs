@@ -2,7 +2,7 @@ use toolkit::{
     commands::{DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
     types::{Argb8888, Rect, Stroke, Texture},
-    widget::{DesiredSize, Widget},
+    widget::{Context, DesiredSize, Sender, Widget},
     Handle,
 };
 
@@ -13,7 +13,7 @@ pub struct Image {
     pub handle: Option<Handle>,
 }
 
-impl Widget for Image {
+impl<Ctx: Context> Widget<Ctx> for Image {
     fn id(&self) -> Option<&str> {
         None
     }
@@ -40,8 +40,7 @@ impl Widget for Image {
                 },
                 Stroke::NONE,
             ));
-        }
-        else {
+        } else {
             out.push(DrawRectCommand::new(
                 self.rect.clone(),
                 Argb8888::WHITE,
@@ -54,5 +53,5 @@ impl Widget for Image {
         self.rect = bounds.clone();
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext) {}
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<Ctx>) {}
 }

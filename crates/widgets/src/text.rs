@@ -1,13 +1,13 @@
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextCommand},
+    commands::{CommandBuffer, DrawCommand, DrawTextCommand},
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
-    types::{Argb8888, Color, Rect, Stroke},
-    widget::{DesiredSize, Widget},
     glam::Vec2,
+    types::{Argb8888, Color, Rect},
+    widget::{Context, DesiredSize, Sender, Widget},
     FontHandle,
 };
 
-pub struct Text {
+pub struct Text<CTX: Context> {
     pub size: u32,
     pub color: Color,
     font: FontHandle,
@@ -17,15 +17,17 @@ pub struct Text {
     layout: Layout,
     //position: Vec2,
     rect: Rect,
+
+    _phantom: std::marker::PhantomData<CTX>,
 }
 
-impl Default for Text {
+impl<CTX: Context> Default for Text<CTX> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Text {
+impl<CTX: Context> Text<CTX> {
     #[must_use]
     pub fn new() -> Self {
         Self::new_with_id(None)
@@ -45,6 +47,7 @@ impl Text {
             color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
             rect: Rect::ZERO,
+            _phantom: std::marker::PhantomData,
             //position: Vec2::ZERO,
         };
 
@@ -77,7 +80,7 @@ impl Text {
     }
 }
 
-impl Widget for Text {
+impl<CTX: Context> Widget<CTX> for Text<CTX> {
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
     }
@@ -138,5 +141,5 @@ impl Widget for Text {
         self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext) {}
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<CTX>) {}
 }

@@ -89,18 +89,51 @@ impl FrameContext {
     }
 }
 
-pub trait Widget: Any + Sync + Send + Default {
+pub trait Widget<CTX: Context>: Any + Sync + Send + Default {
     fn id(&self) -> Option<&str>;
     fn desired_size(&self) -> DesiredSize;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);
     fn layout(&mut self, bounds: Rect);
-    fn update(&mut self, ctx: &FrameContext);
+    fn update(&mut self, ctx: &FrameContext, sender: &mut Sender<CTX>);
 }
 
-pub trait Container<T: Widget>: Widget {
-    fn add_child(&mut self, child: T);
-    fn children(&self) -> &[T];
-    fn children_mut(&mut self) -> &mut [T];
+pub trait Container<CTX: Context, W: Widget<CTX>>: Widget<CTX> {
+    fn add_child(&mut self, child: W);
+    fn children(&self) -> &[W];
+    fn children_mut(&mut self) -> &mut [W];
+}
+
+pub trait Context: Send + Sync + 'static {
+    fn execute(&self);
+}
+
+pub struct Sender<CTX: Context> {
+    inner: Vec<CTX>,
+}
+
+impl<CTX: Context> Default for Sender<CTX> {
+    fn default() -> Self {
+        Self {
+            inner: Vec::with_capacity(32),
+        }
+    }
+}
+
+impl<CTX: Context> Sender<CTX> {
+    pub(crate) fn execute(&mut self) {
+        self.inner.retain(|ctx|{
+            ctx.execute();
+            false
+        });
+    }
+
+    pub fn create_event(&mut self, event: CTX) {
+        self.inner.push(event);
+    }
+
+    pub fn create_event_with_element_id(&mut self, id: impl Into<String>, event: CTX) {
+
+    }
 }

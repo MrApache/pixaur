@@ -1,26 +1,38 @@
 use toolkit::{
     commands::{DrawRectCommand, DrawTextureCommand},
     types::{styling::BackgroundStyle, Rect, Stroke},
-    widget::{DesiredSize, Widget},
+    widget::{Context, DesiredSize, Sender, Widget},
 };
 
-#[derive(Default)]
-pub struct Rectangle {
+pub struct Rectangle<Ctx: Context> {
     pub background: BackgroundStyle,
     pub stroke: Stroke,
 
     id: Option<String>,
     rect: Rect,
+    _phantom: std::marker::PhantomData<Ctx>,
 }
 
-impl Rectangle {
+impl<Ctx: Context> Default for Rectangle<Ctx> {
+    fn default() -> Self {
+        Self {
+            background: BackgroundStyle::default(),
+            stroke: Stroke::default(),
+            id: None,
+            rect: Rect::default(),
+            _phantom: std::marker::PhantomData
+        }
+    }
+}
+
+impl<Ctx: Context> Rectangle<Ctx> {
     #[must_use]
     pub const fn rect(&self) -> &Rect {
         &self.rect
     }
 }
 
-impl Widget for Rectangle {
+impl<Ctx: Context> Widget<Ctx> for Rectangle<Ctx> {
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
     }
@@ -56,5 +68,5 @@ impl Widget for Rectangle {
         self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext) {}
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<Ctx>) {}
 }

@@ -3,7 +3,7 @@ use toolkit::{
     commands::{CommandBuffer, DrawCommand, DrawRectCommand},
     glam::Vec2,
     types::{Argb8888, Rect, Stroke},
-    widget::{Container, DesiredSize, Padding, Widget},
+    widget::{Container, Context, DesiredSize, Padding, Sender, Widget},
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -29,26 +29,28 @@ pub enum VerticalAlign {
     End,
 }
 
-pub struct Panel<W: Widget> {
+pub struct Panel<Ctx: Context, W: Widget<Ctx>> {
     pub padding: Padding,
     pub spacing: f32,
     pub mode: LayoutMode,
     pub vertical_align: VerticalAlign,
     pub horizontal_align: HorizontalAlign,
-    pub rectangle: Rectangle,
+    pub rectangle: Rectangle<Ctx>,
 
     id: Option<String>,
     rect: Rect,
     content: Vec<W>,
+
+    _phantom: std::marker::PhantomData<Ctx>,
 }
 
-impl<W: Widget> Default for Panel<W> {
+impl<Ctx: Context, W: Widget<Ctx>> Default for Panel<Ctx, W> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<W: Widget> Panel<W> {
+impl<Ctx: Context, W: Widget<Ctx>> Panel<Ctx, W> {
     #[must_use]
     pub fn new() -> Self {
         Self::with_id(String::new())
@@ -66,11 +68,12 @@ impl<W: Widget> Panel<W> {
             id: Some(id.into()),
             rect: Rect::default(),
             content: Vec::new(),
+            _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<W: Widget> Widget for Panel<W> {
+impl<Ctx: Context, W: Widget<Ctx>> Widget<Ctx> for Panel<Ctx, W> {
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
     }
@@ -166,14 +169,14 @@ impl<W: Widget> Widget for Panel<W> {
         }
     }
 
-    fn update(&mut self, ctx: &toolkit::widget::FrameContext) {
+    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<Ctx>) {
         self.content.iter_mut().for_each(|w| {
-            w.update(ctx);
+            w.update(ctx, sender);
         });
     }
 }
 
-impl<W: Widget> Container<W> for Panel<W> {
+impl<Ctx: Context, W: Widget<Ctx>> Container<Ctx, W> for Panel<Ctx, W> {
     fn add_child(&mut self, child: W) {
         self.content.push(child);
     }
@@ -194,7 +197,7 @@ pub struct TestPanelLayoutWidget {
     pub stroke: Stroke,
 }
 
-impl Widget for TestPanelLayoutWidget {
+impl<Ctx: Context> Widget<Ctx> for TestPanelLayoutWidget {
     fn id(&self) -> Option<&str> {
         Some("test_widget")
     }
@@ -223,5 +226,5 @@ impl Widget for TestPanelLayoutWidget {
         self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext) {}
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<Ctx>) {}
 }

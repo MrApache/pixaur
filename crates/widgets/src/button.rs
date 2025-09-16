@@ -2,7 +2,7 @@ use toolkit::{
     commands::{DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
     types::{styling::BackgroundStyle, Argb8888, Corners, Rect, Stroke},
-    widget::{DesiredSize, Padding, Widget},
+    widget::{Context, DesiredSize, Padding, Sender, Widget},
 };
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -14,13 +14,6 @@ enum ButtonFsm {
     PressedOutside,
 }
 
-pub trait ButtonCallbacks: Default + Send + Sync + 'static {
-    fn on_enter(&self) {}
-    fn on_exit(&self) {}
-    fn on_press(&self) {}
-    fn on_clicked(&self) {}
-}
-
 #[derive(Default, Clone)]
 pub struct ButtonStyle {
     pub background: BackgroundStyle,
@@ -29,7 +22,15 @@ pub struct ButtonStyle {
 
 #[derive(Default)]
 pub struct ButtonMockCallbacks;
-impl ButtonCallbacks for ButtonMockCallbacks {}
+impl<Ctx: Context> ButtonCallbacks<Ctx> for ButtonMockCallbacks {}
+
+#[allow(dead_code, unused_variables)]
+pub trait ButtonCallbacks<Ctx: Context>: Default + Send + Sync + 'static {
+    fn on_enter(&self, sender: &mut Sender<Ctx>) {}
+    fn on_exit(&self, sender: &mut Sender<Ctx>) {}
+    fn on_press(&self, sender: &mut Sender<Ctx>) {}
+    fn on_clicked(&self, sender: &mut Sender<Ctx>) {}
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum Alignment {
@@ -45,8 +46,7 @@ pub enum Alignment {
     BottomRight,
 }
 
-#[derive(Default)]
-pub struct Button<C: ButtonCallbacks, T: Widget> {
+pub struct Button<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> {
     pub size: Vec2,
     pub normal: ButtonStyle,
     pub hover: ButtonStyle,
@@ -58,11 +58,20 @@ pub struct Button<C: ButtonCallbacks, T: Widget> {
     id: Option<String>,
     state: ButtonFsm,
 
-    content: T,
+    content: W,
     callbacks: C,
+    _phantom: std::marker::PhantomData<Ctx>,
 }
 
-impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
+impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Default
+    for Button<Ctx, W, C>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Button<Ctx, W, C> {
     #[must_use]
     pub fn new() -> Self {
         Self::new_with_id(None)
@@ -100,7 +109,7 @@ impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
                 },
             },
             id,
-            content: T::default(),
+            content: W::default(),
             callbacks: C::default(),
             rect: Rect::ZERO,
             state: ButtonFsm::Normal,
@@ -111,15 +120,18 @@ impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
                 top: 2.0,
                 bottom: 2.0,
             },
+            _phantom: std::marker::PhantomData,
         }
     }
 
-    pub fn content_mut(&mut self) -> &mut T {
+    pub fn content_mut(&mut self) -> &mut W {
         &mut self.content
     }
 }
 
-impl<C: ButtonCallbacks, T: Widget> Widget for Button<C, T> {
+impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Widget<Ctx>
+    for Button<Ctx, W, C>
+{
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
     }
@@ -209,31 +221,31 @@ impl<C: ButtonCallbacks, T: Widget> Widget for Button<C, T> {
         self.content.layout(content_rect);
     }
 
-    fn update(&mut self, ctx: &toolkit::widget::FrameContext) {
+    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<Ctx>) {
         let is_inside = self.rect.contains(ctx.position());
         let is_pressed = ctx.buttons().left();
         match self.state {
             ButtonFsm::Normal => {
                 if is_inside {
                     self.state = ButtonFsm::Hovered;
-                    self.callbacks.on_enter();
+                    self.callbacks.on_enter(sender);
                 }
             }
 
             ButtonFsm::Hovered => {
                 if !is_inside {
                     self.state = ButtonFsm::Normal;
-                    self.callbacks.on_exit();
+                    self.callbacks.on_exit(sender);
                 } else if is_pressed {
                     self.state = ButtonFsm::Pressed;
-                    self.callbacks.on_press();
+                    self.callbacks.on_press(sender);
                 }
             }
 
             ButtonFsm::Pressed => {
                 if !is_pressed {
                     self.state = ButtonFsm::Hovered;
-                    self.callbacks.on_clicked();
+                    self.callbacks.on_clicked(sender);
                 } else if !is_inside {
                     self.state = ButtonFsm::PressedOutside;
                 }
@@ -242,12 +254,12 @@ impl<C: ButtonCallbacks, T: Widget> Widget for Button<C, T> {
             ButtonFsm::PressedOutside => {
                 if !is_pressed {
                     self.state = ButtonFsm::Normal;
-                    self.callbacks.on_clicked();
-                    self.callbacks.on_exit();
+                    self.callbacks.on_clicked(sender);
+                    self.callbacks.on_exit(sender);
                 }
             }
         }
 
-        self.content.update(ctx);
+        self.content.update(ctx, sender);
     }
 }

@@ -11,7 +11,7 @@ macro_rules! impl_empty_widget {
     ($name:ident) => {
         #[derive(Default)]
         pub struct $name;
-        impl toolkit::widget::Widget for $name {
+        impl<Ctx: toolkit::widget::Context> toolkit::widget::Widget<Ctx> for $name {
             fn id(&self) -> Option<&str> {
                 None
             }
@@ -34,7 +34,7 @@ macro_rules! impl_empty_widget {
             fn layout(&mut self, _: toolkit::types::Rect) {
             }
 
-            fn update(&mut self, _: &toolkit::widget::FrameContext) {
+            fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut toolkit::widget::Sender<Ctx>) {
 
             }
         }
@@ -42,53 +42,35 @@ macro_rules! impl_empty_widget {
 }
 
 #[macro_export]
-macro_rules! impl_window_root_enum {
-    (
-        $enum_name:ident<$gui_ty:ty> {
-            $( $variant:ident ( $inner_ty:ty ) ),* $(,)?
-        }
-    ) => {
-        impl WindowRoot for $enum_name {
-            type Gui = $gui_ty;
-
-            fn request(&self) -> WindowRequest {
-                match self {
-                    $(
-                        $enum_name::$variant(inner) => inner.request(),
-                    )*
-                }
+macro_rules! impl_proxy_widget {
+    ($name:ident, $ctx:ident) => {
+        impl toolkit::widget::Widget<$ctx> for $name {
+            fn id(&self) -> Option<&str> {
+                self.0.id()
             }
 
-            fn setup(&mut self, gui: &mut $gui_ty) {
-                match self {
-                    $(
-                        $enum_name::$variant(inner) => inner.setup(gui),
-                    )*
-                }
+            fn desired_size(&self) -> toolkit::widget::DesiredSize {
+                self.0.desired_size()
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self.0.as_any()
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self.0.as_any_mut()
             }
 
             fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
-                match self {
-                    $(
-                        $enum_name::$variant(inner) => inner.draw(out),
-                    )*
-                }
+                self.0.draw(out);
             }
 
             fn layout(&mut self, bounds: toolkit::types::Rect) {
-                match self {
-                    $(
-                        $enum_name::$variant(inner) => inner.layout(bounds),
-                    )*
-                }
+                self.0.layout(bounds);
             }
 
-            fn update(&mut self, gui: &mut $gui_ty) {
-                match self {
-                    $(
-                        $enum_name::$variant(inner) => inner.update(gui),
-                    )*
-                }
+            fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut toolkit::widget::Sender<$ctx>) {
+                self.0.update(ctx, sender);
             }
         }
     };
