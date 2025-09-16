@@ -147,6 +147,7 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+#[proc_macro_derive(WindowRootEnum, attributes(window_gui, context))]
 pub fn derive_window_root_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
