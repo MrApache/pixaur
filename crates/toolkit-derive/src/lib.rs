@@ -2,10 +2,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parse::{Parse, ParseStream, Parser},
-    parse_macro_input, Attribute, Data, DeriveInput, Fields, Meta,
-};
+use syn::{parse::Parse, parse_macro_input, Attribute, Data, DeriveInput, Fields, Meta};
 
 fn extract_context_attr(attrs: &[Attribute]) -> Result<Option<syn::Type>, syn::Error> {
     for attr in attrs {
