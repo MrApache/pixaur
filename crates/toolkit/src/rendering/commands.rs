@@ -1,14 +1,13 @@
-use enum_dispatch::enum_dispatch;
-use fontdue::layout::Layout;
-use glam::Vec2;
-use std::slice::IterMut;
-use wgpu::RenderPass;
-
 use crate::{
     rendering::{instance::InstanceData, Gpu, Renderer},
     types::{Color, Rect, Stroke, Texture},
     ContentManager, FontHandle,
 };
+use enum_dispatch::enum_dispatch;
+use fontdue::layout::Layout;
+use glam::Vec2;
+use std::slice::IterMut;
+use wgpu::RenderPass;
 
 #[enum_dispatch(DrawCommand)]
 pub(crate) trait DrawDispatcher {
@@ -53,7 +52,7 @@ impl DrawDispatcher for DrawRectCommand {
             Vec2::new(0.0, 0.0),
             Vec2::new(1.0, 0.0),
             Vec2::new(1.0, 1.0),
-            Vec2::new(0.0, 1.0)
+            Vec2::new(0.0, 1.0),
         ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
             UV,
@@ -103,7 +102,7 @@ impl DrawDispatcher for DrawTextureCommand {
             Vec2::new(0.0, 0.0),
             Vec2::new(1.0, 0.0),
             Vec2::new(1.0, 1.0),
-            Vec2::new(0.0, 1.0)
+            Vec2::new(0.0, 1.0),
         ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
             UV,
@@ -168,7 +167,10 @@ impl DrawDispatcher for DrawTextCommand<'_> {
             let data = atlas.get_or_add_glyph(glyph.parent, self.size, &self.font.inner);
             pipeline.buffer_pool.push(InstanceData::new_uv_4(
                 data.uv,
-                Vec2::new((self.position.x + glyph.x).round(), (self.position.y + glyph.y).round()),
+                Vec2::new(
+                    (self.position.x + glyph.x).round(),
+                    (self.position.y + glyph.y).round(),
+                ),
                 Vec2::new(data.metrics.width as f32, data.metrics.height as f32),
                 &self.color,
                 None,
