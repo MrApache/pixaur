@@ -19,12 +19,9 @@ impl Default for Stroke {
 }
 
 impl Stroke {
-    #[must_use]
-    pub fn none() -> Self {
-        Self {
-            color: [Argb8888::TRANSPARENT; 4],
-            width: 0.0,
-            corners: Corners::none(),
-        }
-    }
+    pub const NONE: Stroke = Self {
+        color: [Argb8888::TRANSPARENT; 4],
+        width: 0.0,
+        corners: Corners::NONE,
+    };
 }

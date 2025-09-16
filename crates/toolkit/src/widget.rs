@@ -12,6 +12,13 @@ pub struct Padding {
 }
 
 impl Padding {
+    pub const ZERO: Padding = Self {
+        left: 0.0,
+        right: 0.0,
+        top: 0.0,
+        bottom: 0.0,
+    };
+
     #[must_use]
     pub const fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
         Self {
@@ -32,6 +39,15 @@ pub struct Spacing {
 }
 
 #[derive(Default, Clone, Copy)]
+impl Spacing {
+    pub const ZERO: Spacing = Self {
+        left: 0.0,
+        right: 0.0,
+        top: 0.0,
+        bottom: 0.0,
+    };
+}
+
 pub enum DesiredSize {
     Min(Vec2),
     FillMinY(f32),

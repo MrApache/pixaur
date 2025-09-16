@@ -80,7 +80,7 @@ impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
                 stroke: Stroke {
                     color: [Argb8888::DARK_GRAY; 4],
                     width: 1.0,
-                    corners: Corners::none(),
+                    corners: Corners::NONE,
                 },
             },
             hover: ButtonStyle {
@@ -88,7 +88,7 @@ impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
                 stroke: Stroke {
                     color: [Argb8888::BLUE; 4],
                     width: 1.0,
-                    corners: Corners::none(),
+                    corners: Corners::NONE,
                 },
             },
             pressed: ButtonStyle {
@@ -96,14 +96,14 @@ impl<C: ButtonCallbacks, T: Widget> Button<C, T> {
                 stroke: Stroke {
                     color: [Argb8888::DARK_GRAY; 4],
                     width: 1.0,
-                    corners: Corners::none(),
+                    corners: Corners::NONE,
                 },
             },
             id,
             content: T::default(),
             callbacks: C::default(),
+            rect: Rect::ZERO,
             state: ButtonFsm::Normal,
-            rect: Rect::default(),
             alignment: Alignment::Center,
             padding: Padding {
                 left: 2.0,

@@ -38,14 +38,14 @@ impl Widget for Image {
                     color: Argb8888::WHITE.into(),
                     handle: handle.clone(),
                 },
-                Stroke::none(),
+                Stroke::NONE,
             ));
         }
         else {
             out.push(DrawRectCommand::new(
                 self.rect.clone(),
                 Argb8888::WHITE,
-                Stroke::none(),
+                Stroke::NONE,
             ));
         }
     }
