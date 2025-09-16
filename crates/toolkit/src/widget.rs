@@ -1,7 +1,7 @@
-use crate::{CommandBuffer, types::Rect};
+use crate::{types::Rect, CommandBuffer};
 use glam::Vec2;
-use wl_client::ButtonState;
 use std::any::Any;
+use wl_client::ButtonState;
 
 #[derive(Default, Clone, Copy, Debug)]
 pub struct Padding {
@@ -28,17 +28,26 @@ impl Padding {
             bottom,
         }
     }
+
+    #[must_use]
+    pub const fn all(value: f32) -> Self {
+        Self {
+            left: value,
+            right: value,
+            top: value,
+            bottom: value,
+        }
+    }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Spacing {
-    pub top: f32,
-    pub right: f32,
-    pub bottom: f32,
     pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32,
 }
 
-#[derive(Default, Clone, Copy)]
 impl Spacing {
     pub const ZERO: Spacing = Self {
         left: 0.0,
@@ -48,6 +57,7 @@ impl Spacing {
     };
 }
 
+#[derive(Default, Clone, Copy, Debug)]
 pub enum DesiredSize {
     Min(Vec2),
     FillMinY(f32),
