@@ -1,0 +1,54 @@
+Window {
+    title: "Bar",
+
+    Panel {
+        padding.left: 6.0
+        padding.right: 6.0
+        rectangle.background: Argb(212, 208, 200, 255)
+        rectangle.stroke: Stroke::NONE
+
+        Text {
+            font: "MS W98 UI"
+            text: "left: true false"
+            size: 14
+            color: Argb::BLACK
+        }
+
+        Button {
+            size: Vec2(24.0, 24.0) 
+
+            normal: {
+                background: Argb(212, 208, 200, 255)
+                stroke.width: 1.0
+                stroke.color: [
+                    Argb::WHITE,
+                    Argb::BLACK,
+                    Argb::WHITE,
+                    Argb::BLACK,
+                ]
+            }
+
+            hover: self.normal
+
+            pressed: {
+                background: Argb(192, 192, 192, 255)
+                stroke.width: 1.0
+                stroke.color: [
+                    Argb(128, 128, 128, 255),
+                    Argb::WHITE,
+                    Argb(128, 128, 128, 255),
+                    Argb::WHITE,
+                ]
+            }
+
+            Image {
+                size: Vec2(16.0, 16.0)
+                handle: Static("arch.svg")
+            }
+
+            @on_clicked: {
+                println!("Hello, world");
+            }
+        }
+    }
+}
