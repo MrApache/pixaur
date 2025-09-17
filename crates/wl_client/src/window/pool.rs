@@ -1,19 +1,16 @@
+use crate::{window::WindowId, WlClient};
 use memmap2::MmapMut;
+use rayon::{iter::ParallelIterator, slice::ParallelSliceMut};
 use std::fs::File;
 use std::os::fd::AsFd;
-
-use rayon::{iter::ParallelIterator, slice::ParallelSliceMut};
-
 use wayland_client::{
-    QueueHandle,
     protocol::{
         wl_buffer::WlBuffer,
         wl_shm::{Format, WlShm},
         wl_shm_pool::WlShmPool,
     },
+    QueueHandle,
 };
-
-use crate::{WlClient, window::WindowId};
 
 pub const DEFAULT_FILE_SIZE: u64 = (1920 * 4) * 1080;
 

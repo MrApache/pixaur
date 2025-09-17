@@ -1,49 +1,42 @@
-use glam::Vec2;
+use crate::{
+    app::App,
+    widget::{Context, FrameContext, Widget},
+    WindowRoot,
+};
 
-use crate::{commands::CommandBuffer, types::Rect, widget::Container, Context, UserWindow, GUI};
-
-struct HeadlessWindow<T: GUI> {
-    frontend: Box<dyn Container>,
-    handle: Box<dyn UserWindow<T>>,
+pub struct HeadlessEventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    app: App<C, W, WR>,
 }
 
-pub struct HeadlessEventLoop<T: GUI> {
-    gui: T,
-    windows: Vec<HeadlessWindow<T>>,
-}
-
-impl<T: GUI> HeadlessEventLoop<T> {
-    pub fn new(mut app: T) -> Self {
-        let windows = app
-            .setup_windows()
-            .into_iter()
-            .map(|w| HeadlessWindow {
-                frontend: w.setup(&mut app),
-                handle: w,
-            })
-            .collect::<Vec<_>>();
-        Self { gui: app, windows }
+impl<C, W, WR> HeadlessEventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    #[must_use]
+    pub fn new(mut app: App<C, W, WR>) -> Self {
+        let mut windows = std::mem::take(&mut app.requested_frontends);
+        windows.iter_mut().for_each(|f| f.setup(&mut app));
+        app.frontends = windows;
+        Self { app }
     }
 
     pub fn run_logic(&mut self) {
-        for window in &mut self.windows {
-            let mut context = Context {
-                root: &mut window.frontend,
-            };
-
-            window.handle.update(&mut self.gui, &mut context);
-
-            window
-                .frontend
-                .layout(Rect::new(Vec2::ZERO, Vec2::new(1920.0, 1080.0)));
+        let frame = FrameContext::default();
+        for i in 0..self.app.frontends.len() {
+            self.app.tick_logic_frontend(i, 1920.0, 1080.0, &frame);
         }
     }
 
     pub fn run_draw(&mut self) {
-        for window in &mut self.windows {
-            let mut commands = CommandBuffer::default();
-            window.frontend.draw(&mut commands);
-            commands.pack_active_group();
+        for i in 0..self.app.frontends.len() {
+            self.app.tick_render_frontend(i);
         }
     }
 }

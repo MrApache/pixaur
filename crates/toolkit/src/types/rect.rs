@@ -7,6 +7,11 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub const ZERO: Rect = Self {
+        min: Vec2::ZERO,
+        max: Vec2::ZERO,
+    };
+
     #[must_use]
     pub fn new(position: Vec2, size: Vec2) -> Self {
         Self {
@@ -31,5 +36,13 @@ impl Rect {
     #[must_use]
     pub const fn height(&self) -> f32 {
         self.max.y - self.min.y
+    }
+
+    #[must_use]
+    pub const fn contains(&self, point: Vec2) -> bool {
+        point.x > self.min.x
+            && point.x <= self.max.x + self.min.x
+            && point.y > self.min.y
+            && point.y <= self.max.y + self.min.y
     }
 }

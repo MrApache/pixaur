@@ -21,9 +21,12 @@ pub enum Error {
     #[error("{0}")]
     Surface(#[from] SurfaceError),
 
-    //Image
+    // Images
     #[error("{0}")]
     Image(#[from] ImageError),
+
+    #[error("{0}")]
+    Svg(#[from] resvg::usvg::Error),
 
     //Std
     #[error("{0}")]

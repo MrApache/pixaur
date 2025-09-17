@@ -1,4 +1,12 @@
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
+
 pub mod window;
+use glam::Vec2;
 pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::Anchor;
 pub use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer;
 
@@ -19,7 +27,9 @@ use wayland_client::{
         wl_callback::{Event as WlCallbackEvent, WlCallback},
         wl_compositor::{Event as WlCompositorEvent, WlCompositor},
         wl_output::{Event as WlOutputEvent, WlOutput},
+        wl_pointer::{Event as WlPointerEvent, WlPointer},
         wl_registry::{Event as WlRegistryEvent, WlRegistry},
+        wl_seat::{Event as WlSeatEvent, WlSeat},
         wl_shm::{Event as WlShmEvent, WlShm},
         wl_shm_pool::{Event as WlShmPoolEvent, WlShmPool},
         wl_surface::{Event as WlSurfaceEvent, WlSurface},
@@ -47,6 +57,9 @@ pub struct WlClient {
 
     outputs: HashMap<String, WlOutput>,
     windows: HashMap<String, WindowBackend>,
+
+    seat: Option<WlSeat>,
+    pointer: Pointer,
 }
 
 impl WlClient {
@@ -108,6 +121,11 @@ impl WlClient {
 
         window.destroy();
     }
+
+    #[must_use]
+    pub fn pointer(&self) -> &Pointer {
+        &self.pointer
+    }
 }
 
 impl Dispatch<WlRegistry, WindowId> for WlClient {
@@ -139,9 +157,16 @@ impl Dispatch<WlRegistry, WindowId> for WlClient {
                     state.xdg_wm_base =
                         Some(registry.bind::<XdgWmBase, _, _>(name, version, qh, id.clone()));
                 }
+                "wl_seat" => {
+                    state.seat = Some(registry.bind::<WlSeat, _, _>(name, version, qh, id.clone()));
+                }
                 "zwlr_layer_shell_v1" => {
-                    state.layer_shell =
-                        Some(registry.bind::<ZwlrLayerShellV1, _, _>(name, version, qh, id.clone()));
+                    state.layer_shell = Some(registry.bind::<ZwlrLayerShellV1, _, _>(
+                        name,
+                        version,
+                        qh,
+                        id.clone(),
+                    ));
                 }
                 "wl_output" => {
                     let output = registry.bind::<WlOutput, _, _>(name, version, qh, id.clone());
@@ -187,8 +212,7 @@ impl Dispatch<WlOutput, WindowId> for WlClient {
                 state.outputs.insert(name, output);
             }
             WlOutputEvent::Description { description } => {}
-            WlOutputEvent::Done |
-            _ => {}
+            WlOutputEvent::Done | _ => {}
         }
     }
 }
@@ -324,7 +348,7 @@ impl Dispatch<XdgToplevel, WindowId> for WlClient {
                         return;
                     }
                 } else {
-                    unreachable!();
+                    unreachable!("{:#?}", window.layer);
                 }
 
                 if width == 0 || height == 0 {
@@ -400,6 +424,127 @@ impl Dispatch<WlCallback, WindowId> for WlClient {
             let mut window = window.lock().unwrap();
             window.can_draw = true;
         }
+    }
+}
+
+impl Dispatch<WlSeat, WindowId> for WlClient {
+    fn event(
+        _: &mut Self,
+        proxy: &WlSeat,
+        _: WlSeatEvent,
+        data: &WindowId,
+        _: &Connection,
+        qh: &QueueHandle<Self>,
+    ) {
+        proxy.get_pointer(qh, data.clone());
+    }
+}
+
+impl Dispatch<WlPointer, WindowId> for WlClient {
+    fn event(
+        client: &mut Self,
+        _: &WlPointer,
+        event: WlPointerEvent,
+        _: &WindowId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        match event {
+            WlPointerEvent::Motion {
+                time: _,
+                surface_x,
+                surface_y,
+            }
+            | WlPointerEvent::Enter {
+                serial: _,
+                surface: _,
+                surface_x,
+                surface_y,
+            } => {
+                client.pointer.position = Vec2::new(surface_x as f32, surface_y as f32);
+            }
+            WlPointerEvent::Button {
+                serial: _,
+                time: _,
+                button,
+                state,
+            } => {
+                let state = match state {
+                    wayland_client::WEnum::Value(state) => matches!(
+                        state,
+                        wayland_client::protocol::wl_pointer::ButtonState::Pressed
+                    ),
+                    wayland_client::WEnum::Unknown(_) => unreachable!(),
+                };
+
+                match button {
+                    272 => client.pointer.buttons.left = state,
+                    273 => client.pointer.buttons.right = state,
+                    274 => client.pointer.buttons.middle = state,
+                    _ => {}
+                }
+            }
+            //WlPointerEvent::Leave { serial: _, surface: _ } => {},
+            //WlPointerEvent::Axis { time, axis, value } => todo!(),
+            //WlPointerEvent::Frame => todo!(),
+            //WlPointerEvent::AxisSource { axis_source } => todo!(),
+            //WlPointerEvent::AxisStop { time, axis } => todo!(),
+            //WlPointerEvent::AxisDiscrete { axis, discrete } => todo!(),
+            //WlPointerEvent::AxisValue120 { axis, value120 } => todo!(),
+            //WlPointerEvent::AxisRelativeDirection { axis, direction } => todo!(),
+            _ => {}
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Pointer {
+    position: Vec2,
+    buttons: ButtonState,
+}
+
+impl Pointer {
+    #[must_use]
+    pub const fn position(&self) -> Vec2 {
+        self.position
+    }
+
+    #[must_use]
+    pub const fn buttons(&self) -> ButtonState {
+        self.buttons
+    }
+}
+
+impl Default for Pointer {
+    fn default() -> Self {
+        Self {
+            position: Vec2::MAX,
+            buttons: ButtonState::default(),
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ButtonState {
+    left: bool,
+    right: bool,
+    middle: bool,
+}
+
+impl ButtonState {
+    #[must_use]
+    pub const fn left(&self) -> bool {
+        self.left
+    }
+
+    #[must_use]
+    pub const fn right(&self) -> bool {
+        self.right
+    }
+
+    #[must_use]
+    pub const fn middle(&self) -> bool {
+        self.middle
     }
 }
 

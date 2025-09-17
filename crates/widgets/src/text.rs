@@ -3,69 +3,62 @@ use toolkit::{
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
     glam::Vec2,
     types::{Argb8888, Color, Rect},
-    widget::{DesiredSize, Widget},
-    FontHandle,
+    widget::{Context, DesiredSize, Sender, Widget},
+    FontHandle, WidgetQuery,
 };
 
-pub struct Text {
-    id: Option<String>,
-    font: FontHandle,
-
-    value: String,
+#[derive(WidgetQuery)]
+pub struct Text<C: Context> {
     pub size: u32,
     pub color: Color,
+    font: FontHandle,
 
+    id: Option<String>,
+    value: String,
     layout: Layout,
-    position: Vec2,
+    //position: Vec2,
+    rect: Rect,
+
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl Default for Text {
+impl<C: Context> Default for Text<C> {
     fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<C: Context> Text<C> {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::new_with_id(None)
+    }
+
+    #[must_use]
+    pub fn with_id(id: impl Into<String>) -> Self {
+        Self::new_with_id(Some(id.into()))
+    }
+
+    fn new_with_id(id: Option<String>) -> Self {
         let mut instance = Self {
-            id: None,
+            id,
             value: String::new(),
             font: FontHandle::default(),
             size: 12,
-            color: Color::Simple(Argb8888::WHITE),
+            color: Argb8888::WHITE.into(),
             layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
-        };
-
-        instance.refresh_layout();
-        instance
-    }
-}
-
-impl Text {
-    #[must_use]
-    pub fn new(font: FontHandle) -> Self {
-        let mut instance = Self {
-            id: None,
-            value: String::new(),
-            font,
-            size: 12,
-            color: Color::Simple(Argb8888::WHITE),
-            layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
+            rect: Rect::ZERO,
+            _phantom: std::marker::PhantomData,
+            //position: Vec2::ZERO,
         };
 
         instance.refresh_layout();
         instance
     }
 
-    pub fn with_id(font: FontHandle, id: impl Into<String>) -> Self {
-        let mut instance = Self {
-            id: Some(id.into()),
-            value: String::new(),
-            font,
-            size: 12,
-            color: Color::Simple(Argb8888::WHITE),
-            layout: Layout::new(CoordinateSystem::PositiveYDown),
-            position: Vec2::ZERO,
-        };
-
-        instance.refresh_layout();
-        instance
+    pub fn set_font(&mut self, font: FontHandle) {
+        self.font = font;
+        self.refresh_layout();
     }
 
     pub fn set_text(&mut self, value: &str) {
@@ -88,13 +81,9 @@ impl Text {
     }
 }
 
-impl Widget for Text {
+impl<C: Context> Widget<C> for Text<C> {
     fn id(&self) -> Option<&str> {
-        if let Some(id) = &self.id {
-            Some(id)
-        } else {
-            None
-        }
+        self.id.as_deref()
     }
 
     fn desired_size(&self) -> DesiredSize {
@@ -120,7 +109,7 @@ impl Widget for Text {
         });
 
         let y = self.layout.height();
-        DesiredSize::Min(Vec2::new(x.floor(), y))
+        DesiredSize::Min(Vec2::new(text_width, y))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -135,7 +124,7 @@ impl Widget for Text {
         out.push(DrawCommand::Text(DrawTextCommand::new(
             self.size,
             self.color.clone(),
-            self.position,
+            self.rect.min,
             &self.font,
             &self.layout,
         )));
@@ -143,13 +132,15 @@ impl Widget for Text {
 
     fn layout(&mut self, bounds: Rect) {
         self.layout.reset(&LayoutSettings {
-            max_width: Some(bounds.max.x),
+            max_width: Some(bounds.max.x + bounds.min.x),
             max_height: Some(bounds.max.y),
             ..LayoutSettings::default()
         });
 
         self.refresh_layout();
 
-        self.position = bounds.min;
+        self.rect = bounds;
     }
+
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<C>) {}
 }

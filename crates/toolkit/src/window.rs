@@ -1,16 +1,13 @@
+use crate::rendering::Renderer;
 use std::ffi::c_void;
 use std::ptr::NonNull;
-use wgpu::{Surface, SurfaceConfiguration};
-use wl_client::WindowBackend;
-use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 use wgpu::rwh::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, RawDisplayHandle,
     RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle, WindowHandle,
 };
-
-use crate::rendering::Renderer;
-use crate::widget::Container;
-use crate::{GUI, UserWindow};
+use wgpu::{Surface, SurfaceConfiguration};
+use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
+use wl_client::WindowBackend;
 
 pub struct WindowRequest {
     pub(crate) id: String,
@@ -67,30 +64,24 @@ impl WindowRequest {
     }
 }
 
-pub struct Window<T: GUI> {
-    pub(crate) frontend: Box<dyn Container>,
+pub struct Window {
     pub(crate) backend: WindowBackend,
     pub(crate) surface: Surface<'static>,
     pub(crate) configuration: SurfaceConfiguration,
-    pub(crate) handle: Box<dyn UserWindow<T>>,
     pub(crate) renderer: Renderer,
 }
 
-impl<T: GUI> Window<T> {
+impl Window {
     pub(crate) const fn new(
-        frontend: Box<dyn Container>,
         backend: WindowBackend,
         surface: Surface<'static>,
         configuration: SurfaceConfiguration,
-        handle: Box<dyn UserWindow<T>>,
         renderer: Renderer,
     ) -> Self {
         Self {
-            frontend,
             backend,
             surface,
             configuration,
-            handle,
             renderer,
         }
     }

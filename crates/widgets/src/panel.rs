@@ -1,9 +1,9 @@
+use crate::rectangle::Rectangle;
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
-    glam::{Vec2, Vec4},
-    types::styling::BackgroundStyle,
-    types::{Argb8888, Color, Rect, Stroke},
-    widget::{Container, DesiredSize, Widget},
+    commands::CommandBuffer,
+    glam::Vec2,
+    types::Rect,
+    widget::{Container, Context, DesiredSize, Padding, Sender, Widget, WidgetQuery},
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -29,27 +29,32 @@ pub enum VerticalAlign {
     End,
 }
 
-pub struct Panel {
-    id: Option<String>,
-    rect: Rect,
-    content: Vec<Box<dyn Widget>>,
-    pub padding: Vec4,
+pub struct Panel<C, W>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    pub padding: Padding,
     pub spacing: f32,
     pub mode: LayoutMode,
     pub vertical_align: VerticalAlign,
     pub horizontal_align: HorizontalAlign,
+    pub rectangle: Rectangle<C>,
 
-    pub background: BackgroundStyle,
-    pub stroke: Stroke,
+    id: Option<String>,
+    rect: Rect,
+    content: Vec<W>,
+
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl Default for Panel {
+impl<C: Context, W: Widget<C>> Default for Panel<C, W> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Panel {
+impl<C: Context, W: Widget<C>> Panel<C, W> {
     #[must_use]
     pub fn new() -> Self {
         Self::with_id(String::new())
@@ -57,27 +62,24 @@ impl Panel {
 
     pub fn with_id(id: impl Into<String>) -> Self {
         Self {
-            id: Some(id.into()),
-            content: vec![],
-            rect: Rect::default(),
-            background: Color::Simple(Argb8888::WHITE).into(),
-            padding: Vec4::new(4.0, 4.0, 4.0, 4.0),
+            padding: Padding::new(4.0, 4.0, 4.0, 4.0),
             spacing: 4.0,
             mode: LayoutMode::Vertical,
-            stroke: Stroke::default(),
             horizontal_align: HorizontalAlign::Center,
             vertical_align: VerticalAlign::Center,
+            rectangle: Rectangle::default(),
+
+            id: Some(id.into()),
+            rect: Rect::default(),
+            content: Vec::new(),
+            _phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl Widget for Panel {
+impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
     fn id(&self) -> Option<&str> {
-        if let Some(id) = &self.id {
-            Some(id)
-        } else {
-            None
-        }
+        self.id.as_deref()
     }
 
     fn desired_size(&self) -> DesiredSize {
@@ -93,32 +95,20 @@ impl Widget for Panel {
     }
 
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        match &self.background {
-            BackgroundStyle::Color(color) => out.push(DrawRectCommand::new(
-                self.rect.clone(),
-                color.clone(),
-                self.stroke.clone(),
-            )),
-            BackgroundStyle::Texture(texture) => out.push(DrawTextureCommand::new(
-                self.rect.clone(),
-                texture.clone(),
-                self.stroke.clone(),
-            )),
-        }
-
+        self.rectangle.draw(out);
         self.content.iter().for_each(|w| {
             w.draw(out);
         });
     }
 
     fn layout(&mut self, bounds: Rect) {
+        self.rectangle.layout(bounds.clone());
         self.rect = bounds;
 
-        // Учитываем padding с обеих сторон для вычисления внутренних границ
-        let min_x = self.rect.min.x + self.padding.x; // left
-        let min_y = self.rect.min.y + self.padding.y; // bottom
-        let max_x = self.rect.max.x - self.padding.z; // right
-        let max_y = self.rect.max.y - self.padding.w; // top
+        let min_x = self.rect.min.x + self.padding.left;
+        let min_y = self.rect.min.y + self.padding.top;
+        let max_x = self.rect.max.x - self.padding.right;
+        let max_y = self.rect.max.y - self.padding.bottom;
 
         let len = self.content.len();
         let available_width = max_x;
@@ -137,12 +127,11 @@ impl Widget for Panel {
             .iter()
             .for_each(|widget| match widget.desired_size() {
                 DesiredSize::Min(size) => total_min_width += size.x,
-                DesiredSize::Fill |
-                DesiredSize::FillMinY(_) => fill_count += 1,
+                DesiredSize::Fill | DesiredSize::FillMinY(_) => fill_count += 1,
             });
 
         let total_spacing = self.spacing * len.saturating_sub(1) as f32;
-        let total_available_width = max_x - total_spacing - total_min_width - self.padding.z;
+        let total_available_width = max_x - total_spacing - total_min_width - self.padding.right;
         let fill_width = total_available_width / fill_count as f32;
 
         for (i, child) in self.content.iter_mut().enumerate() {
@@ -183,55 +172,58 @@ impl Widget for Panel {
             }
         }
     }
+
+    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<C>) {
+        self.content.iter_mut().for_each(|w| {
+            w.update(ctx, sender);
+        });
+    }
 }
 
-impl Container for Panel {
-    fn add_child(&mut self, child: Box<dyn Widget>) {
+impl<C: Context, W: Widget<C>> Container<C, W> for Panel<C, W> {
+    fn add_child(&mut self, child: W) {
         self.content.push(child);
     }
 
-    fn children(&self) -> &[Box<dyn Widget>] {
+    fn children(&self) -> &[W] {
         &self.content
     }
 
-    fn children_mut(&mut self) -> &mut [Box<dyn Widget>] {
+    fn children_mut(&mut self) -> &mut [W] {
         &mut self.content
     }
 }
 
-#[derive(Default)]
-pub struct TestPanelLayoutWidget {
-    pub min: Vec2,
-    rect: Rect,
-    pub stroke: Stroke,
-}
+impl<C, W> WidgetQuery<C> for Panel<C, W>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
+        if self.id.as_deref() == Some(id) {
+            return self.as_any().downcast_ref::<QW>();
+        }
+        for element in &self.content {
+            let element = element.get_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
 
-impl Widget for TestPanelLayoutWidget {
-    fn id(&self) -> Option<&str> {
-        Some("test_widget")
+        None
     }
 
-    fn desired_size(&self) -> DesiredSize {
-        DesiredSize::Min(self.min)
-    }
+    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+        if self.id.as_deref() == Some(id) {
+            return self.as_any_mut().downcast_mut::<QW>();
+        }
+        for element in &mut self.content {
+            let element = element.get_mut_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        out.push(DrawCommand::Rect(DrawRectCommand::new(
-            self.rect.clone(),
-            Argb8888::CYAN,
-            self.stroke.clone(),
-        )));
-    }
-
-    fn layout(&mut self, bounds: Rect) {
-        self.rect = bounds;
+        None
     }
 }

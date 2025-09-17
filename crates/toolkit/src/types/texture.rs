@@ -1,17 +1,17 @@
 use crate::{
-    TextureHandle,
     types::{Argb8888, Color},
+    Handle,
 };
 
 #[derive(Debug, Clone)]
 pub struct Texture {
     pub color: Color,
-    pub handle: TextureHandle,
+    pub handle: Handle,
 }
 
 impl Texture {
     #[must_use]
-    pub const fn new(handle: TextureHandle) -> Self {
+    pub const fn new(handle: Handle) -> Self {
         Self {
             color: Color::Simple(Argb8888::WHITE),
             handle,

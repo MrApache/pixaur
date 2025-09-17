@@ -1,5 +1,13 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
+
+#[cfg(feature = "derive")]
+pub use toolkit_derive::*;
 
 pub mod headless;
 
@@ -13,19 +21,20 @@ pub use content::*;
 pub use fontdue;
 pub use glam;
 
+pub mod app;
+pub mod event_loop;
 pub mod widget;
 pub mod window;
 
 use crate::{
+    app::App,
     rendering::{commands::CommandBuffer, Gpu, Renderer},
-    types::Rect,
-    widget::{Container, Widget},
+    widget::{Context, FrameContext, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
 pub use error::*;
-use glam::Vec2;
 pub use rendering::commands;
-use std::{ffi::c_void, ptr::NonNull, sync::Arc};
+use std::{ffi::c_void, ptr::NonNull, sync::Arc, time::Instant};
 use wayland_client::{Connection, EventQueue, Proxy};
 pub use wl_client::window::TargetMonitor;
 use wl_client::{window::WindowLayer, WlClient};
@@ -34,15 +43,14 @@ pub use wl_client::{
     Anchor,
 };
 
-#[allow(unused)]
-pub trait GUI {
-    fn load_content(&mut self, content: &mut ContentManager) {}
-    fn setup_windows(&mut self) -> Vec<Box<dyn UserWindow<Self>>>;
-}
-
-pub struct EventLoop<T: GUI> {
-    gui: T,
-    content: ContentManager,
+pub struct EventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    app: App<C, W, WR>,
+    windows: Vec<Window>,
 
     client: WlClient,
     event_queue: EventQueue<WlClient>,
@@ -51,8 +59,13 @@ pub struct EventLoop<T: GUI> {
     gpu: Gpu,
 }
 
-impl<T: GUI> EventLoop<T> {
-    pub fn new(app: T) -> Result<Self, Error> {
+impl<C, W, WR> EventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    pub fn new(app: App<C, W, WR>) -> Result<Self, Error> {
         let conn = Connection::connect_to_env()?;
 
         let display = conn.display();
@@ -65,8 +78,6 @@ impl<T: GUI> EventLoop<T> {
 
         event_queue.roundtrip(&mut client)?; //Register objects
         event_queue.roundtrip(&mut client)?; //Register outputs
-
-        let content = ContentManager::default();
 
         //Fix egl error: BadDisplay
         let (display_ptr, gpu) = {
@@ -91,8 +102,8 @@ impl<T: GUI> EventLoop<T> {
         };
 
         Ok(Self {
-            gui: app,
-            content,
+            app,
+            windows: vec![],
 
             client,
             event_queue,
@@ -103,78 +114,80 @@ impl<T: GUI> EventLoop<T> {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.gui.load_content(&mut self.content);
-        let mut windows = self.init_windows_backends()?;
+        self.init_windows_backends()?;
+
+        let mut previous = Instant::now();
+        let mut frame = FrameContext::default();
 
         loop {
-            self.content.dispath_queue(&self.gpu)?;
+            let current = Instant::now();
+            let delta = current - previous;
+            previous = current;
 
-            windows
-                .iter_mut()
-                .try_for_each(|window| -> Result<(), Error> {
-                    let mut backend = window
-                        .backend
-                        .lock()
-                        .map_err(|e| Error::LockFailed(e.to_string()))?;
-                    if backend.can_resize() {
-                        window.configuration.width = backend
-                            .width
-                            .try_into()
-                            .map_err(|_| Error::NegativeWidth(backend.width))?;
+            frame.delta_time = delta.as_secs_f64();
+            frame.position = self.client.pointer().position();
+            frame.buttons = self.client.pointer().buttons();
 
-                        window.configuration.height = backend
-                            .height
-                            .try_into()
-                            .map_err(|_| Error::NegativeHeight(backend.height))?;
+            self.app.dispatch_queue(&self.gpu)?;
 
-                        self.gpu.confugure_surface(&window.surface, &window.configuration);
-                        backend.set_resized();
-                    }
+            for (i, window) in self.windows.iter_mut().enumerate() {
+                let mut backend = window
+                    .backend
+                    .lock()
+                    .map_err(|e| Error::LockFailed(e.to_string()))?;
+                if backend.can_resize() {
+                    window.configuration.width = backend
+                        .width
+                        .try_into()
+                        .map_err(|_| Error::NegativeWidth(backend.width))?;
 
-                    let mut context = Context {
-                        root: &mut window.frontend,
-                    };
+                    window.configuration.height = backend
+                        .height
+                        .try_into()
+                        .map_err(|_| Error::NegativeHeight(backend.height))?;
 
-                    window.handle.update(&mut self.gui, &mut context);
+                    self.gpu
+                        .confugure_surface(&window.surface, &window.configuration);
+                    backend.set_resized();
+                }
 
-                    backend.frame();
-                    if !backend.can_draw() {
-                        return Ok(());
-                    }
+                self.app.tick_logic_frontend(
+                    i,
+                    window.configuration.width as f32,
+                    window.configuration.height as f32,
+                    &frame,
+                );
 
-                    let mut commands = CommandBuffer::default();
-                    window.frontend.layout(Rect::new(
-                        Vec2::ZERO,
-                        Vec2::new(
-                            window.configuration.width as f32,
-                            window.configuration.height as f32,
-                        ),
-                    ));
-                    window.frontend.draw(&mut commands);
-                    commands.pack_active_group();
-                    window.renderer.render(
-                        &self.gpu,
-                        &window.surface,
-                        &mut commands,
-                        &self.content,
-                        window.configuration.width as f32,
-                        window.configuration.height as f32,
-                    )?;
-                    backend.commit();
+                backend.frame();
+                if !backend.can_draw() {
+                    continue;
+                    //return Ok(());
+                }
 
-                    Ok(())
-                })?;
+                let mut commands = self.app.tick_render_frontend(i);
+                window.renderer.render(
+                    &self.gpu,
+                    &window.surface,
+                    &mut commands,
+                    window.configuration.width as f32,
+                    window.configuration.height as f32,
+                )?;
+                backend.commit();
+            }
+
             self.event_queue.blocking_dispatch(&mut self.client)?;
         }
     }
 
-    fn init_windows_backends(&mut self) -> Result<Vec<Window<T>>, Error> {
-        let user_windows = self.gui.setup_windows();
-        let mut backends = Vec::with_capacity(user_windows.len());
-        let qh = self.event_queue.handle();
+    fn init_windows_backends(&mut self) -> Result<(), Error> {
+        if self.app.requested_frontends.is_empty() {
+            return Ok(());
+        }
 
-        user_windows.into_iter().try_for_each(|handle| {
-            let request = handle.request();
+        let requests = std::mem::take(&mut self.app.requested_frontends);
+        let qh = self.event_queue.handle();
+        requests.into_iter().try_for_each(|frontend| {
+            let request = frontend.request();
             let backend = self.client.create_window_backend(
                 qh.clone(),
                 request.id,
@@ -193,71 +206,26 @@ impl<T: GUI> EventLoop<T> {
 
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
             let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
-            let frontend = handle.setup(&mut self.gui);
             let renderer = Renderer::new(&self.gpu, None, &surface)?;
-            let window = Window::new(frontend, backend, surface, configuration, handle, renderer);
+            let window = Window::new(backend, surface, configuration, renderer);
 
-            backends.push(window);
+            self.windows.push(window);
+            self.app.frontends.push(frontend);
 
             Ok::<(), Error>(())
         })?;
 
-        Ok(backends)
+        Ok(())
     }
 }
 
-pub trait UserWindow<T: GUI> {
+pub trait WindowRoot<C: Context, W: Widget<C>>: Sized 
+where
+    C: Context<Widget = W, WindowRoot = Self>,
+    W: Widget<C>,
+{
     fn request(&self) -> WindowRequest;
-    fn setup(&self, gui: &mut T) -> Box<dyn Container>;
-    fn update<'ctx>(&mut self, gui: &mut T, context: &'ctx mut Context<'ctx>);
-}
-
-pub struct Context<'a> {
-    root: &'a mut Box<dyn Container>,
-}
-
-impl<'a> Context<'a> {
-    fn internal_get_by_id<W: Widget>(container: &'a dyn Container, id: &str) -> Option<&'a W> {
-        for w in container.children() {
-            if let Some(w_id) = w.id() {
-                if w_id.eq(id) {
-                    return w.as_any().downcast_ref::<W>();
-                }
-
-                if let Some(container) = w.as_container() {
-                    return Self::internal_get_by_id(container, id);
-                }
-            }
-        }
-
-        None
-    }
-
-    fn internal_get_mut_by_id<W: Widget>(
-        container: &'a mut dyn Container,
-        id: &str,
-    ) -> Option<&'a mut W> {
-        for w in container.children_mut() {
-            if let Some(w_id) = w.id() {
-                if w_id.eq(id) {
-                    return w.as_any_mut().downcast_mut::<W>();
-                }
-
-                if let Some(container) = w.as_container_mut() {
-                    return Self::internal_get_mut_by_id(container, id);
-                }
-            }
-        }
-
-        None
-    }
-
-    #[must_use]
-    pub fn get_by_id<W: Widget>(&'a self, id: &str) -> Option<&'a W> {
-        Self::internal_get_by_id(self.root.as_ref(), id)
-    }
-
-    pub fn get_mut_by_id<W: Widget>(&'a mut self, id: &str) -> Option<&'a mut W> {
-        Self::internal_get_mut_by_id(self.root.as_mut(), id)
-    }
+    fn setup(&mut self, app: &mut App<C, W, Self>);
+    fn root_mut(&mut self) -> &mut W;
+    fn root(&self) -> &W;
 }

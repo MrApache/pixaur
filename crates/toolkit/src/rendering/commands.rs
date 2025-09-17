@@ -1,14 +1,13 @@
-use enum_dispatch::enum_dispatch;
-use fontdue::layout::Layout;
-use glam::Vec2;
-use std::slice::IterMut;
-use wgpu::RenderPass;
-
 use crate::{
     rendering::{instance::InstanceData, Gpu, Renderer},
     types::{Color, Rect, Stroke, Texture},
     ContentManager, FontHandle,
 };
+use enum_dispatch::enum_dispatch;
+use fontdue::layout::Layout;
+use glam::Vec2;
+use std::slice::IterMut;
+use wgpu::RenderPass;
 
 #[enum_dispatch(DrawCommand)]
 pub(crate) trait DrawDispatcher {
@@ -53,7 +52,7 @@ impl DrawDispatcher for DrawRectCommand {
             Vec2::new(0.0, 0.0),
             Vec2::new(1.0, 0.0),
             Vec2::new(1.0, 1.0),
-            Vec2::new(0.0, 1.0)
+            Vec2::new(0.0, 1.0),
         ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
             UV,
@@ -94,7 +93,7 @@ impl DrawDispatcher for DrawTextureCommand {
         content: &ContentManager,
         renderpass: &mut RenderPass,
     ) {
-        let material = content.get_texture(self.texture.handle);
+        let material = content.get_texture(&self.texture.handle);
         renderpass.set_bind_group(0, &material.bind_group, &[]);
     }
 
@@ -103,7 +102,7 @@ impl DrawDispatcher for DrawTextureCommand {
             Vec2::new(0.0, 0.0),
             Vec2::new(1.0, 0.0),
             Vec2::new(1.0, 1.0),
-            Vec2::new(0.0, 1.0)
+            Vec2::new(0.0, 1.0),
         ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
             UV,
@@ -168,7 +167,10 @@ impl DrawDispatcher for DrawTextCommand<'_> {
             let data = atlas.get_or_add_glyph(glyph.parent, self.size, &self.font.inner);
             pipeline.buffer_pool.push(InstanceData::new_uv_4(
                 data.uv,
-                Vec2::new(self.position.x + glyph.x, self.position.y + glyph.y),
+                Vec2::new(
+                    (self.position.x + glyph.x).round(),
+                    (self.position.y + glyph.y).round(),
+                ),
                 Vec2::new(data.metrics.width as f32, data.metrics.height as f32),
                 &self.color,
                 None,
@@ -240,38 +242,47 @@ impl PackedGroup<'_> {
     }
 }
 
-#[derive(Default)]
 pub struct CommandBuffer<'frame> {
-    packed_groups: Vec<PackedGroup<'frame>>,
-    active_group: Vec<DrawCommand<'frame>>,
+    content: &'frame ContentManager,
+    packed: Vec<PackedGroup<'frame>>,
+    active: Vec<DrawCommand<'frame>>,
 }
 
 impl<'frame> CommandBuffer<'frame> {
+    #[must_use]
+    pub const fn new(content: &'frame ContentManager) -> Self {
+        Self {
+            content,
+            packed: vec![],
+            active: vec![],
+        }
+    }
     pub fn push(&mut self, command: impl Into<DrawCommand<'frame>>) {
         let command = command.into();
-        let last = self.active_group.last();
+        let last = self.active.last();
         if let Some(last) = last {
             if !last.is_same_type(&command) {
                 self.pack_active_group();
             }
         }
-        self.active_group.push(command);
+        self.active.push(command);
     }
 
     pub fn pack_active_group(&mut self) {
-        let group = std::mem::take(&mut self.active_group);
-        self.packed_groups.push(PackedGroup { inner: group });
+        let group = std::mem::take(&mut self.active);
+        self.packed.push(PackedGroup { inner: group });
     }
 
     pub fn iter_mut(&mut self) -> CommandBufferIter<'_, 'frame> {
         CommandBufferIter {
-            iter: self.packed_groups.iter_mut(),
+            content: self.content,
+            iter: self.packed.iter_mut(),
         }
     }
 }
 
 impl<'a, 'frame> IntoIterator for &'a mut CommandBuffer<'frame> {
-    type Item = &'a mut PackedGroup<'frame>;
+    type Item = (&'frame ContentManager, &'a mut PackedGroup<'frame>);
     type IntoIter = CommandBufferIter<'a, 'frame>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
@@ -279,13 +290,14 @@ impl<'a, 'frame> IntoIterator for &'a mut CommandBuffer<'frame> {
 }
 
 pub struct CommandBufferIter<'a, 'frame> {
+    content: &'frame ContentManager,
     iter: IterMut<'a, PackedGroup<'frame>>,
 }
 
 impl<'a, 'frame> Iterator for CommandBufferIter<'a, 'frame> {
-    type Item = &'a mut PackedGroup<'frame>;
+    type Item = (&'frame ContentManager, &'a mut PackedGroup<'frame>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        self.iter.next().map(|packed| (self.content, packed))
     }
 }

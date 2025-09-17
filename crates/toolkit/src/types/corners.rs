@@ -26,13 +26,10 @@ impl From<Corners> for Vec4 {
 }
 
 impl Corners {
-    #[must_use]
-    pub fn none() -> Self {
-        Self {
-            left_top: 0.0,
-            left_bottom: 0.0,
-            right_top: 0.0,
-            right_bottom: 0.0,
-        }
-    }
+    pub const NONE: Corners = Self {
+        left_top: 0.0,
+        left_bottom: 0.0,
+        right_top: 0.0,
+        right_bottom: 0.0,
+    };
 }

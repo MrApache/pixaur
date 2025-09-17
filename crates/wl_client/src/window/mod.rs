@@ -3,21 +3,18 @@ mod transform;
 
 use crate::WlClient;
 pub(crate) use pool::ShmPool;
-use transform::Transform;
-
+use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
+    zwlr_layer_shell_v1::{Layer, ZwlrLayerShellV1},
+    zwlr_layer_surface_v1::{Anchor, ZwlrLayerSurfaceV1},
+};
 use std::{ffi::c_void, ptr::NonNull, sync::Arc};
+use transform::Transform;
 use wayland_client::{
     protocol::{wl_buffer::WlBuffer, wl_surface::WlSurface},
     Proxy, QueueHandle,
 };
-
 use wayland_protocols::xdg::shell::client::{
     xdg_surface::XdgSurface, xdg_toplevel::XdgToplevel, xdg_wm_base::XdgWmBase,
-};
-
-use smithay_client_toolkit::reexports::protocols_wlr::layer_shell::v1::client::{
-    zwlr_layer_shell_v1::{Layer, ZwlrLayerShellV1},
-    zwlr_layer_surface_v1::{Anchor, ZwlrLayerSurfaceV1},
 };
 
 pub type WindowId = Arc<String>;

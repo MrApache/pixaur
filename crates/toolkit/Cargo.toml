@@ -3,18 +3,28 @@ name = "toolkit"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+derive = ["toolkit-derive"]
+
+[dependencies.toolkit-derive]
+path = "../toolkit-derive"
+optional = true
+
 [dependencies]
 wayland-client.workspace = true
 wl_client.workspace = true
 fontdue.workspace = true
-ttf-parser.workspace = true
 wgpu.workspace = true
 pollster.workspace = true
 thiserror.workspace = true
 bytemuck.workspace = true
-image.workspace = true
 glam.workspace = true
 guillotiere.workspace = true
 enum_dispatch.workspace = true
 derive_more.workspace = true
 rand.workspace = true
+
+# Images
+image.workspace = true
+resvg.workspace = true
+#usvg.workspace = true
