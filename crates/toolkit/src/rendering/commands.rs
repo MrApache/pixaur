@@ -242,38 +242,46 @@ impl PackedGroup<'_> {
     }
 }
 
-#[derive(Default)]
 pub struct CommandBuffer<'frame> {
-    packed_groups: Vec<PackedGroup<'frame>>,
-    active_group: Vec<DrawCommand<'frame>>,
+    content: &'frame ContentManager,
+    packed: Vec<PackedGroup<'frame>>,
+    active: Vec<DrawCommand<'frame>>,
 }
 
 impl<'frame> CommandBuffer<'frame> {
+    pub const fn new(content: &'frame ContentManager) -> Self {
+        Self {
+            content,
+            packed: vec![],
+            active: vec![],
+        }
+    }
     pub fn push(&mut self, command: impl Into<DrawCommand<'frame>>) {
         let command = command.into();
-        let last = self.active_group.last();
+        let last = self.active.last();
         if let Some(last) = last {
             if !last.is_same_type(&command) {
                 self.pack_active_group();
             }
         }
-        self.active_group.push(command);
+        self.active.push(command);
     }
 
     pub fn pack_active_group(&mut self) {
-        let group = std::mem::take(&mut self.active_group);
-        self.packed_groups.push(PackedGroup { inner: group });
+        let group = std::mem::take(&mut self.active);
+        self.packed.push(PackedGroup { inner: group });
     }
 
     pub fn iter_mut(&mut self) -> CommandBufferIter<'_, 'frame> {
         CommandBufferIter {
-            iter: self.packed_groups.iter_mut(),
+            content: self.content,
+            iter: self.packed.iter_mut(),
         }
     }
 }
 
 impl<'a, 'frame> IntoIterator for &'a mut CommandBuffer<'frame> {
-    type Item = &'a mut PackedGroup<'frame>;
+    type Item = (&'frame ContentManager, &'a mut PackedGroup<'frame>);
     type IntoIter = CommandBufferIter<'a, 'frame>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
@@ -281,13 +289,14 @@ impl<'a, 'frame> IntoIterator for &'a mut CommandBuffer<'frame> {
 }
 
 pub struct CommandBufferIter<'a, 'frame> {
+    content: &'frame ContentManager,
     iter: IterMut<'a, PackedGroup<'frame>>,
 }
 
 impl<'a, 'frame> Iterator for CommandBufferIter<'a, 'frame> {
-    type Item = &'a mut PackedGroup<'frame>;
+    type Item = (&'frame ContentManager, &'a mut PackedGroup<'frame>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        self.iter.next().map(|packed| (self.content, packed))
     }
 }

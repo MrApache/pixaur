@@ -3,22 +3,64 @@ use toolkit::{
     glam::Vec2,
     types::{Argb8888, Rect, Stroke, Texture},
     widget::{Context, DesiredSize, Sender, Widget},
-    Handle,
+    Handle, WidgetQuery,
 };
 
-#[derive(Default)]
-pub struct Image {
+#[derive(WidgetQuery)]
+pub struct Image<C>
+where
+    C: Context,
+{
     pub size: Vec2,
     pub rect: Rect,
     pub handle: Option<Handle>,
+
+    id: Option<String>,
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl<Ctx: Context> Widget<Ctx> for Image {
-    fn id(&self) -> Option<&str> {
-        None
+impl<C> Default for Image<C>
+where
+    C: Context,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<C> Image<C>
+where
+    C: Context,
+{
+    #[must_use]
+    pub fn new() -> Self {
+        Self::new_with_id(None)
     }
 
-    fn desired_size(&self) -> toolkit::widget::DesiredSize {
+    pub fn with_id(id: impl Into<String>) -> Self {
+        Self::new_with_id(Some(id.into()))
+    }
+
+    fn new_with_id(id: Option<String>) -> Self {
+        Self {
+            size: Vec2::ZERO,
+            rect: Rect::ZERO,
+            handle: None,
+            id,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<C> Widget<C> for Image<C>
+where
+    C: Context,
+{
+    fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+
+    fn desired_size(&self) -> DesiredSize {
         DesiredSize::Min(self.size)
     }
 
@@ -49,9 +91,9 @@ impl<Ctx: Context> Widget<Ctx> for Image {
         }
     }
 
-    fn layout(&mut self, bounds: toolkit::types::Rect) {
+    fn layout(&mut self, bounds: Rect) {
         self.rect = bounds.clone();
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<Ctx>) {}
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<C>) {}
 }

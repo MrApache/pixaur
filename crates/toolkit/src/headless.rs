@@ -1,49 +1,42 @@
 use crate::{
-    commands::CommandBuffer,
-    types::Rect,
-    widget::{Context, FrameContext, Sender, Widget},
-    WindowRoot, GUI,
+    app::App,
+    widget::{Context, FrameContext, Widget},
+    WindowRoot,
 };
-use glam::Vec2;
 
-struct HeadlessWindow<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> {
-    frontend: G::Window,
-    _phantom: std::marker::PhantomData<G>,
+pub struct HeadlessEventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    app: App<C, W, WR>,
 }
 
-pub struct HeadlessEventLoop<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> {
-    gui: G,
-    windows: Vec<HeadlessWindow<CTX, W, G>>,
-}
-
-impl<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> HeadlessEventLoop<CTX, W, G> {
-    pub fn new(mut app: G) -> Self {
-        let windows = app
-            .setup_windows()
-            .into_iter()
-            .map(|frontend| HeadlessWindow {
-                frontend,
-                _phantom: std::marker::PhantomData,
-            })
-            .collect::<Vec<_>>();
-        Self { gui: app, windows }
+impl<C, W, WR> HeadlessEventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    #[must_use]
+    pub fn new(mut app: App<C, W, WR>) -> Self {
+        let mut windows = std::mem::take(&mut app.requested_frontends);
+        windows.iter_mut().for_each(|f| f.setup(&mut app));
+        app.frontends = windows;
+        Self { app }
     }
 
     pub fn run_logic(&mut self) {
-        let frame_context = FrameContext::default();
-        for window in &mut self.windows {
-            let root = window.frontend.root();
-            let mut sender = Sender::<CTX>::default();
-            root.update(&frame_context, &mut sender);
-            root.layout(Rect::new(Vec2::ZERO, Vec2::new(1920.0, 1080.0)));
+        let frame = FrameContext::default();
+        for i in 0..self.app.frontends.len() {
+            self.app.tick_logic_frontend(i, 1920.0, 1080.0, &frame);
         }
     }
 
     pub fn run_draw(&mut self) {
-        for window in &mut self.windows {
-            let mut commands = CommandBuffer::default();
-            window.frontend.root().draw(&mut commands);
-            commands.pack_active_group();
+        for i in 0..self.app.frontends.len() {
+            self.app.tick_render_frontend(i);
         }
     }
 }

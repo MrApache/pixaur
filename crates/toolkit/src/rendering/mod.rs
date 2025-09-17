@@ -18,7 +18,7 @@ use crate::rendering::material::Material;
 use crate::rendering::mesh::QuadMesh;
 use crate::rendering::text::FontAtlasSet;
 use crate::rendering::vertex::Vertex;
-use crate::{include_asset_content, load_asset_str, ContentManager};
+use crate::{include_asset_content, load_asset_str};
 use glam::Mat4;
 use std::collections::HashMap;
 use wgpu::{
@@ -121,7 +121,6 @@ impl Renderer {
         gpu: &Gpu,
         surface: &Surface,
         commands: &mut commands::CommandBuffer,
-        content: &ContentManager,
         window_width: f32,
         window_height: f32,
     ) -> Result<(), Error> {
@@ -170,8 +169,8 @@ impl Renderer {
             renderpass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
             renderpass.set_index_buffer(self.mesh.index_buffer.slice(..), IndexFormat::Uint16);
 
-            commands.iter_mut().for_each(|command_group| {
-                command_group.prepare_frame(self, content, gpu, &mut renderpass);
+            commands.iter_mut().for_each(|(content, group)| {
+                group.prepare_frame(self, content, gpu, &mut renderpass);
             });
         }
 

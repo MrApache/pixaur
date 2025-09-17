@@ -1,77 +1,84 @@
 use toolkit::{
+    app::App,
     glam::Vec2,
     include_asset,
     types::{Argb8888, Stroke},
-    widget::{Container, Context},
+    widget::{Callbacks, Container, Context, Sender, Tree, WidgetQuery},
     window::WindowRequest,
-    Anchor, Error, EventLoop, FontHandle, Handle, SpecialOptions, SvgHandle, TargetMonitor,
-    WidgetEnum, WindowRoot, GUI,
+    Anchor, ContentManager, Error, EventLoop, Handle, SpecialOptions, TargetMonitor, WidgetEnum,
+    WindowRoot,
 };
 use widgets::{
-    button::{Button, ButtonMockCallbacks},
+    button::{Button, ButtonCallbacks},
     image::Image,
     impl_empty_widget, impl_proxy_widget,
     panel::{HorizontalAlign, Panel, VerticalAlign},
     text::Text,
+    timer::{Timer, TimerCallback},
 };
-
 impl_empty_widget!(Empty);
 
-#[derive(Default)]
-struct App {
-    font: FontHandle,
-    icon: SvgHandle,
+enum WindowContext {
+    UpdateClock,
+    PrintText,
 }
 
-impl GUI<BarWindowContext, Root> for App {
-    type Window = Root;
-
-    fn setup_windows(&mut self) -> Vec<Self::Window> {
-        vec![Root::default()]
-    }
-
-    fn load_content(&mut self, content: &mut toolkit::ContentManager) {
-        self.font = content.include_font(include_asset!("MSW98UI-Regular.ttf"));
-        self.icon = content.include_svg_as_texture(include_asset!("arch.svg"), 16, 16);
-    }
-}
-
-enum BarWindowContext {
-    UpdateClock(String),
-}
-
-impl Context for BarWindowContext {
-    fn execute(&self) {
+impl Context for WindowContext {
+    type Widget = Root;
+    type WindowRoot = Root;
+    fn execute(&self, _: &mut ContentManager, tree: &mut Tree<Self>) {
         match self {
-            BarWindowContext::UpdateClock(id) => {
-                //let local: chrono::DateTime<chrono::Local> = chrono::Local::now();
-                //text.set_text(&format!("{}", local.format("%Y-%m-%d %H:%M:%S")));
+            WindowContext::UpdateClock => {
+                let clock = tree.get_mut_element::<Text<Self>>("Clock").unwrap();
+                let local: chrono::DateTime<chrono::Local> = chrono::Local::now();
+                clock.set_text(&format!("{}", local.format("%Y-%m-%d %H:%M:%S")));
             }
+            WindowContext::PrintText => println!("Hello, World!"),
         }
     }
 }
 
 #[derive(WidgetEnum)]
-#[context(BarWindowContext)]
-enum BarWindowElements {
-    Text(Text<BarWindowContext>),
-    Button(Button<BarWindowContext, Image, ButtonMockCallbacks>),
+#[context(WindowContext)]
+enum Elements {
+    Text(Text<WindowContext>),
+    Button(Button<WindowContext, Image<WindowContext>, CallbackImpls>),
+    Timer(Timer<WindowContext, CallbackImpls>),
 }
 
-impl Default for BarWindowElements {
+impl WidgetQuery<WindowContext> for Elements {
+    fn get_element<QW: toolkit::widget::Widget<WindowContext>>(&self, id: &str) -> Option<&QW> {
+        match self {
+            Elements::Text(text) => text.get_element(id),
+            Elements::Button(button) => button.get_element(id),
+            Elements::Timer(timer) => timer.get_element(id),
+        }
+    }
+
+    fn get_mut_element<QW: toolkit::widget::Widget<WindowContext>>(
+        &mut self,
+        id: &str,
+    ) -> Option<&mut QW> {
+        match self {
+            Elements::Text(text) => text.get_mut_element(id),
+            Elements::Button(button) => button.get_mut_element(id),
+            Elements::Timer(timer) => timer.get_mut_element(id),
+        }
+    }
+}
+
+impl Default for Elements {
     fn default() -> Self {
         Self::Text(Text::default())
     }
 }
 
 #[derive(Default)]
-pub struct Root(Panel<BarWindowContext, BarWindowElements>);
-impl_proxy_widget!(Root, BarWindowContext);
+pub struct Root(Panel<WindowContext, Elements>);
+impl_proxy_widget!(Root, WindowContext);
 
-impl WindowRoot<BarWindowContext, Root> for Root {
-    type Gui = App;
-
-    fn request(&self) -> toolkit::window::WindowRequest {
+impl WindowRoot<WindowContext, Root> for Root {
+    fn request(&self) -> WindowRequest {
         WindowRequest::new("bar")
             .with_size(1920, 30)
             .bottom(SpecialOptions {
@@ -81,8 +88,12 @@ impl WindowRoot<BarWindowContext, Root> for Root {
             })
     }
 
-    fn setup(&mut self, app: &mut App) {
-        let mut root = Panel::<BarWindowContext, BarWindowElements>::new();
+    fn setup(&mut self, app: &mut App<WindowContext, Self, Self>) {
+        let content_manager = app.content_manager();
+        let font = content_manager.include_font(include_asset!("MSW98UI-Regular.ttf"));
+        let icon = content_manager.include_svg_as_texture(include_asset!("arch.svg"), 16, 16);
+
+        let mut root = Panel::<WindowContext, Elements>::new();
         root.padding.left = 6.0;
         root.padding.right = 6.0;
         root.rectangle.background = Argb8888::new(212, 208, 200, 255).into();
@@ -91,17 +102,17 @@ impl WindowRoot<BarWindowContext, Root> for Root {
         root.horizontal_align = HorizontalAlign::Center;
 
         let mut time = Text::with_id("Clock");
-        time.set_font(app.font.clone());
+        time.set_font(font.clone());
         time.set_text("left: true false");
         time.size = 14;
         time.color = Argb8888::BLACK.into();
-        root.add_child(BarWindowElements::Text(time));
+        root.add_child(Elements::Text(time));
 
-        let mut button: Button<BarWindowContext, Image, ButtonMockCallbacks> = Button::new();
+        let mut button: Button<WindowContext, Image<WindowContext>, CallbackImpls> = Button::new();
         button.size = Vec2::new(24.0, 24.0);
         let content = button.content_mut();
         content.size = Vec2::new(16.0, 16.0);
-        content.handle = Some(Handle::Svg(app.icon));
+        content.handle = Some(Handle::Svg(icon));
         button.normal.background = Argb8888::new(212, 208, 200, 255).into();
         button.normal.stroke.width = 1.0;
         button.normal.stroke.color = [
@@ -122,17 +133,45 @@ impl WindowRoot<BarWindowContext, Root> for Root {
             Argb8888::WHITE,
         ];
 
-        root.add_child(BarWindowElements::Button(button));
+        let mut timer = Timer::<WindowContext, CallbackImpls>::new();
+        timer.interval = 0.1;
+        timer.running = true;
+        timer.repeat = true;
+
+        root.add_child(Elements::Timer(timer));
+        root.add_child(Elements::Button(button));
 
         self.0 = root;
     }
 
-    fn root(&mut self) -> &mut Root {
+    fn root_mut(&mut self) -> &mut Root {
+        self
+    }
+
+    fn root(&self) -> &Root {
         self
     }
 }
 
+#[derive(Default)]
+struct CallbackImpls;
+impl Callbacks for CallbackImpls {}
+impl TimerCallback<WindowContext> for CallbackImpls {
+    fn on_triggered(&self, sender: &mut Sender<WindowContext>) {
+        sender.create_event(WindowContext::UpdateClock);
+    }
+}
+
+impl ButtonCallbacks<WindowContext> for CallbackImpls {
+    fn on_clicked(&self, sender: &mut Sender<WindowContext>) {
+        sender.create_event(WindowContext::PrintText);
+    }
+}
+
 fn main() -> Result<(), Error> {
-    let mut event_loop = EventLoop::new(App::default())?;
+    let mut app = App::new();
+    app.add_window(Root::default());
+
+    let mut event_loop = EventLoop::new(app)?;
     event_loop.run()
 }

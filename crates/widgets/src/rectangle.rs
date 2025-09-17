@@ -1,19 +1,20 @@
 use toolkit::{
     commands::{DrawRectCommand, DrawTextureCommand},
     types::{styling::BackgroundStyle, Rect, Stroke},
-    widget::{Context, DesiredSize, Sender, Widget},
+    widget::{Context, DesiredSize, Sender, Widget}, WidgetQuery,
 };
 
-pub struct Rectangle<Ctx: Context> {
+#[derive(WidgetQuery)]
+pub struct Rectangle<C: Context> {
     pub background: BackgroundStyle,
     pub stroke: Stroke,
 
     id: Option<String>,
     rect: Rect,
-    _phantom: std::marker::PhantomData<Ctx>,
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl<Ctx: Context> Default for Rectangle<Ctx> {
+impl<C: Context> Default for Rectangle<C> {
     fn default() -> Self {
         Self {
             background: BackgroundStyle::default(),
@@ -25,14 +26,14 @@ impl<Ctx: Context> Default for Rectangle<Ctx> {
     }
 }
 
-impl<Ctx: Context> Rectangle<Ctx> {
+impl<C: Context> Rectangle<C> {
     #[must_use]
     pub const fn rect(&self) -> &Rect {
         &self.rect
     }
 }
 
-impl<Ctx: Context> Widget<Ctx> for Rectangle<Ctx> {
+impl<C: Context> Widget<C> for Rectangle<C> {
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
     }
@@ -68,5 +69,5 @@ impl<Ctx: Context> Widget<Ctx> for Rectangle<Ctx> {
         self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<Ctx>) {}
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<C>) {}
 }

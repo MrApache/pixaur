@@ -1,4 +1,4 @@
-use crate::{types::Rect, CommandBuffer};
+use crate::{types::Rect, CommandBuffer, ContentManager, WindowRoot};
 use glam::Vec2;
 use std::any::Any;
 use wl_client::ButtonState;
@@ -67,14 +67,14 @@ pub enum DesiredSize {
 
 #[derive(Default)]
 pub struct FrameContext {
-    pub(crate) delta_time: f32,
+    pub(crate) delta_time: f64,
     pub(crate) position: Vec2,
     pub(crate) buttons: ButtonState,
 }
 
 impl FrameContext {
     #[must_use]
-    pub const fn delta_time(&self) -> f32 {
+    pub const fn delta_time(&self) -> f64 {
         self.delta_time
     }
 
@@ -89,31 +89,34 @@ impl FrameContext {
     }
 }
 
-pub trait Widget<CTX: Context>: Any + Sync + Send + Default {
+pub trait Widget<C: Context>: WidgetQuery<C> + Any + Sync + Send + Default {
     fn id(&self) -> Option<&str>;
     fn desired_size(&self) -> DesiredSize;
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);
     fn layout(&mut self, bounds: Rect);
-    fn update(&mut self, ctx: &FrameContext, sender: &mut Sender<CTX>);
+    fn update(&mut self, ctx: &FrameContext, sender: &mut Sender<C>);
+
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-pub trait Container<CTX: Context, W: Widget<CTX>>: Widget<CTX> {
+pub trait Container<C: Context, W: Widget<C>>: Widget<C> {
     fn add_child(&mut self, child: W);
     fn children(&self) -> &[W];
     fn children_mut(&mut self) -> &mut [W];
 }
 
-pub trait Context: Send + Sync + 'static {
-    fn execute(&self);
+pub trait Context: Send + Sync + Sized + 'static {
+    type Widget: Widget<Self>;
+    type WindowRoot: WindowRoot<Self, Self::Widget>;
+    fn execute(&self, content: &mut ContentManager, tree: &mut Tree<Self>);
 }
 
-pub struct Sender<CTX: Context> {
-    inner: Vec<CTX>,
+pub struct Sender<C: Context> {
+    inner: Vec<C>,
 }
 
-impl<CTX: Context> Default for Sender<CTX> {
+impl<C: Context> Default for Sender<C> {
     fn default() -> Self {
         Self {
             inner: Vec::with_capacity(32),
@@ -121,19 +124,51 @@ impl<CTX: Context> Default for Sender<CTX> {
     }
 }
 
-impl<CTX: Context> Sender<CTX> {
-    pub(crate) fn execute(&mut self) {
-        self.inner.retain(|ctx|{
-            ctx.execute();
+impl<C: Context> Sender<C> {
+    pub(crate) fn execute(&mut self, content: &mut ContentManager, mut tree: Tree<C>) {
+        self.inner.retain(|ctx| {
+            ctx.execute(content, &mut tree);
             false
         });
     }
 
-    pub fn create_event(&mut self, event: CTX) {
+    pub fn create_event(&mut self, event: C) {
         self.inner.push(event);
     }
+}
 
-    pub fn create_event_with_element_id(&mut self, id: impl Into<String>, event: CTX) {
+pub trait Callbacks: Send + Sync + Default + 'static {}
 
+pub struct Tree<'a, C: Context> {
+    pub(crate) frontends: &'a mut [C::WindowRoot]
+}
+
+impl<C: Context> WidgetQuery<C> for Tree<'_, C> {
+    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> { 
+        for frontend in self.frontends.iter() {
+            let element = frontend.root().get_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
+
+        None
     }
+
+    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+        for frontend in self.frontends.iter_mut() {
+            let element = frontend.root_mut().get_mut_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
+
+        None
+    }
+}
+
+#[allow(unused_variables)]
+pub trait WidgetQuery<C: Context> {
+    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> { None }
+    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> { None }
 }

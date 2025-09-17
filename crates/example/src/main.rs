@@ -1,7 +1,10 @@
-use example::App;
-use toolkit::EventLoop;
+use example::Root;
+use toolkit::{app::App, EventLoop};
 
 fn main() {
-    let mut event_loop = EventLoop::new(App::default()).unwrap();
+    let mut app = App::new();
+    app.add_window(Root::default());
+
+    let mut event_loop = EventLoop::new(app).unwrap();
     event_loop.run().unwrap();
 }

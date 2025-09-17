@@ -1,5 +1,5 @@
-use example::App;
-use toolkit::{headless::HeadlessEventLoop, FontHandle};
+use example::Root;
+use toolkit::{app::App, headless::HeadlessEventLoop, FontHandle};
 
 fn main() {
     divan::main();
@@ -7,14 +7,18 @@ fn main() {
 
 #[divan::bench]
 fn event_loop_init() {
-    HeadlessEventLoop::new(App::default());
+    let mut app = App::new();
+    app.add_window(Root::default());
+    let _ = HeadlessEventLoop::new(app);
 }
 
 #[divan::bench]
 fn run_logic(bencher: divan::Bencher) {
     bencher
         .with_inputs(|| {
-            HeadlessEventLoop::new(App::default())
+            let mut app = App::new();
+            app.add_window(Root::default());
+            HeadlessEventLoop::new(app)
         })
         .bench_values(|mut event_loop| {
             event_loop.run_logic();
@@ -25,7 +29,9 @@ fn run_logic(bencher: divan::Bencher) {
 fn run_draw(bencher: divan::Bencher) {
     bencher
         .with_inputs(|| {
-            HeadlessEventLoop::new(App::default())
+            let mut app = App::new();
+            app.add_window(Root::default());
+            HeadlessEventLoop::new(app)
         })
         .bench_values(|mut event_loop| {
             event_loop.run_draw();

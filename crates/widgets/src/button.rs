@@ -2,7 +2,7 @@ use toolkit::{
     commands::{DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
     types::{styling::BackgroundStyle, Argb8888, Corners, Rect, Stroke},
-    widget::{Context, DesiredSize, Padding, Sender, Widget},
+    widget::{Context, DesiredSize, Padding, Sender, Widget}, WidgetQuery,
 };
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -22,14 +22,14 @@ pub struct ButtonStyle {
 
 #[derive(Default)]
 pub struct ButtonMockCallbacks;
-impl<Ctx: Context> ButtonCallbacks<Ctx> for ButtonMockCallbacks {}
+impl<C: Context> ButtonCallbacks<C> for ButtonMockCallbacks {}
 
 #[allow(dead_code, unused_variables)]
-pub trait ButtonCallbacks<Ctx: Context>: Default + Send + Sync + 'static {
-    fn on_enter(&self, sender: &mut Sender<Ctx>) {}
-    fn on_exit(&self, sender: &mut Sender<Ctx>) {}
-    fn on_press(&self, sender: &mut Sender<Ctx>) {}
-    fn on_clicked(&self, sender: &mut Sender<Ctx>) {}
+pub trait ButtonCallbacks<C: Context>: Default + Send + Sync + 'static {
+    fn on_enter(&self, sender: &mut Sender<C>) {}
+    fn on_exit(&self, sender: &mut Sender<C>) {}
+    fn on_press(&self, sender: &mut Sender<C>) {}
+    fn on_clicked(&self, sender: &mut Sender<C>) {}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -46,7 +46,13 @@ pub enum Alignment {
     BottomRight,
 }
 
-pub struct Button<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> {
+#[derive(WidgetQuery)]
+pub struct Button<C, W, CB>
+where
+    C: Context,
+    W: Widget<C>,
+    CB: ButtonCallbacks<C>,
+{
     pub size: Vec2,
     pub normal: ButtonStyle,
     pub hover: ButtonStyle,
@@ -58,20 +64,29 @@ pub struct Button<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> {
     id: Option<String>,
     state: ButtonFsm,
 
+    #[content]
     content: W,
-    callbacks: C,
-    _phantom: std::marker::PhantomData<Ctx>,
+    callbacks: CB,
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Default
-    for Button<Ctx, W, C>
+impl<C, W, CB> Default for Button<C, W, CB>
+where
+    C: Context,
+    W: Widget<C>,
+    CB: ButtonCallbacks<C>,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Button<Ctx, W, C> {
+impl<C, W, CB> Button<C, W, CB>
+where
+    C: Context,
+    W: Widget<C>,
+    CB: ButtonCallbacks<C>,
+{
     #[must_use]
     pub fn new() -> Self {
         Self::new_with_id(None)
@@ -110,7 +125,7 @@ impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Button<Ctx, W, C> {
             },
             id,
             content: W::default(),
-            callbacks: C::default(),
+            callbacks: CB::default(),
             rect: Rect::ZERO,
             state: ButtonFsm::Normal,
             alignment: Alignment::Center,
@@ -129,8 +144,11 @@ impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Button<Ctx, W, C> {
     }
 }
 
-impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Widget<Ctx>
-    for Button<Ctx, W, C>
+impl<C, W, CB> Widget<C> for Button<C, W, CB>
+where
+    C: Context,
+    W: Widget<C>,
+    CB: ButtonCallbacks<C>,
 {
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
@@ -221,7 +239,7 @@ impl<Ctx: Context, W: Widget<Ctx>, C: ButtonCallbacks<Ctx>> Widget<Ctx>
         self.content.layout(content_rect);
     }
 
-    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<Ctx>) {
+    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<C>) {
         let is_inside = self.rect.contains(ctx.position());
         let is_pressed = ctx.buttons().left();
         match self.state {

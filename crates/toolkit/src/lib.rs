@@ -16,19 +16,20 @@ pub use content::*;
 pub use fontdue;
 pub use glam;
 
+pub mod app;
+pub mod event_loop;
 pub mod widget;
 pub mod window;
 
 use crate::{
+    app::App,
     rendering::{commands::CommandBuffer, Gpu, Renderer},
-    types::Rect,
-    widget::{Context, FrameContext, Sender, Widget},
+    widget::{Context, FrameContext, Widget},
     window::{Window, WindowPointer, WindowRequest},
 };
 pub use error::*;
-use glam::Vec2;
 pub use rendering::commands;
-use std::{ffi::c_void, ptr::NonNull, sync::Arc};
+use std::{ffi::c_void, ptr::NonNull, sync::Arc, time::Instant};
 use wayland_client::{Connection, EventQueue, Proxy};
 pub use wl_client::window::TargetMonitor;
 use wl_client::{window::WindowLayer, WlClient};
@@ -37,25 +38,29 @@ pub use wl_client::{
     Anchor,
 };
 
-pub struct EventLoop<
-CTX: Context,
-W: Widget<CTX>,
-G: GUI<CTX, W>> {
-    gui: G,
-    content: ContentManager,
+pub struct EventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    app: App<C, W, WR>,
+    windows: Vec<Window>,
 
     client: WlClient,
     event_queue: EventQueue<WlClient>,
     display_ptr: NonNull<c_void>,
 
     gpu: Gpu,
-
-    _phantom0: std::marker::PhantomData<CTX>,
-    _phantom1: std::marker::PhantomData<W>,
 }
 
-impl<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> EventLoop<CTX, W, G> {
-    pub fn new(app: G) -> Result<Self, Error> {
+impl<C, W, WR> EventLoop<C, W, WR>
+where
+    C: Context<Widget = W, WindowRoot = WR>,
+    W: Widget<C>,
+    WR: WindowRoot<C, W>,
+{
+    pub fn new(app: App<C, W, WR>) -> Result<Self, Error> {
         let conn = Connection::connect_to_env()?;
 
         let display = conn.display();
@@ -68,8 +73,6 @@ impl<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> EventLoop<CTX, W, G> {
 
         event_queue.roundtrip(&mut client)?; //Register objects
         event_queue.roundtrip(&mut client)?; //Register outputs
-
-        let content = ContentManager::default();
 
         //Fix egl error: BadDisplay
         let (display_ptr, gpu) = {
@@ -94,95 +97,91 @@ impl<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> EventLoop<CTX, W, G> {
         };
 
         Ok(Self {
-            gui: app,
-            content,
+            app,
+            windows: vec![],
 
             client,
             event_queue,
             display_ptr,
 
             gpu,
-            _phantom0: std::marker::PhantomData,
-            _phantom1: std::marker::PhantomData,
         })
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.gui.load_content(&mut self.content);
-        let mut windows = self.init_windows_backends()?;
+        self.init_windows_backends()?;
 
-        let mut frame_ctx = FrameContext::default();
+        let mut previous = Instant::now();
+        let mut frame = FrameContext::default();
 
         loop {
-            frame_ctx.position = self.client.pointer().position();
-            frame_ctx.buttons = self.client.pointer().buttons();
+            let current = Instant::now();
+            let delta = current - previous;
+            previous = current;
 
-            self.content.dispath_queue(&self.gpu)?;
+            frame.delta_time = delta.as_secs_f64();
+            frame.position = self.client.pointer().position();
+            frame.buttons = self.client.pointer().buttons();
 
-            windows
-                .iter_mut()
-                .try_for_each(|window| -> Result<(), Error> {
-                    let mut backend = window
-                        .backend
-                        .lock()
-                        .map_err(|e| Error::LockFailed(e.to_string()))?;
-                    if backend.can_resize() {
-                        window.configuration.width = backend
-                            .width
-                            .try_into()
-                            .map_err(|_| Error::NegativeWidth(backend.width))?;
+            self.app.dispatch_queue(&self.gpu)?;
 
-                        window.configuration.height = backend
-                            .height
-                            .try_into()
-                            .map_err(|_| Error::NegativeHeight(backend.height))?;
+            for (i, window) in self.windows.iter_mut().enumerate() {
+                let mut backend = window
+                    .backend
+                    .lock()
+                    .map_err(|e| Error::LockFailed(e.to_string()))?;
+                if backend.can_resize() {
+                    window.configuration.width = backend
+                        .width
+                        .try_into()
+                        .map_err(|_| Error::NegativeWidth(backend.width))?;
 
-                        self.gpu
-                            .confugure_surface(&window.surface, &window.configuration);
-                        backend.set_resized();
-                    }
+                    window.configuration.height = backend
+                        .height
+                        .try_into()
+                        .map_err(|_| Error::NegativeHeight(backend.height))?;
 
-                    let root = window.frontend.root();
-                    let mut sender = Sender::<CTX>::default();
-                    root.update(&frame_ctx, &mut sender);
+                    self.gpu
+                        .confugure_surface(&window.surface, &window.configuration);
+                    backend.set_resized();
+                }
 
-                    backend.frame();
-                    if !backend.can_draw() {
-                        return Ok(());
-                    }
+                self.app.tick_logic_frontend(
+                    i,
+                    window.configuration.width as f32,
+                    window.configuration.height as f32,
+                    &frame,
+                );
 
-                    let mut commands = CommandBuffer::default();
-                    root.layout(Rect::new(
-                        Vec2::ZERO,
-                        Vec2::new(
-                            window.configuration.width as f32,
-                            window.configuration.height as f32,
-                        ),
-                    ));
-                    root.draw(&mut commands);
-                    commands.pack_active_group();
-                    window.renderer.render(
-                        &self.gpu,
-                        &window.surface,
-                        &mut commands,
-                        &self.content,
-                        window.configuration.width as f32,
-                        window.configuration.height as f32,
-                    )?;
-                    backend.commit();
+                backend.frame();
+                if !backend.can_draw() {
+                    continue;
+                    //return Ok(());
+                }
 
-                    Ok(())
-                })?;
+                let mut commands = self.app.tick_render_frontend(i);
+                window.renderer.render(
+                    &self.gpu,
+                    &window.surface,
+                    &mut commands,
+                    window.configuration.width as f32,
+                    window.configuration.height as f32,
+                )?;
+                backend.commit();
+            }
+
             self.event_queue.blocking_dispatch(&mut self.client)?;
         }
     }
 
-    fn init_windows_backends(&mut self) -> Result<Vec<Window<CTX, W, G>>, Error> {
-        let user_windows = self.gui.setup_windows();
-        let mut backends = Vec::with_capacity(user_windows.len());
-        let qh = self.event_queue.handle();
+    fn init_windows_backends(&mut self) -> Result<(), Error> {
+        if self.app.requested_frontends.is_empty() {
+            return Ok(());
+        }
 
-        user_windows.into_iter().try_for_each(|mut frontend| {
+        let requests = std::mem::take(&mut self.app.requested_frontends);
+        let qh = self.event_queue.handle();
+        requests.into_iter().try_for_each(|frontend| {
             let request = frontend.request();
             let backend = self.client.create_window_backend(
                 qh.clone(),
@@ -203,29 +202,25 @@ impl<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> EventLoop<CTX, W, G> {
             let window_ptr = WindowPointer::new(self.display_ptr, surface_ptr);
             let (surface, configuration) = self.gpu.create_surface(window_ptr, width, height)?;
             let renderer = Renderer::new(&self.gpu, None, &surface)?;
-            frontend.setup(&mut self.gui);
-            let window = Window::new(frontend, backend, surface, configuration, renderer);
+            let window = Window::new(backend, surface, configuration, renderer);
 
-            backends.push(window);
+            self.windows.push(window);
+            self.app.frontends.push(frontend);
 
             Ok::<(), Error>(())
         })?;
 
-        Ok(backends)
+        Ok(())
     }
 }
 
-#[allow(unused)]
-pub trait GUI<CTX: Context, W: Widget<CTX>> {
-    type Window: WindowRoot<CTX, W, Gui = Self>;
-    fn load_content(&mut self, content: &mut ContentManager) {}
-    fn setup_windows(&mut self) -> Vec<Self::Window>;
-}
-
-pub trait WindowRoot<CTX: Context, W: Widget<CTX>> {
-    type Gui: GUI<CTX, W, Window = Self>;
-
+pub trait WindowRoot<C: Context, W: Widget<C>>: Sized 
+where
+    C: Context<Widget = W, WindowRoot = Self>,
+    W: Widget<C>,
+{
     fn request(&self) -> WindowRequest;
-    fn setup(&mut self, gui: &mut Self::Gui);
-    fn root(&mut self) -> &mut W;
+    fn setup(&mut self, app: &mut App<C, W, Self>);
+    fn root_mut(&mut self) -> &mut W;
+    fn root(&self) -> &W;
 }

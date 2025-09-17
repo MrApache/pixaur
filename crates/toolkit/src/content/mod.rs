@@ -157,7 +157,7 @@ impl ContentManager {
         svg_handle
     }
 
-    pub(crate) fn dispath_queue(&mut self, gpu: &Gpu) -> Result<(), Error> {
+    pub(crate) fn dispatch_queue(&mut self, gpu: &Gpu) -> Result<(), Error> {
         self.queue
             .drain(..)
             .try_for_each(|request| -> Result<(), Error> {

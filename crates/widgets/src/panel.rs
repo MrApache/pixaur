@@ -1,9 +1,9 @@
 use crate::rectangle::Rectangle;
 use toolkit::{
-    commands::{CommandBuffer, DrawCommand, DrawRectCommand},
+    commands::CommandBuffer,
     glam::Vec2,
-    types::{Argb8888, Rect, Stroke},
-    widget::{Container, Context, DesiredSize, Padding, Sender, Widget},
+    types::Rect,
+    widget::{Container, Context, DesiredSize, Padding, Sender, Widget, WidgetQuery},
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -29,28 +29,32 @@ pub enum VerticalAlign {
     End,
 }
 
-pub struct Panel<Ctx: Context, W: Widget<Ctx>> {
+pub struct Panel<C, W>
+where
+    C: Context,
+    W: Widget<C>,
+{
     pub padding: Padding,
     pub spacing: f32,
     pub mode: LayoutMode,
     pub vertical_align: VerticalAlign,
     pub horizontal_align: HorizontalAlign,
-    pub rectangle: Rectangle<Ctx>,
+    pub rectangle: Rectangle<C>,
 
     id: Option<String>,
     rect: Rect,
     content: Vec<W>,
 
-    _phantom: std::marker::PhantomData<Ctx>,
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl<Ctx: Context, W: Widget<Ctx>> Default for Panel<Ctx, W> {
+impl<C: Context, W: Widget<C>> Default for Panel<C, W> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<Ctx: Context, W: Widget<Ctx>> Panel<Ctx, W> {
+impl<C: Context, W: Widget<C>> Panel<C, W> {
     #[must_use]
     pub fn new() -> Self {
         Self::with_id(String::new())
@@ -73,7 +77,7 @@ impl<Ctx: Context, W: Widget<Ctx>> Panel<Ctx, W> {
     }
 }
 
-impl<Ctx: Context, W: Widget<Ctx>> Widget<Ctx> for Panel<Ctx, W> {
+impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
     }
@@ -169,14 +173,14 @@ impl<Ctx: Context, W: Widget<Ctx>> Widget<Ctx> for Panel<Ctx, W> {
         }
     }
 
-    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<Ctx>) {
+    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<C>) {
         self.content.iter_mut().for_each(|w| {
             w.update(ctx, sender);
         });
     }
 }
 
-impl<Ctx: Context, W: Widget<Ctx>> Container<Ctx, W> for Panel<Ctx, W> {
+impl<C: Context, W: Widget<C>> Container<C, W> for Panel<C, W> {
     fn add_child(&mut self, child: W) {
         self.content.push(child);
     }
@@ -190,41 +194,36 @@ impl<Ctx: Context, W: Widget<Ctx>> Container<Ctx, W> for Panel<Ctx, W> {
     }
 }
 
-#[derive(Default)]
-pub struct TestPanelLayoutWidget {
-    pub min: Vec2,
-    rect: Rect,
-    pub stroke: Stroke,
-}
+impl<C, W> WidgetQuery<C> for Panel<C, W>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
+        if self.id.as_deref() == Some(id) {
+            return self.as_any().downcast_ref::<QW>();
+        }
+        for element in &self.content {
+            let element = element.get_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
 
-impl<Ctx: Context> Widget<Ctx> for TestPanelLayoutWidget {
-    fn id(&self) -> Option<&str> {
-        Some("test_widget")
+        None
     }
 
-    fn desired_size(&self) -> DesiredSize {
-        DesiredSize::Min(self.min)
-    }
+    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+        if self.id.as_deref() == Some(id) {
+            return self.as_any_mut().downcast_mut::<QW>();
+        }
+        for element in &mut self.content {
+            let element = element.get_mut_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+        None
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
-        out.push(DrawCommand::Rect(DrawRectCommand::new(
-            self.rect.clone(),
-            Argb8888::CYAN,
-            self.stroke.clone(),
-        )));
-    }
-
-    fn layout(&mut self, bounds: Rect) {
-        self.rect = bounds;
-    }
-
-    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<Ctx>) {}
 }

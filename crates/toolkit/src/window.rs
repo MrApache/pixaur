@@ -1,3 +1,4 @@
+use crate::rendering::Renderer;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use wgpu::rwh::{
@@ -7,10 +8,6 @@ use wgpu::rwh::{
 use wgpu::{Surface, SurfaceConfiguration};
 use wl_client::window::{DesktopOptions, SpecialOptions, WindowLayer};
 use wl_client::WindowBackend;
-
-use crate::rendering::Renderer;
-use crate::widget::{Context, Widget};
-use crate::GUI;
 
 pub struct WindowRequest {
     pub(crate) id: String,
@@ -67,30 +64,25 @@ impl WindowRequest {
     }
 }
 
-pub struct Window<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> {
-    pub(crate) frontend: G::Window,
+pub struct Window {
     pub(crate) backend: WindowBackend,
     pub(crate) surface: Surface<'static>,
     pub(crate) configuration: SurfaceConfiguration,
     pub(crate) renderer: Renderer,
-    _phantom: std::marker::PhantomData<G>,
 }
 
-impl<CTX: Context, W: Widget<CTX>, G: GUI<CTX, W>> Window<CTX, W, G> {
+impl Window {
     pub(crate) const fn new(
-        frontend: G::Window,
         backend: WindowBackend,
         surface: Surface<'static>,
         configuration: SurfaceConfiguration,
         renderer: Renderer,
     ) -> Self {
         Self {
-            frontend,
             backend,
             surface,
             configuration,
             renderer,
-            _phantom: std::marker::PhantomData,
         }
     }
 }

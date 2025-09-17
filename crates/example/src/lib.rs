@@ -1,44 +1,31 @@
 use toolkit::{
-    glam::Vec2,
+    app::App,
     include_asset,
     types::{Argb8888, Color, LinearGradient, Texture},
-    widget::{Container, FrameContext, Widget},
+    widget::{Callbacks, Container, Context, WidgetQuery},
     window::WindowRequest,
-    ContentManager, DesktopOptions, Handle, SvgHandle, TextureHandle, WidgetEnum, WindowRoot, GUI,
+    ContentManager, DesktopOptions, Handle, WidgetEnum, WindowRoot,
 };
 use widgets::{
     button::{Button, ButtonCallbacks},
-    impl_empty_widget,
-    panel::{HorizontalAlign, Panel, TestPanelLayoutWidget},
+    impl_empty_widget, impl_proxy_widget,
+    panel::{HorizontalAlign, Panel},
 };
 
-#[derive(Default)]
-pub struct App {
-    texture: TextureHandle,
-    icon: SvgHandle,
-}
+impl_empty_widget!(Empty);
 
-impl GUI for App {
-    type Window = MainWindow;
-
-    fn load_content(&mut self, content: &mut ContentManager) {
-        self.texture = content.include_texture(include_asset!("billy.jpg"));
-        self.icon = content.include_svg_as_texture(include_asset!("arch.svg"), 50, 50);
-    }
-
-    fn setup_windows(&mut self) -> Vec<MainWindow> {
-        vec![MainWindow::default()]
-    }
+pub enum WindowContext {}
+impl Context for WindowContext {
+    type Widget = Root;
+    type WindowRoot = Root;
+    fn execute(&self, _: &mut ContentManager, _: &mut toolkit::widget::Tree<Self>) {}
 }
 
 #[derive(Default)]
-pub struct MainWindow {
-    root: Panel<Root>,
-}
+pub struct Root(Panel<WindowContext, Elements>);
+impl_proxy_widget!(Root, WindowContext);
 
-impl WindowRoot for MainWindow {
-    type Gui = App;
-
+impl WindowRoot<WindowContext, Self> for Root {
     fn request(&self) -> WindowRequest {
         WindowRequest::new("desktop").desktop(DesktopOptions {
             title: "Test application".into(),
@@ -47,53 +34,43 @@ impl WindowRoot for MainWindow {
         })
     }
 
-    fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
-        Widget::draw(&self.root, out);
-    }
+    fn setup(&mut self, app: &mut App<WindowContext, Self, Self>) {
+        let content_manager = app.content_manager();
 
-    fn layout(&mut self, bounds: toolkit::types::Rect) {
-        Widget::layout(&mut self.root, bounds);
-    }
+        let texture = content_manager.include_texture(include_asset!("billy.jpg"));
 
-    fn setup(&mut self, gui: &mut Self::Gui) {
-        let mut panel = Panel::<Root>::new();
+        let mut panel = Panel::<WindowContext, Elements>::new();
         panel.horizontal_align = HorizontalAlign::Start;
         panel.rectangle.background = Argb8888::BLACK.into();
 
         {
-            let mut inner_panel = Panel::<Root>::new();
+            let mut inner_panel = Panel::<WindowContext, Elements>::new();
             inner_panel.rectangle.background = Argb8888::WHITE.into();
             inner_panel.horizontal_align = HorizontalAlign::Start;
             {
                 for _ in 0..10 {
-                    let mut empty_panel = Panel::<Empty>::new();
+                    let mut empty_panel = Panel::<WindowContext, Empty>::new();
                     empty_panel.rectangle.background = Argb8888::random().into();
-                    inner_panel.add_child(Root::Empty(empty_panel));
+                    inner_panel.add_child(Elements::Empty(empty_panel));
                 }
             }
 
-            panel.add_child(Root::Panel(inner_panel));
+            panel.add_child(Elements::Panel(inner_panel));
         }
 
         {
-            let mut inner_panel = Panel::<Root>::new();
-            inner_panel.rectangle.background = Texture::new(Handle::Svg(gui.icon)).into();
-
+            let mut inner_panel = Panel::<WindowContext, Elements>::new();
+            inner_panel.rectangle.background = Texture::new(Handle::Texture(texture)).into();
             {
-                let mut test_layout_widget = TestPanelLayoutWidget::default();
-                test_layout_widget.min = Vec2::new(100.0, 100.0);
-                inner_panel.add_child(Root::TestPanel(test_layout_widget));
-            }
-            {
-                let button: Button<TestCallbacks, Empty> = Button::new();
-                inner_panel.add_child(Root::Button(button));
+                let button: Button<WindowContext, Empty, CallbackImpls> = Button::new();
+                inner_panel.add_child(Elements::Button(button));
             }
 
-            panel.add_child(Root::Panel(inner_panel));
+            panel.add_child(Elements::Panel(inner_panel));
         }
 
         {
-            let mut inner_panel = Panel::<Root>::new();
+            let mut inner_panel = Panel::<WindowContext, Elements>::new();
             inner_panel.rectangle.background =
                 Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0))
                     .into();
@@ -101,54 +78,77 @@ impl WindowRoot for MainWindow {
             inner_panel.spacing = 10.0;
             {
                 for _ in 0..5 {
-                    let mut empty_panel = Panel::<Empty>::new();
+                    let mut empty_panel = Panel::<WindowContext, Empty>::new();
                     empty_panel.rectangle.background = Argb8888::random().into();
-                    inner_panel.add_child(Root::Empty(empty_panel));
+                    inner_panel.add_child(Elements::Empty(empty_panel));
                 }
             }
-            panel.add_child(Root::Panel(inner_panel));
+            panel.add_child(Elements::Panel(inner_panel));
         }
 
         {
-            let mut inner_panel = Panel::<Root>::with_id("Id");
+            let mut inner_panel = Panel::<WindowContext, Elements>::with_id("Id");
             inner_panel.rectangle.background = Argb8888::WHITE.into();
             inner_panel.horizontal_align = HorizontalAlign::Start;
             {
                 for _ in 0..10 {
-                    let mut empty_panel = Panel::<Empty>::new();
+                    let mut empty_panel = Panel::<WindowContext, Empty>::new();
                     empty_panel.rectangle.background = Argb8888::random().into();
-                    inner_panel.add_child(Root::Empty(empty_panel));
+                    inner_panel.add_child(Elements::Empty(empty_panel));
                 }
             }
 
-            panel.add_child(Root::Panel(inner_panel));
+            panel.add_child(Elements::Panel(inner_panel));
         }
 
-        self.root = panel;
+        self.0 = panel;
     }
 
-    fn update(&mut self, _: &mut Self::Gui, ctx: &FrameContext) {
-        self.root.update(ctx);
+    fn root_mut(&mut self) -> &mut Self {
+        self
+    }
+
+    fn root(&self) -> &Self {
+        self
     }
 }
 
 #[derive(WidgetEnum)]
-pub enum Root {
-    Panel(Panel<Root>),
-    TestPanel(TestPanelLayoutWidget),
-    Empty(Panel<Empty>),
-    Button(Button<TestCallbacks, Empty>),
+#[context(WindowContext)]
+pub enum Elements {
+    Panel(Panel<WindowContext, Elements>),
+    Empty(Panel<WindowContext, Empty>),
+    Button(Button<WindowContext, Empty, CallbackImpls>),
 }
 
-impl Default for Root {
+impl Default for Elements {
     fn default() -> Self {
         Self::Panel(Panel::default())
     }
 }
 
-impl_empty_widget!(Empty);
+impl WidgetQuery<WindowContext> for Elements {
+    fn get_element<QW: toolkit::widget::Widget<WindowContext>>(&self, id: &str) -> Option<&QW> {
+        match self {
+            Elements::Button(button) => button.get_element(id),
+            Elements::Panel(panel) => panel.get_element(id),
+            Elements::Empty(panel) => panel.get_element(id),
+        }
+    }
+
+    fn get_mut_element<QW: toolkit::widget::Widget<WindowContext>>(
+        &mut self,
+        id: &str,
+    ) -> Option<&mut QW> {
+        match self {
+            Elements::Button(button) => button.get_mut_element(id),
+            Elements::Panel(panel) => panel.get_mut_element(id),
+            Elements::Empty(panel) => panel.get_mut_element(id),
+        }
+    }
+}
 
 #[derive(Default)]
-pub struct TestCallbacks;
-
-impl ButtonCallbacks for TestCallbacks {}
+pub struct CallbackImpls;
+impl Callbacks for CallbackImpls {}
+impl ButtonCallbacks<WindowContext> for CallbackImpls {}

@@ -4,10 +4,11 @@ use toolkit::{
     glam::Vec2,
     types::{Argb8888, Color, Rect},
     widget::{Context, DesiredSize, Sender, Widget},
-    FontHandle,
+    FontHandle, WidgetQuery,
 };
 
-pub struct Text<CTX: Context> {
+#[derive(WidgetQuery)]
+pub struct Text<C: Context> {
     pub size: u32,
     pub color: Color,
     font: FontHandle,
@@ -18,16 +19,16 @@ pub struct Text<CTX: Context> {
     //position: Vec2,
     rect: Rect,
 
-    _phantom: std::marker::PhantomData<CTX>,
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl<CTX: Context> Default for Text<CTX> {
+impl<C: Context> Default for Text<C> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<CTX: Context> Text<CTX> {
+impl<C: Context> Text<C> {
     #[must_use]
     pub fn new() -> Self {
         Self::new_with_id(None)
@@ -80,7 +81,7 @@ impl<CTX: Context> Text<CTX> {
     }
 }
 
-impl<CTX: Context> Widget<CTX> for Text<CTX> {
+impl<C: Context> Widget<C> for Text<C> {
     fn id(&self) -> Option<&str> {
         self.id.as_deref()
     }
@@ -141,5 +142,5 @@ impl<CTX: Context> Widget<CTX> for Text<CTX> {
         self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<CTX>) {}
+    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<C>) {}
 }

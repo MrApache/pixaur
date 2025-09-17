@@ -238,3 +238,107 @@ pub fn derive_window_root_enum(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+#[proc_macro_derive(WidgetQuery, attributes(content))]
+pub fn widget_query_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = &input.ident;
+    let generics = &input.generics;
+
+    // Извлекаем информацию о полях
+    let fields = match &input.data {
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => &fields.named,
+            _ => panic!("WidgetQuery can only be derived for structs with named fields"),
+        },
+        _ => panic!("WidgetQuery can only be derived for structs"),
+    };
+
+    // Находим поле с атрибутом #[content]
+    let content_field = fields.iter().find(|field| {
+        field
+            .attrs
+            .iter()
+            .any(|attr| attr.path().is_ident("content"))
+    });
+
+    // Генерируем реализацию в зависимости от наличия content поля
+    let impl_block = if let Some(content_field) = content_field {
+        let content_field_name = &content_field.ident;
+        generate_with_content(name, generics, content_field_name)
+    } else {
+        generate_without_content(name, generics)
+    };
+
+    TokenStream::from(impl_block)
+}
+
+fn generate_with_content(
+    name: &syn::Ident,
+    generics: &syn::Generics,
+    content_field_name: &Option<syn::Ident>,
+) -> proc_macro2::TokenStream {
+    let content_field_name = content_field_name
+        .as_ref()
+        .expect("Content field must have a name");
+
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    quote! {
+        impl #impl_generics toolkit::widget::WidgetQuery<C> for #name #ty_generics #where_clause {
+            fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
+                // Сначала проверяем собственный ID
+                if let Some(ref self_id) = self.id {
+                    if self_id == id {
+                        return self.as_any().downcast_ref::<QW>();
+                    }
+                }
+
+                // Затем делегируем к content полю
+                self.#content_field_name.get_element(id)
+            }
+
+            fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+                // Сначала проверяем собственный ID
+                if let Some(ref self_id) = self.id {
+                    if self_id == id {
+                        return self.as_any_mut().downcast_mut::<QW>();
+                    }
+                }
+
+                // Затем делегируем к content полю
+                self.#content_field_name.get_mut_element(id)
+            }
+        }
+    }
+}
+
+fn generate_without_content(
+    name: &syn::Ident,
+    generics: &syn::Generics,
+) -> proc_macro2::TokenStream {
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    quote! {
+        impl #impl_generics toolkit::widget::WidgetQuery<C> for #name #ty_generics #where_clause {
+            fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
+                if let Some(ref self_id) = self.id {
+                    if self_id == id {
+                        return self.as_any().downcast_ref::<QW>();
+                    }
+                }
+                None
+            }
+
+            fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+                if let Some(ref self_id) = self.id {
+                    if self_id == id {
+                        return self.as_any_mut().downcast_mut::<QW>();
+                    }
+                }
+                None
+            }
+        }
+    }
+}
