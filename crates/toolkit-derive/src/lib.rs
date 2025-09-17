@@ -1,4 +1,5 @@
-extern crate proc_macro;
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -265,7 +266,7 @@ pub fn widget_query_derive(input: TokenStream) -> TokenStream {
 
     // Генерируем реализацию в зависимости от наличия content поля
     let impl_block = if let Some(content_field) = content_field {
-        let content_field_name = &content_field.ident;
+        let content_field_name = content_field.ident.as_ref();
         generate_with_content(name, generics, content_field_name)
     } else {
         generate_without_content(name, generics)
@@ -277,7 +278,7 @@ pub fn widget_query_derive(input: TokenStream) -> TokenStream {
 fn generate_with_content(
     name: &syn::Ident,
     generics: &syn::Generics,
-    content_field_name: &Option<syn::Ident>,
+    content_field_name: Option<&syn::Ident>,
 ) -> proc_macro2::TokenStream {
     let content_field_name = content_field_name
         .as_ref()

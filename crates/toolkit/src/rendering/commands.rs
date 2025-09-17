@@ -249,6 +249,7 @@ pub struct CommandBuffer<'frame> {
 }
 
 impl<'frame> CommandBuffer<'frame> {
+    #[must_use]
     pub const fn new(content: &'frame ContentManager) -> Self {
         Self {
             content,

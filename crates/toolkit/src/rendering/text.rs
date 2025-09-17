@@ -94,7 +94,6 @@ impl FontAtlas {
             metrics,
         };
 
-        //println!("Create glpyh '{char}. UV: {}'", data.uv);
         self.recreate_material = true;
         self.inner.insert(char, data.clone());
 

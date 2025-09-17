@@ -1,4 +1,9 @@
 #![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
 
 pub mod window;
 use glam::Vec2;
@@ -440,7 +445,7 @@ impl Dispatch<WlPointer, WindowId> for WlClient {
         client: &mut Self,
         _: &WlPointer,
         event: WlPointerEvent,
-        id: &WindowId,
+        _: &WindowId,
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
