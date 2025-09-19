@@ -202,10 +202,12 @@ pub enum DrawCommand<'frame> {
 impl DrawCommand<'_> {
     fn is_same_type(&self, other: &DrawCommand) -> bool {
         use DrawCommand::{Rect, Text, Texture};
-        matches!(
-            (self, other),
-            (Rect(_), Rect(_)) | (Texture(_), Texture(_)) | (Text(_), Text(_))
-        )
+
+        match (self, other) {
+            (Rect(_), Rect(_)) | (Texture(_), Texture(_)) => true,
+            (Text(a), Text(b)) => a.font == b.font,
+            _ => false,
+        }
     }
 }
 

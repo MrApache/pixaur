@@ -53,6 +53,12 @@ pub struct FontHandle {
     pub(crate) inner: Arc<Font>,
 }
 
+impl PartialEq for FontHandle {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.name().eq(&other.inner.name())
+    }
+}
+
 impl Default for FontHandle {
     fn default() -> Self {
         Self {
