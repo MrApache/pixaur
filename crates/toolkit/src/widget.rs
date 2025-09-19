@@ -1,4 +1,5 @@
-use crate::{types::Rect, CommandBuffer, ContentManager, WindowRoot};
+use bitflags::bitflags;
+use crate::{commands::CommandBuffer, types::Bounds, ContentManager, WindowRoot};
 use glam::Vec2;
 use std::any::Any;
 use wl_client::ButtonState;
@@ -20,15 +21,15 @@ bitflags! {
 
 
 #[derive(Default, Clone, Copy, Debug)]
-pub struct Padding {
+pub struct Spacing {
     pub left: f32,
     pub right: f32,
     pub top: f32,
     pub bottom: f32,
 }
 
-impl Padding {
-    pub const ZERO: Padding = Self {
+impl Spacing {
+    pub const ZERO: Spacing = Self {
         left: 0.0,
         right: 0.0,
         top: 0.0,
@@ -56,29 +57,14 @@ impl Padding {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy)]
-pub struct Spacing {
-    pub left: f32,
-    pub right: f32,
-    pub top: f32,
-    pub bottom: f32,
-}
-
-impl Spacing {
-    pub const ZERO: Spacing = Self {
-        left: 0.0,
-        right: 0.0,
-        top: 0.0,
-        bottom: 0.0,
-    };
-}
-
 #[derive(Default, Clone, Copy, Debug)]
 pub enum DesiredSize {
-    Min(Vec2),
-    FillMinY(f32),
+    Exact(Vec2),
+    ExactY(f32),
+    ExactX(f32),
     #[default]
     Fill,
+    Ignore,
 }
 
 #[derive(Default)]
@@ -106,14 +92,11 @@ impl FrameContext {
 }
 
 pub trait Widget<C: Context>: WidgetQuery<C> + Any + Sync + Send + Default {
-    fn id(&self) -> Option<&str>;
     fn desired_size(&self) -> DesiredSize;
+    fn anchor(&self) -> Anchor;
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>);
-    fn layout(&mut self, bounds: Rect);
+    fn layout(&mut self, bounds: Bounds);
     fn update(&mut self, ctx: &FrameContext, sender: &mut Sender<C>);
-
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 pub trait Container<C: Context, W: Widget<C>>: Widget<C> {
@@ -156,11 +139,15 @@ impl<C: Context> Sender<C> {
 pub trait Callbacks: Send + Sync + Default + 'static {}
 
 pub struct Tree<'a, C: Context> {
-    pub(crate) frontends: &'a mut [C::WindowRoot]
+    pub(crate) frontends: &'a mut [C::WindowRoot],
 }
 
-impl<C: Context> WidgetQuery<C> for Tree<'_, C> {
-    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> { 
+impl<C> Tree<'_, C>
+where
+    C: Context,
+{
+    #[must_use]
+    pub fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
         for frontend in self.frontends.iter() {
             let element = frontend.root().get_element(id);
             if element.is_some() {
@@ -171,7 +158,8 @@ impl<C: Context> WidgetQuery<C> for Tree<'_, C> {
         None
     }
 
-    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+    #[must_use]
+    pub fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
         for frontend in self.frontends.iter_mut() {
             let element = frontend.root_mut().get_mut_element(id);
             if element.is_some() {
@@ -183,8 +171,119 @@ impl<C: Context> WidgetQuery<C> for Tree<'_, C> {
     }
 }
 
+/* TODO
+pub trait WidgetID: Send + Sync + Default + 'static {
+    type IdType;
+}
+
+#[derive(Default)]
+pub struct StaticID;
+impl WidgetID for StaticID {
+    type IdType = &'static str;
+}
+
+#[derive(Default)]
+pub struct ZeroID;
+impl WidgetID for ZeroID {
+    type IdType = ();
+}
+
+#[derive(Default)]
+pub struct DefaultID;
+impl WidgetID for DefaultID {
+    type IdType = Option<String>;
+}
+*/
+
 #[allow(unused_variables)]
-pub trait WidgetQuery<C: Context> {
-    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> { None }
-    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> { None }
+pub trait WidgetQuery<C>
+where
+    C: Context,
+{
+    fn id(&self) -> Option<&str>;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
+        None
+    }
+    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+        None
+    }
+}
+
+impl<C, W> WidgetQuery<C> for Vec<W>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    fn id(&self) -> Option<&str> {
+        None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
+        for element in self {
+            let element = element.get_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
+
+        None
+    }
+
+    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+        for element in self.iter_mut() {
+            let element = element.get_mut_element(id);
+            if element.is_some() {
+                return element;
+            }
+        }
+
+        None
+    }
+}
+
+#[derive(Default)]
+pub struct Empty;
+
+impl<C> Widget<C> for Empty
+where
+    C: Context
+{
+    fn desired_size(&self) -> DesiredSize {
+        DesiredSize::Ignore
+    }
+
+    fn anchor(&self) -> Anchor {
+        Anchor::Left
+    }
+
+    fn draw<'frame>(&'frame self, _: &mut CommandBuffer<'frame>) {}
+    fn layout(&mut self, _: Bounds) {}
+    fn update(&mut self, _: &FrameContext, _: &mut Sender<C>) {}
+}
+
+impl<C> WidgetQuery<C> for Empty
+where
+    C: Context
+{
+    fn id(&self) -> Option<&str> {
+        None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }

@@ -1,8 +1,9 @@
 use toolkit::{
     commands::{DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
-    types::{styling::BackgroundStyle, Argb8888, Corners, Rect, Stroke},
-    widget::{Context, DesiredSize, Padding, Sender, Widget}, WidgetQuery,
+    types::{styling::BackgroundStyle, Argb8888, Bounds, Color, Stroke},
+    widget::{Anchor, Context, DesiredSize, Sender, Spacing, Widget},
+    WidgetQuery,
 };
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -58,9 +59,10 @@ where
     pub hover: ButtonStyle,
     pub pressed: ButtonStyle,
     pub alignment: Alignment,
-    pub padding: Padding,
+    pub padding: Spacing,
+    pub anchor: Anchor,
 
-    rect: Rect,
+    rect: Bounds,
     id: Option<String>,
     state: ButtonFsm,
 
@@ -92,6 +94,7 @@ where
         Self::new_with_id(None)
     }
 
+    #[must_use]
     pub fn with_id(id: impl Into<String>) -> Self {
         Self::new_with_id(Some(id.into()))
     }
@@ -100,36 +103,36 @@ where
         Self {
             size: Vec2::new(30.0, 30.0),
             normal: ButtonStyle {
-                background: Argb8888::LIGHT_GRAY.into(),
+                background: BackgroundStyle::Color(Color::Simple(Argb8888::LIGHT_GRAY)),
                 stroke: Stroke {
                     color: [Argb8888::DARK_GRAY; 4],
                     width: 1.0,
-                    corners: Corners::NONE,
                 },
             },
             hover: ButtonStyle {
-                background: Argb8888::new(230, 230, 230, 255).into(),
+                background: BackgroundStyle::Color(Color::Simple(Argb8888::new(
+                    230, 230, 230, 255,
+                ))),
                 stroke: Stroke {
                     color: [Argb8888::BLUE; 4],
                     width: 1.0,
-                    corners: Corners::NONE,
                 },
             },
             pressed: ButtonStyle {
-                background: Argb8888::GRAY.into(),
+                background: BackgroundStyle::Color(Color::Simple(Argb8888::GRAY)),
                 stroke: Stroke {
                     color: [Argb8888::DARK_GRAY; 4],
                     width: 1.0,
-                    corners: Corners::NONE,
                 },
             },
             id,
             content: W::default(),
             callbacks: CB::default(),
-            rect: Rect::ZERO,
+            rect: Bounds::ZERO,
             state: ButtonFsm::Normal,
             alignment: Alignment::Center,
-            padding: Padding {
+            anchor: Anchor::Left,
+            padding: Spacing {
                 left: 2.0,
                 right: 2.0,
                 top: 2.0,
@@ -150,20 +153,12 @@ where
     W: Widget<C>,
     CB: ButtonCallbacks<C>,
 {
-    fn id(&self) -> Option<&str> {
-        self.id.as_deref()
+    fn anchor(&self) -> Anchor {
+        self.anchor
     }
 
     fn desired_size(&self) -> toolkit::widget::DesiredSize {
-        DesiredSize::Min(self.size)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+        DesiredSize::Exact(self.size)
     }
 
     fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
@@ -187,53 +182,58 @@ where
         self.content.draw(out);
     }
 
-    fn layout(&mut self, bounds: toolkit::types::Rect) {
+    fn layout(&mut self, bounds: toolkit::types::Bounds) {
         self.rect = bounds.clone();
 
         let content_size = match self.content.desired_size() {
-            DesiredSize::Min(min) => Vec2::new(
+            DesiredSize::Exact(min) => Vec2::new(
                 min.x
                     .min(self.size.x - self.padding.left - self.padding.right),
                 min.y
                     .min(self.size.y - self.padding.top - self.padding.bottom),
             ),
-            DesiredSize::FillMinY(y) => Vec2::new(
+            DesiredSize::ExactY(y) => Vec2::new(
                 self.size.x - self.padding.left - self.padding.right,
                 y.max(self.size.y - self.padding.top - self.padding.bottom),
+            ),
+            DesiredSize::ExactX(x) => Vec2::new(
+                x.max(self.size.x - self.padding.right - self.padding.left),
+                self.size.y - self.padding.top - self.padding.bottom,
             ),
             DesiredSize::Fill => Vec2::new(
                 self.size.x - self.padding.left - self.padding.right,
                 self.size.y - self.padding.top - self.padding.bottom,
             ),
+            DesiredSize::Ignore => return,
         };
 
         let content_x = match self.alignment {
             Alignment::TopLeft | Alignment::CenterLeft | Alignment::BottomLeft => {
-                self.rect.min.x + self.padding.left
+                self.rect.position.x + self.padding.left
             }
             Alignment::TopCenter | Alignment::Center | Alignment::BottomCenter => {
-                self.rect.min.x + (self.size.x - content_size.x) / 2.0
+                self.rect.position.x + (self.size.x - content_size.x) / 2.0
             }
             Alignment::TopRight | Alignment::CenterRight | Alignment::BottomRight => {
-                self.rect.min.x + self.size.x - content_size.x - self.padding.right
+                self.rect.position.x + self.size.x - content_size.x - self.padding.right
             }
         };
 
         let content_y = match self.alignment {
             Alignment::TopLeft | Alignment::TopCenter | Alignment::TopRight => {
-                self.rect.min.y + self.padding.top
+                self.rect.position.y + self.padding.top
             }
             Alignment::CenterLeft | Alignment::Center | Alignment::CenterRight => {
-                self.rect.min.y + (self.size.y - content_size.y) / 2.0
+                self.rect.position.y + (self.size.y - content_size.y) / 2.0
             }
             Alignment::BottomLeft | Alignment::BottomCenter | Alignment::BottomRight => {
-                self.rect.min.y + self.size.y - content_size.y - self.padding.bottom
+                self.rect.position.y + self.size.y - content_size.y - self.padding.bottom
             }
         };
 
-        let content_rect = Rect {
-            min: Vec2::new(content_x, content_y),
-            max: Vec2::new(content_size.x, content_size.y),
+        let content_rect = Bounds {
+            position: Vec2::new(content_x, content_y),
+            size: Vec2::new(content_size.x, content_size.y),
         };
 
         self.content.layout(content_rect);

@@ -1,7 +1,7 @@
 use crate::{
     commands::CommandBuffer,
     rendering::Gpu,
-    types::Rect,
+    types::Bounds,
     widget::{Context, FrameContext, Sender, Tree, Widget},
     ContentManager, Error, WindowRoot,
 };
@@ -74,7 +74,7 @@ where
         let root = frontend.root_mut();
         let mut sender = Sender::<C>::default();
         root.update(frame, &mut sender);
-        root.layout(Rect::new(
+        root.layout(Bounds::new(
             Vec2::ZERO,
             Vec2::new(window_width, window_height),
         ));

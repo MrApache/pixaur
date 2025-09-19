@@ -1,6 +1,6 @@
 use crate::{
     rendering::{instance::InstanceData, Gpu, Renderer},
-    types::{Color, Rect, Stroke, Texture},
+    types::{Bounds, Color, Stroke, Texture},
     ContentManager, FontHandle,
 };
 use enum_dispatch::enum_dispatch;
@@ -22,13 +22,13 @@ pub(crate) trait DrawDispatcher {
 }
 
 pub struct DrawRectCommand {
-    rect: Rect,
+    rect: Bounds,
     color: Color,
     stroke: Stroke,
 }
 
 impl DrawRectCommand {
-    pub fn new(rect: Rect, color: impl Into<Color>, stroke: Stroke) -> Self {
+    pub fn new(rect: Bounds, color: impl Into<Color>, stroke: Stroke) -> Self {
         Self {
             rect,
             color: color.into(),
@@ -56,8 +56,8 @@ impl DrawDispatcher for DrawRectCommand {
         ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
             UV,
-            self.rect.min,
-            self.rect.max,
+            self.rect.position.round(),
+            self.rect.size.round(),
             &self.color,
             Some(self.stroke.clone()),
             pipeline.projection,
@@ -70,14 +70,14 @@ impl DrawDispatcher for DrawRectCommand {
 }
 
 pub struct DrawTextureCommand {
-    rect: Rect,
+    rect: Bounds,
     texture: Texture,
     stroke: Stroke,
 }
 
 impl DrawTextureCommand {
     #[must_use]
-    pub fn new(rect: Rect, texture: Texture, stroke: Stroke) -> Self {
+    pub fn new(rect: Bounds, texture: Texture, stroke: Stroke) -> Self {
         Self {
             rect,
             texture,
@@ -106,8 +106,8 @@ impl DrawDispatcher for DrawTextureCommand {
         ];
         pipeline.buffer_pool.push(InstanceData::new_uv_2(
             UV,
-            self.rect.min,
-            self.rect.max,
+            self.rect.position,
+            self.rect.size,
             &self.texture.color,
             Some(self.stroke.clone()),
             pipeline.projection,

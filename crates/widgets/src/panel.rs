@@ -2,9 +2,11 @@ use crate::rectangle::Rectangle;
 use toolkit::{
     commands::CommandBuffer,
     glam::Vec2,
-    types::Rect,
-    widget::{Container, Context, DesiredSize, Padding, Sender, Widget, WidgetQuery},
+    types::Bounds,
+    widget::{Anchor, Container, Context, DesiredSize, FrameContext, Spacing, Sender, Widget},
+    WidgetQuery,
 };
+/*
 
 #[derive(Copy, Clone, Debug, Default)]
 pub enum LayoutMode {
@@ -29,6 +31,7 @@ pub enum VerticalAlign {
     End,
 }
 
+#[derive(WidgetQuery)]
 pub struct Panel<C, W>
 where
     C: Context,
@@ -40,9 +43,12 @@ where
     pub vertical_align: VerticalAlign,
     pub horizontal_align: HorizontalAlign,
     pub rectangle: Rectangle<C>,
+    pub anchor: Anchor,
 
     id: Option<String>,
-    rect: Rect,
+    rect: Bounds,
+
+    #[content]
     content: Vec<W>,
 
     _phantom: std::marker::PhantomData<C>,
@@ -68,9 +74,10 @@ impl<C: Context, W: Widget<C>> Panel<C, W> {
             horizontal_align: HorizontalAlign::Center,
             vertical_align: VerticalAlign::Center,
             rectangle: Rectangle::default(),
+            anchor: Anchor::Left,
 
             id: Some(id.into()),
-            rect: Rect::default(),
+            rect: Bounds::default(),
             content: Vec::new(),
             _phantom: std::marker::PhantomData,
         }
@@ -78,20 +85,12 @@ impl<C: Context, W: Widget<C>> Panel<C, W> {
 }
 
 impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
-    fn id(&self) -> Option<&str> {
-        self.id.as_deref()
+    fn anchor(&self) -> Anchor {
+        self.anchor
     }
 
     fn desired_size(&self) -> DesiredSize {
         DesiredSize::Fill
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
     }
 
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
@@ -101,14 +100,14 @@ impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
         });
     }
 
-    fn layout(&mut self, bounds: Rect) {
+    fn layout(&mut self, bounds: Bounds) {
         self.rectangle.layout(bounds.clone());
         self.rect = bounds;
 
-        let min_x = self.rect.min.x + self.padding.left;
-        let min_y = self.rect.min.y + self.padding.top;
-        let max_x = self.rect.max.x - self.padding.right;
-        let max_y = self.rect.max.y - self.padding.bottom;
+        let min_x = self.rect.position.x + self.padding.left;
+        let min_y = self.rect.position.y + self.padding.top;
+        let max_x = self.rect.size.x - self.padding.right;
+        let max_y = self.rect.size.y - self.padding.bottom;
 
         let len = self.content.len();
         let available_width = max_x;
@@ -123,11 +122,13 @@ impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
         let mut total_min_width = 0.0;
         let mut fill_count = 0;
 
+        /*
         self.content
             .iter()
             .for_each(|widget| match widget.desired_size() {
-                DesiredSize::Min(size) => total_min_width += size.x,
-                DesiredSize::Fill | DesiredSize::FillMinY(_) => fill_count += 1,
+                DesiredSize::Exact(size) => total_min_width += size.x,
+                DesiredSize::Fill | DesiredSize::FillXExactY(_) => fill_count += 1,
+                DesiredSize::Ignore => {},
             });
 
         let total_spacing = self.spacing * len.saturating_sub(1) as f32;
@@ -136,9 +137,10 @@ impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
 
         for (i, child) in self.content.iter_mut().enumerate() {
             let (width, height) = match child.desired_size() {
-                DesiredSize::Min(vec2) => (vec2.x, vec2.y.min(available_height)),
+                DesiredSize::Exact(vec2) => (vec2.x, vec2.y.min(available_height)),
                 DesiredSize::Fill => (fill_width, available_height),
-                DesiredSize::FillMinY(y) => (fill_width, y.min(available_height)),
+                DesiredSize::FillXExactY(y) => (fill_width, y.min(available_height)),
+                DesiredSize::Ignore => continue,
             };
 
             let offset_y = match self.vertical_align {
@@ -152,9 +154,9 @@ impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
                 HorizontalAlign::Start | HorizontalAlign::End => 0.0,
             };
 
-            let child_bounds = Rect {
-                min: Vec2::new(cursor_x - offset_x, min_y + offset_y),
-                max: Vec2::new(width, height),
+            let child_bounds = Bounds {
+                position: Vec2::new(cursor_x - offset_x, min_y + offset_y),
+                size: Vec2::new(width, height),
             };
 
             //println!("Offset: {offset_x}x{offset_y}");
@@ -171,9 +173,10 @@ impl<C: Context, W: Widget<C>> Widget<C> for Panel<C, W> {
                 break;
             }
         }
+        */
     }
 
-    fn update(&mut self, ctx: &toolkit::widget::FrameContext, sender: &mut Sender<C>) {
+    fn update(&mut self, ctx: &FrameContext, sender: &mut Sender<C>) {
         self.content.iter_mut().for_each(|w| {
             w.update(ctx, sender);
         });
@@ -194,36 +197,4 @@ impl<C: Context, W: Widget<C>> Container<C, W> for Panel<C, W> {
     }
 }
 
-impl<C, W> WidgetQuery<C> for Panel<C, W>
-where
-    C: Context,
-    W: Widget<C>,
-{
-    fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
-        if self.id.as_deref() == Some(id) {
-            return self.as_any().downcast_ref::<QW>();
-        }
-        for element in &self.content {
-            let element = element.get_element(id);
-            if element.is_some() {
-                return element;
-            }
-        }
-
-        None
-    }
-
-    fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
-        if self.id.as_deref() == Some(id) {
-            return self.as_any_mut().downcast_mut::<QW>();
-        }
-        for element in &mut self.content {
-            let element = element.get_mut_element(id);
-            if element.is_some() {
-                return element;
-            }
-        }
-
-        None
-    }
-}
+*/

@@ -70,8 +70,20 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
         panic!("WidgetEnum can only be derived for enums");
     };
 
+    let get_element_match = variants.iter().map(|(vname, _)| {
+        quote! { #name::#vname(inner) => inner.get_element(id), }
+    });
+
+    let get_mut_element_match = variants.iter().map(|(vname, _)| {
+        quote! { #name::#vname(inner) => inner.get_mut_element(id), }
+    });
+
     let id_match = variants.iter().map(|(vname, _)| {
         quote! { #name::#vname(inner) => inner.id(), }
+    });
+
+    let anchor_match = variants.iter().map(|(vname, _)| {
+        quote! { #name::#vname(inner) => inner.anchor(), }
     });
 
     let desired_size_match = variants.iter().map(|(vname, _)| {
@@ -97,16 +109,25 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
     });
 
     let expanded = quote! {
-        impl toolkit::widget::Widget<#context_type> for #name {
-            fn id(&self) -> Option<&str> {
+        impl WidgetQuery<WindowContext> for #name {
+            fn get_element<QW: toolkit::widget::Widget<WindowContext>>(&self, id: &str) -> Option<&QW> {
                 match self {
-                    #(#id_match)*
+                    #(#get_element_match)*
+                }
+            }
+        
+            fn get_mut_element<QW: toolkit::widget::Widget<WindowContext>>(
+                &mut self,
+                id: &str,
+            ) -> Option<&mut QW> {
+                match self {
+                    #(#get_mut_element_match)*
                 }
             }
 
-            fn desired_size(&self) -> toolkit::widget::DesiredSize {
+            fn id(&self) -> Option<&str> {
                 match self {
-                    #(#desired_size_match)*
+                    #(#id_match)*
                 }
             }
 
@@ -121,6 +142,20 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
                     #(#as_any_mut_match)*
                 }
             }
+        }
+
+        impl toolkit::widget::Widget<#context_type> for #name {
+            fn anchor(&self) -> toolkit::widget::Anchor {
+                match self {
+                    #(#anchor_match)*
+                }
+            }
+
+            fn desired_size(&self) -> toolkit::widget::DesiredSize {
+                match self {
+                    #(#desired_size_match)*
+                }
+            }
 
             fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
                 match self {
@@ -128,7 +163,7 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn layout(&mut self, bounds: toolkit::types::Rect) {
+            fn layout(&mut self, bounds: toolkit::types::Bounds) {
                 match self {
                     #(#layout_match)*
                 }
@@ -223,7 +258,7 @@ pub fn derive_window_root_enum(input: TokenStream) -> TokenStream {
                 }
             }
 
-            fn layout(&mut self, bounds: toolkit::types::Rect) {
+            fn layout(&mut self, bounds: toolkit::types::Bounds) {
                 match self {
                     #(#arms_layout),*
                 }
@@ -288,28 +323,36 @@ fn generate_with_content(
 
     quote! {
         impl #impl_generics toolkit::widget::WidgetQuery<C> for #name #ty_generics #where_clause {
-            fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
-                // Сначала проверяем собственный ID
+            fn get_element<QW: toolkit::widget::Widget<C>>(&self, id: &str) -> Option<&QW> {
                 if let Some(ref self_id) = self.id {
                     if self_id == id {
                         return self.as_any().downcast_ref::<QW>();
                     }
                 }
 
-                // Затем делегируем к content полю
                 self.#content_field_name.get_element(id)
             }
 
-            fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
-                // Сначала проверяем собственный ID
+            fn get_mut_element<QW: toolkit::widget::Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
                 if let Some(ref self_id) = self.id {
                     if self_id == id {
                         return self.as_any_mut().downcast_mut::<QW>();
                     }
                 }
 
-                // Затем делегируем к content полю
                 self.#content_field_name.get_mut_element(id)
+            }
+
+            fn id(&self) -> Option<&str> {
+                self.id.as_deref()
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
             }
         }
     }
@@ -323,7 +366,7 @@ fn generate_without_content(
 
     quote! {
         impl #impl_generics toolkit::widget::WidgetQuery<C> for #name #ty_generics #where_clause {
-            fn get_element<QW: Widget<C>>(&self, id: &str) -> Option<&QW> {
+            fn get_element<QW: toolkit::widget::Widget<C>>(&self, id: &str) -> Option<&QW> {
                 if let Some(ref self_id) = self.id {
                     if self_id == id {
                         return self.as_any().downcast_ref::<QW>();
@@ -332,13 +375,25 @@ fn generate_without_content(
                 None
             }
 
-            fn get_mut_element<QW: Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
+            fn get_mut_element<QW: toolkit::widget::Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
                 if let Some(ref self_id) = self.id {
                     if self_id == id {
                         return self.as_any_mut().downcast_mut::<QW>();
                     }
                 }
                 None
+            }
+
+            fn id(&self) -> Option<&str> {
+                self.id.as_deref()
+            }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
             }
         }
     }

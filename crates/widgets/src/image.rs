@@ -1,8 +1,8 @@
 use toolkit::{
-    commands::{DrawRectCommand, DrawTextureCommand},
+    commands::{CommandBuffer, DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
-    types::{Argb8888, Rect, Stroke, Texture},
-    widget::{Context, DesiredSize, Sender, Widget},
+    types::{Argb8888, Bounds, Stroke, Texture},
+    widget::{Anchor, Context, DesiredSize, FrameContext, Sender, Widget},
     Handle, WidgetQuery,
 };
 
@@ -11,11 +11,12 @@ pub struct Image<C>
 where
     C: Context,
 {
-    pub size: Vec2,
-    pub rect: Rect,
     pub handle: Option<Handle>,
+    pub anchor: Anchor,
+    pub size: Vec2,
 
     id: Option<String>,
+    rect: Bounds,
     _phantom: std::marker::PhantomData<C>,
 }
 
@@ -37,14 +38,16 @@ where
         Self::new_with_id(None)
     }
 
+    #[must_use]
     pub fn with_id(id: impl Into<String>) -> Self {
         Self::new_with_id(Some(id.into()))
     }
 
-    fn new_with_id(id: Option<String>) -> Self {
+    const fn new_with_id(id: Option<String>) -> Self {
         Self {
             size: Vec2::ZERO,
-            rect: Rect::ZERO,
+            rect: Bounds::ZERO,
+            anchor: Anchor::Left,
             handle: None,
             id,
             _phantom: std::marker::PhantomData,
@@ -56,23 +59,22 @@ impl<C> Widget<C> for Image<C>
 where
     C: Context,
 {
-    fn id(&self) -> Option<&str> {
-        self.id.as_deref()
-    }
-
     fn desired_size(&self) -> DesiredSize {
-        DesiredSize::Min(self.size)
+        DesiredSize::Exact(self.size)
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+    fn anchor(&self) -> Anchor {
+        self.anchor
     }
 
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn draw<'frame>(&'frame self, out: &mut toolkit::commands::CommandBuffer<'frame>) {
+    fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
+        //use toolkit::commands::DrawCommand;
+        //use toolkit::types::Color;
+        //out.push(DrawCommand::Rect(DrawRectCommand::new(
+        //    self.rect.clone(),
+        //    Color::Simple(Argb8888::BLUE),
+        //    Stroke::NONE,
+        //)));
         if let Some(handle) = &self.handle {
             out.push(DrawTextureCommand::new(
                 self.rect.clone(),
@@ -91,9 +93,9 @@ where
         }
     }
 
-    fn layout(&mut self, bounds: Rect) {
-        self.rect = bounds.clone();
+    fn layout(&mut self, bounds: Bounds) {
+        self.rect = bounds;
     }
 
-    fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<C>) {}
+    fn update(&mut self, _: &FrameContext, _: &mut Sender<C>) {}
 }

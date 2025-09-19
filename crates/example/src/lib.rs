@@ -2,23 +2,35 @@ use toolkit::{
     app::App,
     include_asset,
     types::{Argb8888, Color, LinearGradient, Texture},
-    widget::{Callbacks, Container, Context, WidgetQuery},
+    widget::{Callbacks, Container, Context, Sender, Tree, WidgetQuery},
     window::WindowRequest,
     ContentManager, DesktopOptions, Handle, WidgetEnum, WindowRoot,
 };
 use widgets::{
+    impl_empty_widget,
+    impl_proxy_widget,
     button::{Button, ButtonCallbacks},
-    impl_empty_widget, impl_proxy_widget,
     panel::{HorizontalAlign, Panel},
+    timer::{Timer, TimerCallback},
 };
 
 impl_empty_widget!(Empty);
 
-pub enum WindowContext {}
+pub enum WindowContext {
+    RandomColor,
+}
+
 impl Context for WindowContext {
     type Widget = Root;
     type WindowRoot = Root;
-    fn execute(&self, _: &mut ContentManager, _: &mut toolkit::widget::Tree<Self>) {}
+    fn execute(&self, _: &mut ContentManager, tree: &mut Tree<Self>) {
+        match self {
+            WindowContext::RandomColor => {
+                let button = tree.get_mut_element::<Button<WindowContext, Empty, CallbackImpls>>("Button").unwrap();
+                button.normal.background = Argb8888::random().into();
+            }
+        }
+    }
 }
 
 #[derive(Default)]
@@ -62,7 +74,7 @@ impl WindowRoot<WindowContext, Self> for Root {
             let mut inner_panel = Panel::<WindowContext, Elements>::new();
             inner_panel.rectangle.background = Texture::new(Handle::Texture(texture)).into();
             {
-                let button: Button<WindowContext, Empty, CallbackImpls> = Button::new();
+                let button: Button<WindowContext, Empty, CallbackImpls> = Button::with_id("Button");
                 inner_panel.add_child(Elements::Button(button));
             }
 
@@ -100,6 +112,11 @@ impl WindowRoot<WindowContext, Self> for Root {
 
             panel.add_child(Elements::Panel(inner_panel));
         }
+        let mut timer = Timer::new();
+        timer.interval = 0.01;
+        timer.running = true;
+        timer.repeat = true;
+        panel.add_child(Elements::Timer(timer));
 
         self.0 = panel;
     }
@@ -118,6 +135,7 @@ impl WindowRoot<WindowContext, Self> for Root {
 pub enum Elements {
     Panel(Panel<WindowContext, Elements>),
     Empty(Panel<WindowContext, Empty>),
+    Timer(Timer<WindowContext, CallbackImpls>),
     Button(Button<WindowContext, Empty, CallbackImpls>),
 }
 
@@ -127,28 +145,12 @@ impl Default for Elements {
     }
 }
 
-impl WidgetQuery<WindowContext> for Elements {
-    fn get_element<QW: toolkit::widget::Widget<WindowContext>>(&self, id: &str) -> Option<&QW> {
-        match self {
-            Elements::Button(button) => button.get_element(id),
-            Elements::Panel(panel) => panel.get_element(id),
-            Elements::Empty(panel) => panel.get_element(id),
-        }
-    }
-
-    fn get_mut_element<QW: toolkit::widget::Widget<WindowContext>>(
-        &mut self,
-        id: &str,
-    ) -> Option<&mut QW> {
-        match self {
-            Elements::Button(button) => button.get_mut_element(id),
-            Elements::Panel(panel) => panel.get_mut_element(id),
-            Elements::Empty(panel) => panel.get_mut_element(id),
-        }
-    }
-}
-
 #[derive(Default)]
 pub struct CallbackImpls;
 impl Callbacks for CallbackImpls {}
 impl ButtonCallbacks<WindowContext> for CallbackImpls {}
+impl TimerCallback<WindowContext> for CallbackImpls {
+    fn on_triggered(&self, sender: &mut Sender<WindowContext>) {
+        sender.create_event(WindowContext::RandomColor);
+    }
+}

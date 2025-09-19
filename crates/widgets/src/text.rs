@@ -2,22 +2,23 @@ use toolkit::{
     commands::{CommandBuffer, DrawCommand, DrawTextCommand},
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
     glam::Vec2,
-    types::{Argb8888, Color, Rect},
-    widget::{Context, DesiredSize, Sender, Widget},
+    types::{Argb8888, Bounds},
+    widget::{Anchor, Context, DesiredSize, Spacing, Sender, Widget},
     FontHandle, WidgetQuery,
 };
 
 #[derive(WidgetQuery)]
 pub struct Text<C: Context> {
     pub size: u32,
-    pub color: Color,
+    pub color: Argb8888,
+    pub anchor: Anchor,
+    pub margin: Spacing,
     font: FontHandle,
 
     id: Option<String>,
     value: String,
     layout: Layout,
-    //position: Vec2,
-    rect: Rect,
+    bounds: Bounds,
 
     _phantom: std::marker::PhantomData<C>,
 }
@@ -45,11 +46,12 @@ impl<C: Context> Text<C> {
             value: String::new(),
             font: FontHandle::default(),
             size: 12,
-            color: Argb8888::WHITE.into(),
+            color: Argb8888::WHITE,
             layout: Layout::new(CoordinateSystem::PositiveYDown),
-            rect: Rect::ZERO,
+            anchor: Anchor::Left,
+            bounds: Bounds::ZERO,
+            margin: Spacing::ZERO,
             _phantom: std::marker::PhantomData,
-            //position: Vec2::ZERO,
         };
 
         instance.refresh_layout();
@@ -82,10 +84,6 @@ impl<C: Context> Text<C> {
 }
 
 impl<C: Context> Widget<C> for Text<C> {
-    fn id(&self) -> Option<&str> {
-        self.id.as_deref()
-    }
-
     fn desired_size(&self) -> DesiredSize {
         let font = self.font.as_ref();
         let mut x = 0.0;
@@ -109,37 +107,32 @@ impl<C: Context> Widget<C> for Text<C> {
         });
 
         let y = self.layout.height();
-        DesiredSize::Min(Vec2::new(text_width, y))
+        DesiredSize::Exact(Vec2::new(text_width + self.margin.right, y + self.margin.bottom))
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+    fn anchor(&self) -> Anchor {
+        self.anchor
     }
 
     fn draw<'frame>(&'frame self, out: &mut CommandBuffer<'frame>) {
         out.push(DrawCommand::Text(DrawTextCommand::new(
             self.size,
             self.color.clone(),
-            self.rect.min,
+            self.bounds.position + Vec2::new(self.margin.left, self.margin.top),
             &self.font,
             &self.layout,
         )));
     }
 
-    fn layout(&mut self, bounds: Rect) {
+    fn layout(&mut self, bounds: Bounds) {
+        self.bounds = bounds;
         self.layout.reset(&LayoutSettings {
-            max_width: Some(bounds.max.x + bounds.min.x),
-            max_height: Some(bounds.max.y),
+            max_width: Some(self.bounds.size.x + self.bounds.position.x),
+            max_height: Some(self.bounds.size.y),
             ..LayoutSettings::default()
         });
 
         self.refresh_layout();
-
-        self.rect = bounds;
     }
 
     fn update(&mut self, _: &toolkit::widget::FrameContext, _: &mut Sender<C>) {}

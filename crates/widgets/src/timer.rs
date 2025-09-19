@@ -1,8 +1,7 @@
 use toolkit::{
     commands::CommandBuffer,
-    glam::Vec2,
-    types::Rect,
-    widget::{Callbacks, Context, DesiredSize, FrameContext, Sender, Widget},
+    types::Bounds,
+    widget::{Anchor, Callbacks, Context, DesiredSize, FrameContext, Sender, Widget},
     WidgetQuery,
 };
 
@@ -49,7 +48,7 @@ impl<C: Context, CB: TimerCallback<C>> Timer<C, CB> {
             interval: 0.0,
             running: false,
             repeat: false,
-            elapsed_time: 0.0,
+            elapsed_time: f64::MAX,
             id,
             callbacks: CB::default(),
             _phantom: std::marker::PhantomData,
@@ -58,25 +57,13 @@ impl<C: Context, CB: TimerCallback<C>> Timer<C, CB> {
 }
 
 impl<C: Context, CB: TimerCallback<C>> Widget<C> for Timer<C, CB> {
-    fn id(&self) -> Option<&str> {
-        self.id.as_deref()
-    }
-
     fn desired_size(&self) -> DesiredSize {
-        DesiredSize::Min(Vec2::ZERO)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+        DesiredSize::Ignore
     }
 
     fn draw<'frame>(&'frame self, _: &mut CommandBuffer<'frame>) {}
 
-    fn layout(&mut self, _: Rect) {}
+    fn layout(&mut self, _: Bounds) {}
 
     fn update(&mut self, ctx: &FrameContext, sender: &mut Sender<C>) {
         if !self.running {
@@ -94,5 +81,9 @@ impl<C: Context, CB: TimerCallback<C>> Widget<C> for Timer<C, CB> {
         if !self.repeat {
             self.running = false;
         }
+    }
+
+    fn anchor(&self) -> Anchor {
+        Anchor::Left
     }
 }
