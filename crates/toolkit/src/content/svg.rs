@@ -41,9 +41,6 @@ impl ContentManager {
         let tree = Tree::from_data(bytes, &options)?;
         let original_size = (tree.size().width() as u32, tree.size().height() as u32);
 
-        let mut xd = Pixmap::new(512, 512).unwrap();
-        resvg::render(&tree, Transform::default(), &mut xd.as_mut());
-
         self.svg.push(SvgData {
             tree,
             original_size,
