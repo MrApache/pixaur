@@ -1,12 +1,17 @@
-use derive_more::From;
 use crate::{
-    types::{Argb8888, Color, Texture}, Handle, SvgHandle, TextureHandle
+    types::{Argb8888, Color, LinearGradient, Texture},
+    Handle, SvgHandle, TextureHandle,
 };
+use derive_more::From;
 
 #[derive(Debug, Clone, From)]
 pub enum BackgroundStyle {
     Color(Color),
     Texture(Texture),
+}
+
+impl BackgroundStyle {
+    pub const WHITE: BackgroundStyle = Self::Color(Color::Simple(Argb8888::WHITE));
 }
 
 impl Default for BackgroundStyle {
@@ -35,6 +40,11 @@ impl From<SvgHandle> for BackgroundStyle {
 
 impl From<Argb8888> for BackgroundStyle {
     fn from(value: Argb8888) -> Self {
+        Self::Color(value.into())
+    }
+}
+impl From<LinearGradient> for BackgroundStyle {
+    fn from(value: LinearGradient) -> Self {
         Self::Color(value.into())
     }
 }
