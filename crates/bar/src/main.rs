@@ -5,7 +5,7 @@ use toolkit::{
     glam::Vec2,
     include_asset,
     types::{Argb8888, Stroke},
-    widget::{Anchor, Callbacks, Context, Spacing, Sender, Tree, WidgetQuery},
+    widget::{Anchor, Callbacks, Context, NoID, Sender, Spacing, StaticID, Tree, WidgetQuery},
     window::WindowRequest,
     ContentManager, Error, EventLoop, Handle, SpecialOptions, TargetMonitor, WidgetEnum,
     WindowRoot,
@@ -31,7 +31,7 @@ impl Context for WindowContext {
     fn execute(&self, _: &mut ContentManager, tree: &mut Tree<Self>) {
         match self {
             WindowContext::UpdateClock => {
-                let clock = tree.get_mut_element::<Text<Self>>("Clock").unwrap();
+                let clock = tree.get_mut_element::<Text<Self, StaticID>>("Clock").unwrap();
                 let local: chrono::DateTime<chrono::Local> = chrono::Local::now();
                 clock.set_text(&format!("{}", local.format("%H:%M")));
             }
@@ -42,15 +42,18 @@ impl Context for WindowContext {
 
 #[derive(WidgetEnum)]
 #[context(WindowContext)]
+//552 - Before
+//480 - After
 enum Elements {
     Button(
         Button<
             WindowContext,
-            Rectangle<WindowContext, Row<WindowContext, StartButton>>,
+            Rectangle<WindowContext, Row<WindowContext, StartButton, NoID>, NoID>,
             CallbackImpls,
+            NoID,
         >,
     ),
-    Tray(Row<WindowContext, TrayElements>),
+    Tray(Row<WindowContext, TrayElements, NoID>),
 }
 
 impl Default for Elements {
@@ -61,9 +64,11 @@ impl Default for Elements {
 
 #[derive(WidgetEnum)]
 #[context(WindowContext)]
+//280 - Before
+//256 - After
 enum StartButton {
-    Icon(Image<WindowContext>),
-    Text(Text<WindowContext>)
+    Icon(Image<WindowContext, NoID>),
+    Text(Text<WindowContext, NoID>),
 }
 
 impl Default for StartButton {
@@ -74,9 +79,11 @@ impl Default for StartButton {
 
 #[derive(WidgetEnum)]
 #[context(WindowContext)]
+//280 - Before
+//272 - After
 enum TrayElements {
-    Text(Text<WindowContext>),
-    Timer(Timer<WindowContext, CallbackImpls>),
+    Text(Text<WindowContext, StaticID>),
+    Timer(Timer<WindowContext, CallbackImpls, NoID>),
 }
 
 impl Default for TrayElements {
@@ -105,16 +112,22 @@ impl WindowRoot<WindowContext, Root> for Root {
         let font = content_manager.include_font(include_asset!("MSW98UI-Regular.ttf"));
         let icon = content_manager.include_svg_as_texture(include_asset!("arch.svg"), 20, 20);
 
-        let mut root = Row::<WindowContext, Elements>::new();
+        let mut root = Row::<WindowContext, Elements>::new_default();
         root.spacing = 2.0;
         root.background = Argb8888::new(212, 208, 200, 255).into();
         root.stroke = Stroke::NONE;
 
         let mut start: Button<
             WindowContext,
-            Rectangle<WindowContext, Row<WindowContext, StartButton>>,
+            Rectangle<WindowContext, Row<WindowContext, StartButton, NoID>, NoID>,
             CallbackImpls,
+            NoID,
         > = Button::new();
+
+        println!(
+            "Size of tray elements {}",
+            std::mem::size_of::<TrayElements>()
+        );
 
         start.padding = Spacing::all(1.0);
         start.size = Vec2::new(67.0, 30.0);
@@ -167,7 +180,7 @@ impl WindowRoot<WindowContext, Root> for Root {
 
         root.content_mut().push(Elements::Button(start));
 
-        let mut tray = Row::with_id("Tray");
+        let mut tray = Row::new();
         {
             tray.anchor = Anchor::Right | Anchor::VerticalCenter;
             tray.height = Some(35.0);
@@ -181,7 +194,7 @@ impl WindowRoot<WindowContext, Root> for Root {
                 Argb8888::WHITE,
             ];
 
-            let mut time = Text::with_id("Clock");
+            let mut time = Text::new_static("Clock");
             time.set_font(font.clone());
             time.set_text("00:00");
             time.size = 18;
@@ -191,7 +204,7 @@ impl WindowRoot<WindowContext, Root> for Root {
             time.margin.top = 3.0;
             tray.content_mut().push(TrayElements::Text(time));
 
-            let mut timer = Timer::<WindowContext, CallbackImpls>::new();
+            let mut timer = Timer::<WindowContext, CallbackImpls, NoID>::new();
             timer.interval = 0.1;
             timer.running = true;
             timer.repeat = true;

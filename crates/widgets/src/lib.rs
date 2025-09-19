@@ -2,7 +2,6 @@
 
 pub mod button;
 pub mod image;
-pub mod panel;
 pub mod rectangle;
 pub mod row;
 pub mod text;

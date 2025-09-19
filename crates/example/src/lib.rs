@@ -7,10 +7,8 @@ use toolkit::{
     ContentManager, DesktopOptions, Handle, WidgetEnum, WindowRoot,
 };
 use widgets::{
-    impl_empty_widget,
     impl_proxy_widget,
     button::{Button, ButtonCallbacks},
-    panel::{HorizontalAlign, Panel},
     timer::{Timer, TimerCallback},
 };
 
@@ -74,7 +72,7 @@ impl WindowRoot<WindowContext, Self> for Root {
             let mut inner_panel = Panel::<WindowContext, Elements>::new();
             inner_panel.rectangle.background = Texture::new(Handle::Texture(texture)).into();
             {
-                let button: Button<WindowContext, Empty, CallbackImpls> = Button::with_id("Button");
+                let button: Button<WindowContext, Empty, CallbackImpls> = Button::new_id("Button");
                 inner_panel.add_child(Elements::Button(button));
             }
 

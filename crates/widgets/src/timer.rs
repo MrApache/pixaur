@@ -1,7 +1,10 @@
 use toolkit::{
     commands::CommandBuffer,
     types::Bounds,
-    widget::{Anchor, Callbacks, Context, DesiredSize, FrameContext, Sender, Widget},
+    widget::{
+        Anchor, Callbacks, Context, DefaultID, DesiredSize, FrameContext, NoID, Sender, StaticID,
+        Widget, WidgetID,
+    },
     WidgetQuery,
 };
 
@@ -16,34 +19,78 @@ impl<C: Context> TimerCallback<C> for TimerMock {}
 impl Callbacks for TimerMock {}
 
 #[derive(WidgetQuery)]
-pub struct Timer<C: Context, CB: TimerCallback<C>> {
+pub struct Timer<C, CB = TimerMock, ID = DefaultID>
+where
+    C: Context,
+    CB: TimerCallback<C>,
+    ID: WidgetID,
+{
     pub interval: f64,
     pub running: bool,
     pub repeat: bool,
 
     elapsed_time: f64,
-    id: Option<String>,
+    id: ID::IdType,
     callbacks: CB,
     _phantom: std::marker::PhantomData<C>,
 }
 
-impl<C: Context, CB: TimerCallback<C>> Default for Timer<C, CB> {
-    fn default() -> Self {
-        Self::new()
+impl<C, CB> Timer<C, CB, NoID>
+where
+    C: Context,
+    CB: TimerCallback<C>,
+{
+    #[must_use]
+    pub fn new() -> Self {
+        Self::new_with_id(())
     }
 }
 
-impl<C: Context, CB: TimerCallback<C>> Timer<C, CB> {
+impl<C, CB> Timer<C, CB, StaticID>
+where
+    C: Context,
+    CB: TimerCallback<C>,
+{
+    #[must_use]
+    pub fn new(id: &'static str) -> Self {
+        Self::new_with_id(id)
+    }
+}
+
+impl<C, CB> Timer<C, CB, DefaultID>
+where
+    C: Context,
+    CB: TimerCallback<C>,
+{
     #[must_use]
     pub fn new() -> Self {
         Self::new_with_id(None)
     }
 
+    #[must_use]
     pub fn with_id(id: impl Into<String>) -> Self {
         Self::new_with_id(Some(id.into()))
     }
+}
 
-    fn new_with_id(id: Option<String>) -> Self {
+impl<C, CB, ID> Default for Timer<C, CB, ID>
+where
+    C: Context,
+    CB: TimerCallback<C>,
+    ID: WidgetID,
+{
+    fn default() -> Self {
+        Self::new_with_id(ID::IdType::default())
+    }
+}
+
+impl<C, CB, ID> Timer<C, CB, ID>
+where
+    C: Context,
+    CB: TimerCallback<C>,
+    ID: WidgetID,
+{
+    fn new_with_id(id: ID::IdType) -> Self {
         Self {
             interval: 0.0,
             running: false,
@@ -56,7 +103,12 @@ impl<C: Context, CB: TimerCallback<C>> Timer<C, CB> {
     }
 }
 
-impl<C: Context, CB: TimerCallback<C>> Widget<C> for Timer<C, CB> {
+impl<C, CB, ID> Widget<C> for Timer<C, CB, ID>
+where
+    C: Context,
+    CB: TimerCallback<C>,
+    ID: WidgetID
+{
     fn desired_size(&self) -> DesiredSize {
         DesiredSize::Ignore
     }

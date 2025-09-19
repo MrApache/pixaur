@@ -2,7 +2,10 @@ use toolkit::{
     commands::{CommandBuffer, DrawCommand, DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
     types::{styling::BackgroundStyle, Bounds, Stroke},
-    widget::{Anchor, Context, DesiredSize, Empty, FrameContext, Spacing, Sender, Widget},
+    widget::{
+        Anchor, Context, DefaultID, DesiredSize, Empty, FrameContext, NoID, Sender, Spacing,
+        StaticID, Widget, WidgetID,
+    },
     WidgetQuery,
 };
 
@@ -20,10 +23,11 @@ struct LayoutData {
 }
 
 #[derive(WidgetQuery)]
-pub struct Row<C, W = Empty>
+pub struct Row<C, W = Empty, ID = DefaultID>
 where
     C: Context,
     W: Widget<C>,
+    ID: WidgetID,
 {
     pub padding: Spacing,
 
@@ -38,7 +42,7 @@ where
     pub height: Option<f32>,
 
     bounds: Bounds,
-    id: Option<String>,
+    id: ID::IdType,
 
     #[content]
     content: Vec<W>,
@@ -46,32 +50,62 @@ where
     _phantom: std::marker::PhantomData<C>,
 }
 
-impl<C, W> Default for Row<C, W>
-where
-    C: Context,
-    W: Widget<C>,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<C, W> Row<C, W>
+impl<C, W> Row<C, W, NoID>
 where
     C: Context,
     W: Widget<C>,
 {
     #[must_use]
     pub const fn new() -> Self {
+        Self::new_with_id(())
+    }
+}
+
+impl<C, W> Row<C, W, StaticID>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    #[must_use]
+    pub const fn new_static(id: &'static str) -> Self {
+        Self::new_with_id(id)
+    }
+}
+
+impl<C, W> Row<C, W, DefaultID>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    #[must_use]
+    pub const fn new_default() -> Self {
         Self::new_with_id(None)
     }
 
     #[must_use]
-    pub fn with_id(id: impl Into<String>) -> Self {
+    pub fn new_id(id: impl Into<String>) -> Self {
         Self::new_with_id(Some(id.into()))
     }
+}
 
-    const fn new_with_id(id: Option<String>) -> Self {
+impl<C, W, ID> Default for Row<C, W, ID>
+where
+    C: Context,
+    W: Widget<C>,
+    ID: WidgetID,
+{
+    fn default() -> Self {
+        Self::new_with_id(ID::IdType::default())
+    }
+}
+
+impl<C, W, ID> Row<C, W, ID>
+where
+    C: Context,
+    W: Widget<C>,
+    ID: WidgetID,
+{
+    const fn new_with_id(id: ID::IdType) -> Self {
         Self {
             padding: Spacing::ZERO,
             spacing: 0.0,
@@ -156,7 +190,12 @@ where
         data
     }
 
-    fn get_child_size(data: &LayoutData, inner_bounds: &Bounds, desired_size: DesiredSize, anchor: Anchor) -> Vec2 {
+    fn get_child_size(
+        data: &LayoutData,
+        inner_bounds: &Bounds,
+        desired_size: DesiredSize,
+        anchor: Anchor,
+    ) -> Vec2 {
         match desired_size {
             DesiredSize::Exact(size) => size,
             DesiredSize::ExactY(height) => {
@@ -213,15 +252,16 @@ where
             }
             _ => {}
         });
-        
+
         position
     }
 }
 
-impl<C, W> Widget<C> for Row<C, W>
+impl<C, W, ID> Widget<C> for Row<C, W, ID>
 where
     C: Context,
     W: Widget<C>,
+    ID: WidgetID
 {
     fn desired_size(&self) -> DesiredSize {
         match (self.width, self.height) {
@@ -270,8 +310,10 @@ where
             if let DesiredSize::Ignore = desired_size {
                 continue;
             }
-            let child_size = Self::get_child_size(&data, &inner_bounds, desired_size, child.anchor());
-            let mut child_position = Self::get_child_position(child, child_size, self.spacing, &mut data, &inner_bounds);
+            let child_size =
+                Self::get_child_size(&data, &inner_bounds, desired_size, child.anchor());
+            let mut child_position =
+                Self::get_child_position(child, child_size, self.spacing, &mut data, &inner_bounds);
             child_position.x += self.bounds.position.x;
             let child_rect = Bounds::new(child_position, child_size);
             child.layout(child_rect);

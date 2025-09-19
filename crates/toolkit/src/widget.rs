@@ -171,29 +171,58 @@ where
     }
 }
 
-/* TODO
 pub trait WidgetID: Send + Sync + Default + 'static {
-    type IdType;
+    type IdType: Send + Sync + Default;
+    fn as_option(id: &Self::IdType) -> Option<&str>;
+    fn eq_id(id: &Self::IdType,  other: &str) -> bool;
 }
 
 #[derive(Default)]
 pub struct StaticID;
 impl WidgetID for StaticID {
     type IdType = &'static str;
+
+    fn as_option(id: &Self::IdType) -> Option<&str> {
+        Some(id)
+    }
+
+    fn eq_id(id: &Self::IdType,  other: &str) -> bool {
+        (*id).eq(other)
+    }
 }
 
 #[derive(Default)]
-pub struct ZeroID;
-impl WidgetID for ZeroID {
+pub struct NoID;
+impl WidgetID for NoID {
     type IdType = ();
+
+    fn as_option((): &Self::IdType) -> Option<&str> {
+        None
+    }
+
+    fn eq_id((): &Self::IdType,  _: &str) -> bool {
+        false
+    }
 }
 
 #[derive(Default)]
 pub struct DefaultID;
 impl WidgetID for DefaultID {
     type IdType = Option<String>;
+
+    fn as_option(id: &Self::IdType) -> Option<&str> {
+        id.as_deref()
+    }
+
+    fn eq_id(id: &Self::IdType,  other: &str) -> bool {
+        if let Some(id) = id {
+            id.eq(other)
+        }
+        else {
+            false
+        }
+    }
 }
-*/
 
 #[allow(unused_variables)]
 pub trait WidgetQuery<C>

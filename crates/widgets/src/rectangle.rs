@@ -2,36 +2,90 @@ use toolkit::{
     commands::{CommandBuffer, DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
     types::{styling::BackgroundStyle, Bounds, Stroke},
-    widget::{Anchor, Context, DesiredSize, FrameContext, Sender, Widget},
+    widget::{
+        Anchor, Context, DefaultID, DesiredSize, FrameContext, NoID, Sender, StaticID, Widget,
+        WidgetID,
+    },
     WidgetQuery,
 };
 
 #[derive(WidgetQuery)]
-pub struct Rectangle<C, W>
+pub struct Rectangle<C, W, ID = DefaultID>
 where
     C: Context,
     W: Widget<C>,
+    ID: WidgetID,
 {
     pub background: BackgroundStyle,
     pub stroke: Stroke,
     pub anchor: Anchor,
     pub width: Option<f32>,
     pub height: Option<f32>,
-    id: Option<String>,
     bounds: Bounds,
 
+    id: ID::IdType,
     #[content]
     content: W,
 
     _phantom: std::marker::PhantomData<C>,
 }
 
-impl<C, W> Default for Rectangle<C, W>
+impl<C, W> Rectangle<C, W, NoID>
 where
     C: Context,
     W: Widget<C>,
 {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::new_with_id(())
+    }
+}
+
+impl<C, W> Rectangle<C, W, StaticID>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    #[must_use]
+    pub fn new(id: &'static str) -> Self {
+        Self::new_with_id(id)
+    }
+}
+
+impl<C, W> Rectangle<C, W, DefaultID>
+where
+    C: Context,
+    W: Widget<C>,
+{
+    #[must_use]
+    pub fn new() -> Self {
+        Self::new_with_id(None)
+    }
+
+    #[must_use]
+    pub fn with_id(id: impl Into<String>) -> Self {
+        Self::new_with_id(Some(id.into()))
+    }
+}
+
+impl<C, W, ID> Default for Rectangle<C, W, ID>
+where
+    C: Context,
+    W: Widget<C>,
+    ID: WidgetID,
+{
     fn default() -> Self {
+        Self::new_with_id(ID::IdType::default())
+    }
+}
+
+impl<C, W, ID> Rectangle<C, W, ID>
+where
+    C: Context,
+    W: Widget<C>,
+    ID: WidgetID,
+{
+    fn new_with_id(id: ID::IdType) -> Self {
         Self {
             background: BackgroundStyle::WHITE,
             stroke: Stroke::default(),
@@ -39,32 +93,29 @@ where
             bounds: Bounds::default(),
             width: None,
             height: None,
-            id: None,
+            id,
             content: W::default(),
 
             _phantom: std::marker::PhantomData,
         }
     }
-}
 
-impl<C, W> Rectangle<C, W>
-where
-    C: Context,
-    W: Widget<C>,
-{
-    pub fn content_mut(&mut self) -> &mut W {
+    #[must_use]
+    pub const fn content_mut(&mut self) -> &mut W {
         &mut self.content
     }
 
-    pub fn content(&self) -> &W {
+    #[must_use]
+    pub const fn content(&self) -> &W {
         &self.content
     }
 }
 
-impl<C, W> Widget<C> for Rectangle<C, W>
+impl<C, W, ID> Widget<C> for Rectangle<C, W, ID>
 where
     C: Context,
     W: Widget<C>,
+    ID: WidgetID,
 {
     fn anchor(&self) -> Anchor {
         self.anchor

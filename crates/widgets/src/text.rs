@@ -3,44 +3,84 @@ use toolkit::{
     fontdue::layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
     glam::Vec2,
     types::{Argb8888, Bounds},
-    widget::{Anchor, Context, DesiredSize, Spacing, Sender, Widget},
+    widget::{
+        Anchor, Context, DefaultID, DesiredSize, NoID, Sender, Spacing, StaticID, Widget, WidgetID,
+    },
     FontHandle, WidgetQuery,
 };
 
 #[derive(WidgetQuery)]
-pub struct Text<C: Context> {
+pub struct Text<C, ID = DefaultID>
+where
+    C: Context,
+    ID: WidgetID,
+{
     pub size: u32,
     pub color: Argb8888,
     pub anchor: Anchor,
     pub margin: Spacing,
     font: FontHandle,
 
-    id: Option<String>,
     value: String,
     layout: Layout,
     bounds: Bounds,
 
+    id: ID::IdType,
+
     _phantom: std::marker::PhantomData<C>,
 }
 
-impl<C: Context> Default for Text<C> {
+impl<C, ID> Default for Text<C, ID>
+where
+    C: Context,
+    ID: WidgetID,
+{
     fn default() -> Self {
-        Self::new()
+        Self::new_with_id(ID::IdType::default())
     }
 }
 
-impl<C: Context> Text<C> {
+impl<C> Text<C, NoID>
+where
+    C: Context,
+{
     #[must_use]
     pub fn new() -> Self {
+        Self::new_with_id(())
+    }
+}
+
+impl<C> Text<C, StaticID>
+where
+    C: Context,
+{
+    #[must_use]
+    pub fn new_static(id: &'static str) -> Self {
+        Self::new_with_id(id)
+    }
+}
+
+impl<C> Text<C, DefaultID>
+where
+    C: Context,
+{
+    #[must_use]
+    pub fn new_default() -> Self {
         Self::new_with_id(None)
     }
 
     #[must_use]
-    pub fn with_id(id: impl Into<String>) -> Self {
+    pub fn new_id(id: impl Into<String>) -> Self {
         Self::new_with_id(Some(id.into()))
     }
+}
 
-    fn new_with_id(id: Option<String>) -> Self {
+impl<C, ID> Text<C, ID>
+where
+    C: Context,
+    ID: WidgetID,
+{
+    fn new_with_id(id: ID::IdType) -> Self {
         let mut instance = Self {
             id,
             value: String::new(),
@@ -83,7 +123,11 @@ impl<C: Context> Text<C> {
     }
 }
 
-impl<C: Context> Widget<C> for Text<C> {
+impl<C, ID> Widget<C> for Text<C, ID>
+where
+    C: Context,
+    ID: WidgetID
+{
     fn desired_size(&self) -> DesiredSize {
         let font = self.font.as_ref();
         let mut x = 0.0;
@@ -107,7 +151,10 @@ impl<C: Context> Widget<C> for Text<C> {
         });
 
         let y = self.layout.height();
-        DesiredSize::Exact(Vec2::new(text_width + self.margin.right, y + self.margin.bottom))
+        DesiredSize::Exact(Vec2::new(
+            text_width + self.margin.right,
+            y + self.margin.bottom,
+        ))
     }
 
     fn anchor(&self) -> Anchor {

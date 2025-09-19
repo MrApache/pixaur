@@ -2,7 +2,9 @@ use toolkit::{
     commands::{DrawRectCommand, DrawTextureCommand},
     glam::Vec2,
     types::{styling::BackgroundStyle, Argb8888, Bounds, Color, Stroke},
-    widget::{Anchor, Context, DesiredSize, Sender, Spacing, Widget},
+    widget::{
+        Anchor, Context, DefaultID, DesiredSize, NoID, Sender, Spacing, StaticID, Widget, WidgetID,
+    },
     WidgetQuery,
 };
 
@@ -48,11 +50,12 @@ pub enum Alignment {
 }
 
 #[derive(WidgetQuery)]
-pub struct Button<C, W, CB>
+pub struct Button<C, W, CB, ID = DefaultID>
 where
     C: Context,
     W: Widget<C>,
     CB: ButtonCallbacks<C>,
+    ID: WidgetID,
 {
     pub size: Vec2,
     pub normal: ButtonStyle,
@@ -63,27 +66,45 @@ where
     pub anchor: Anchor,
 
     rect: Bounds,
-    id: Option<String>,
     state: ButtonFsm,
 
     #[content]
     content: W,
     callbacks: CB,
+    id: ID::IdType,
     _phantom: std::marker::PhantomData<C>,
 }
 
-impl<C, W, CB> Default for Button<C, W, CB>
+impl<C, W, CB> Button<C, W, CB, DefaultID>
 where
     C: Context,
     W: Widget<C>,
     CB: ButtonCallbacks<C>,
 {
-    fn default() -> Self {
-        Self::new()
+    #[must_use]
+    pub fn new_default() -> Self {
+        Self::new_with_id(None)
+    }
+
+    #[must_use]
+    pub fn new_id(id: impl Into<String>) -> Self {
+        Self::new_with_id(Some(id.into()))
     }
 }
 
-impl<C, W, CB> Button<C, W, CB>
+impl<C, W, CB> Button<C, W, CB, StaticID>
+where
+    C: Context,
+    W: Widget<C>,
+    CB: ButtonCallbacks<C>,
+{
+    #[must_use]
+    pub fn new_static(id: &'static str) -> Self {
+        Self::new_with_id(id)
+    }
+}
+
+impl<C, W, CB> Button<C, W, CB, NoID>
 where
     C: Context,
     W: Widget<C>,
@@ -91,15 +112,30 @@ where
 {
     #[must_use]
     pub fn new() -> Self {
-        Self::new_with_id(None)
+        Self::new_with_id(())
     }
+}
 
-    #[must_use]
-    pub fn with_id(id: impl Into<String>) -> Self {
-        Self::new_with_id(Some(id.into()))
+impl<C, W, CB, ID> Default for Button<C, W, CB, ID>
+where
+    C: Context,
+    W: Widget<C>,
+    CB: ButtonCallbacks<C>,
+    ID: WidgetID,
+{
+    fn default() -> Self {
+        Self::new_with_id(ID::IdType::default())
     }
+}
 
-    fn new_with_id(id: Option<String>) -> Self {
+impl<C, W, CB, ID> Button<C, W, CB, ID>
+where
+    C: Context,
+    W: Widget<C>,
+    CB: ButtonCallbacks<C>,
+    ID: WidgetID,
+{
+    fn new_with_id(id: ID::IdType) -> Self {
         Self {
             size: Vec2::new(30.0, 30.0),
             normal: ButtonStyle {
@@ -141,17 +177,21 @@ where
             _phantom: std::marker::PhantomData,
         }
     }
-
     pub fn content_mut(&mut self) -> &mut W {
         &mut self.content
     }
+
+    pub fn content(&self) -> &W {
+        &self.content
+    }
 }
 
-impl<C, W, CB> Widget<C> for Button<C, W, CB>
+impl<C, W, CB, ID> Widget<C> for Button<C, W, CB, ID>
 where
     C: Context,
     W: Widget<C>,
     CB: ButtonCallbacks<C>,
+    ID: WidgetID,
 {
     fn anchor(&self) -> Anchor {
         self.anchor

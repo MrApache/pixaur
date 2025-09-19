@@ -115,7 +115,7 @@ pub fn widget_enum_derive(input: TokenStream) -> TokenStream {
                     #(#get_element_match)*
                 }
             }
-        
+
             fn get_mut_element<QW: toolkit::widget::Widget<WindowContext>>(
                 &mut self,
                 id: &str,
@@ -324,27 +324,21 @@ fn generate_with_content(
     quote! {
         impl #impl_generics toolkit::widget::WidgetQuery<C> for #name #ty_generics #where_clause {
             fn get_element<QW: toolkit::widget::Widget<C>>(&self, id: &str) -> Option<&QW> {
-                if let Some(ref self_id) = self.id {
-                    if self_id == id {
-                        return self.as_any().downcast_ref::<QW>();
-                    }
+                if ID::eq_id(&self.id, id) {
+                    return self.as_any().downcast_ref::<QW>();
                 }
-
                 self.#content_field_name.get_element(id)
             }
 
             fn get_mut_element<QW: toolkit::widget::Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
-                if let Some(ref self_id) = self.id {
-                    if self_id == id {
-                        return self.as_any_mut().downcast_mut::<QW>();
-                    }
+                if ID::eq_id(&self.id, id) {
+                    return self.as_any_mut().downcast_mut::<QW>();
                 }
-
                 self.#content_field_name.get_mut_element(id)
             }
 
             fn id(&self) -> Option<&str> {
-                self.id.as_deref()
+                ID::as_option(&self.id)
             }
 
             fn as_any(&self) -> &dyn std::any::Any {
@@ -367,25 +361,21 @@ fn generate_without_content(
     quote! {
         impl #impl_generics toolkit::widget::WidgetQuery<C> for #name #ty_generics #where_clause {
             fn get_element<QW: toolkit::widget::Widget<C>>(&self, id: &str) -> Option<&QW> {
-                if let Some(ref self_id) = self.id {
-                    if self_id == id {
-                        return self.as_any().downcast_ref::<QW>();
-                    }
+                if ID::eq_id(&self.id, id) {
+                    return self.as_any().downcast_ref::<QW>();
                 }
                 None
             }
 
             fn get_mut_element<QW: toolkit::widget::Widget<C>>(&mut self, id: &str) -> Option<&mut QW> {
-                if let Some(ref self_id) = self.id {
-                    if self_id == id {
-                        return self.as_any_mut().downcast_mut::<QW>();
-                    }
+                if ID::eq_id(&self.id, id) {
+                    return self.as_any_mut().downcast_mut::<QW>();
                 }
                 None
             }
 
             fn id(&self) -> Option<&str> {
-                self.id.as_deref()
+                ID::as_option(&self.id)
             }
 
             fn as_any(&self) -> &dyn std::any::Any {
