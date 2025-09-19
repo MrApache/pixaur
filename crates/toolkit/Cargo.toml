@@ -23,6 +23,7 @@ guillotiere.workspace = true
 enum_dispatch.workspace = true
 derive_more.workspace = true
 rand.workspace = true
+bitflags.workspace = true
 
 # Images
 image.workspace = true
