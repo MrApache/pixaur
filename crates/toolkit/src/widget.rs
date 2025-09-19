@@ -3,6 +3,22 @@ use glam::Vec2;
 use std::any::Any;
 use wl_client::ButtonState;
 
+
+bitflags! {
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Anchor: u8 {
+        const Left   = 1 << 0;
+        const Right  = 1 << 1;
+        const Top    = 1 << 2;
+        const Bottom = 1 << 3;
+        const Center = 1 << 4;
+
+        const VerticalCenter   = 1 << 5;
+        const HorizontalCenter = 1 << 6;
+    }
+}
+
+
 #[derive(Default, Clone, Copy, Debug)]
 pub struct Padding {
     pub left: f32,
