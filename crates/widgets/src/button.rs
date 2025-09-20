@@ -24,8 +24,8 @@ pub struct ButtonStyle {
 }
 
 #[derive(Default)]
-pub struct ButtonMockCallbacks;
-impl<C: Context> ButtonCallbacks<C> for ButtonMockCallbacks {}
+pub struct ButtonMock;
+impl<C: Context> ButtonCallbacks<C> for ButtonMock {}
 
 #[allow(dead_code, unused_variables)]
 pub trait ButtonCallbacks<C: Context>: Default + Send + Sync + 'static {
@@ -50,7 +50,7 @@ pub enum Alignment {
 }
 
 #[derive(WidgetQuery)]
-pub struct Button<C, W, CB, ID = DefaultID>
+pub struct Button<C, W, CB = ButtonMock, ID = DefaultID>
 where
     C: Context,
     W: Widget<C>,
@@ -68,10 +68,10 @@ where
     rect: Bounds,
     state: ButtonFsm,
 
-    #[content]
-    content: W,
     callbacks: CB,
     id: ID::IdType,
+    #[content]
+    content: W,
     _phantom: std::marker::PhantomData<C>,
 }
 
