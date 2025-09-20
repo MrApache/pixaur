@@ -42,8 +42,8 @@ impl Bounds {
     pub const fn shrink(&self, value: &Spacing) -> Self {
         let min_x = self.position.x + value.left;
         let min_y = self.position.y + value.top;
-        let max_x = self.size.x - value.right;
-        let max_y = self.size.y - value.bottom;
+        let max_x = self.size.x - value.right - value.left;
+        let max_y = self.size.y - value.bottom - value.top;
         Self {
             position: Vec2::new(min_x, min_y),
             size: Vec2::new(max_x, max_y),
