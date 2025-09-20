@@ -1,9 +1,12 @@
+use crate::{
+    commands::CommandBuffer,
+    types::{Bounds, Color},
+    ContentManager, WindowRoot,
+};
 use bitflags::bitflags;
-use crate::{commands::CommandBuffer, types::Bounds, ContentManager, WindowRoot};
 use glam::Vec2;
 use std::any::Any;
 use wl_client::ButtonState;
-
 
 bitflags! {
     #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,7 +21,6 @@ bitflags! {
         const HorizontalCenter = 1 << 6;
     }
 }
-
 
 #[derive(Default, Clone, Copy, Debug)]
 pub struct Spacing {
@@ -174,7 +176,7 @@ where
 pub trait WidgetID: Send + Sync + Default + 'static {
     type IdType: Send + Sync + Default;
     fn as_option(id: &Self::IdType) -> Option<&str>;
-    fn eq_id(id: &Self::IdType,  other: &str) -> bool;
+    fn eq_id(id: &Self::IdType, other: &str) -> bool;
 }
 
 #[derive(Default)]
@@ -186,7 +188,7 @@ impl WidgetID for StaticID {
         Some(id)
     }
 
-    fn eq_id(id: &Self::IdType,  other: &str) -> bool {
+    fn eq_id(id: &Self::IdType, other: &str) -> bool {
         (*id).eq(other)
     }
 }
@@ -200,7 +202,7 @@ impl WidgetID for NoID {
         None
     }
 
-    fn eq_id((): &Self::IdType,  _: &str) -> bool {
+    fn eq_id((): &Self::IdType, _: &str) -> bool {
         false
     }
 }
@@ -214,11 +216,10 @@ impl WidgetID for DefaultID {
         id.as_deref()
     }
 
-    fn eq_id(id: &Self::IdType,  other: &str) -> bool {
+    fn eq_id(id: &Self::IdType, other: &str) -> bool {
         if let Some(id) = id {
             id.eq(other)
-        }
-        else {
+        } else {
             false
         }
     }
@@ -285,7 +286,7 @@ pub struct Empty;
 
 impl<C> Widget<C> for Empty
 where
-    C: Context
+    C: Context,
 {
     fn desired_size(&self) -> DesiredSize {
         DesiredSize::Ignore
@@ -302,7 +303,7 @@ where
 
 impl<C> WidgetQuery<C> for Empty
 where
-    C: Context
+    C: Context,
 {
     fn id(&self) -> Option<&str> {
         None
