@@ -20,7 +20,9 @@ use widgets::{
     timer::{Timer, TimerCallback},
 };
 
+#[derive(Default)]
 enum WindowContext {
+    #[default]
     UpdateClock,
     PrintText,
 }
@@ -31,7 +33,9 @@ impl Context for WindowContext {
     fn execute(&self, _: &mut ContentManager, tree: &mut Tree<Self>) {
         match self {
             WindowContext::UpdateClock => {
-                let clock = tree.get_mut_element::<Text<Self, StaticID>>("Clock").unwrap();
+                let clock = tree
+                    .get_mut_element::<Text<Self, StaticID>>("Clock")
+                    .unwrap();
                 let local: chrono::DateTime<chrono::Local> = chrono::Local::now();
                 clock.set_text(&format!("{}", local.format("%H:%M")));
             }
@@ -123,11 +127,6 @@ impl WindowRoot<WindowContext, Root> for Root {
             CallbackImpls,
             NoID,
         > = Button::new();
-
-        println!(
-            "Size of tray elements {}",
-            std::mem::size_of::<TrayElements>()
-        );
 
         start.padding = Spacing::all(1.0);
         start.size = Vec2::new(67.0, 30.0);
@@ -247,13 +246,74 @@ fn main() -> Result<(), Error> {
     let mut event_loop = EventLoop::new(app)?;
     event_loop.run()
 
-    /*
-    let mut event_loop = toolkit::headless::HeadlessEventLoop::new(app);
-    loop {
-        event_loop.run_logic();
-        event_loop.run_draw();
+    //let mut event_loop = toolkit::headless::HeadlessEventLoop::new(app);
+    //loop {
+    //    event_loop.run_logic();
+    //    event_loop.run_draw();
 
-        std::thread::sleep(std::time::Duration::from_millis(16));
-    }
-    */
+    //    std::thread::sleep(std::time::Duration::from_millis(16));
+    //}
 }
+
+/*
+define_widget! {
+    MyWidget {
+        SolidColorBackground {
+            color: background
+        },
+        Border {
+            color: outer_border,
+            width: border_width
+        },
+        Spacing {
+            all: 1px
+        },
+        Border {
+            color: inner_border,
+            width: _
+        },
+        Spacing {
+            all: 1px
+        },
+        Content {
+            name: content,
+            parameter: W,
+        },
+    }
+}
+
+type Test = MyWidget<WindowContext, NoID, Row<WindowContext, Empty, NoID>>;
+
+widget! {
+    FooWidget {
+        #[draw(0)]
+        background:   Argb8888,
+
+        #[draw(0)]
+        outer_border: Border {
+            left:   Argb8888,
+            right:  Argb8888,
+            top:    Argb8888,
+            bottom: Argb8888,
+
+            #[read(border_width)]
+            width: f32,
+        }
+
+        #[draw(1), spacing(1)]
+        inner_border: Border {
+            right:  Argb8888,
+            bottom: Argb8888,
+            #[read(border_width)]
+            width: f32,
+        }
+
+        border_width: f32,
+
+        #[draw(2), spacing(1)]
+        content: Content {
+            parameter: W
+        }
+    }
+}
+*/
