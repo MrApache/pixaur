@@ -314,7 +314,7 @@ where
                 Self::get_child_size(&data, &inner_bounds, desired_size, child.anchor());
             let mut child_position =
                 Self::get_child_position(child, child_size, self.spacing, &mut data, &inner_bounds);
-            child_position.x += self.bounds.position.x;
+            //child_position.x += inner_bounds.position.x;
             let child_rect = Bounds::new(child_position, child_size);
             child.layout(child_rect);
         }
