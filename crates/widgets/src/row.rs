@@ -107,8 +107,8 @@ where
 {
     const fn new_with_id(id: ID::IdType) -> Self {
         Self {
-            padding: Spacing::ZERO,
-            spacing: 0.0,
+            padding: Spacing::all(4.0),
+            spacing: 2.0,
             bounds: Bounds::ZERO,
             background: BackgroundStyle::WHITE,
             stroke: Stroke::NONE,
