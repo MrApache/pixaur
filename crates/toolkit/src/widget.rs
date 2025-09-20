@@ -107,7 +107,7 @@ pub trait Container<C: Context, W: Widget<C>>: Widget<C> {
     fn children_mut(&mut self) -> &mut [W];
 }
 
-pub trait Context: Send + Sync + Sized + 'static {
+pub trait Context: Send + Sync + Default + Sized + 'static {
     type Widget: Widget<Self>;
     type WindowRoot: WindowRoot<Self, Self::Widget>;
     fn execute(&self, content: &mut ContentManager, tree: &mut Tree<Self>);
