@@ -1,20 +1,23 @@
 use toolkit::{
     app::App,
+    glam::Vec2,
     include_asset,
     types::{Argb8888, Color, LinearGradient, Texture},
-    widget::{Callbacks, Container, Context, Sender, Tree, WidgetQuery},
+    widget::{Anchor, Callbacks, Context, Empty, NoID, Sender, StaticID, Tree, WidgetQuery},
     window::WindowRequest,
     ContentManager, DesktopOptions, Handle, WidgetEnum, WindowRoot,
 };
 use widgets::{
-    impl_proxy_widget,
     button::{Button, ButtonCallbacks},
+    impl_proxy_widget,
+    rectangle::Rectangle,
+    row::Row,
     timer::{Timer, TimerCallback},
 };
 
-impl_empty_widget!(Empty);
-
+#[derive(Default)]
 pub enum WindowContext {
+    #[default]
     RandomColor,
 }
 
@@ -24,15 +27,17 @@ impl Context for WindowContext {
     fn execute(&self, _: &mut ContentManager, tree: &mut Tree<Self>) {
         match self {
             WindowContext::RandomColor => {
-                let button = tree.get_mut_element::<Button<WindowContext, Empty, CallbackImpls>>("Button").unwrap();
-                button.normal.background = Argb8888::random().into();
+                //let button = tree
+                //    .get_mut_element::<Button<WindowContext, Empty, CallbackImpls, StaticID>>("Button")
+                //    .unwrap();
+                //button.normal.background = Argb8888::random().into();
             }
         }
     }
 }
 
 #[derive(Default)]
-pub struct Root(Panel<WindowContext, Elements>);
+pub struct Root(Row<WindowContext, Elements, NoID>);
 impl_proxy_widget!(Root, WindowContext);
 
 impl WindowRoot<WindowContext, Self> for Root {
@@ -46,77 +51,75 @@ impl WindowRoot<WindowContext, Self> for Root {
 
     fn setup(&mut self, app: &mut App<WindowContext, Self, Self>) {
         let content_manager = app.content_manager();
-
         let texture = content_manager.include_texture(include_asset!("billy.jpg"));
 
-        let mut panel = Panel::<WindowContext, Elements>::new();
-        panel.horizontal_align = HorizontalAlign::Start;
-        panel.rectangle.background = Argb8888::BLACK.into();
-
+        let mut root = Row::new();
+        root.background = Argb8888::RED.into();
         {
-            let mut inner_panel = Panel::<WindowContext, Elements>::new();
-            inner_panel.rectangle.background = Argb8888::WHITE.into();
-            inner_panel.horizontal_align = HorizontalAlign::Start;
+            let mut inner_row = Row::new();
+            inner_row.background = Argb8888::WHITE.into();
+            inner_row.spacing = 10.0;
             {
                 for _ in 0..10 {
-                    let mut empty_panel = Panel::<WindowContext, Empty>::new();
-                    empty_panel.rectangle.background = Argb8888::random().into();
-                    inner_panel.add_child(Elements::Empty(empty_panel));
+                    let mut empty = Rectangle::<WindowContext, Empty, NoID>::new();
+                    empty.background = Argb8888::random().into();
+                    inner_row.content_mut().push(Elements::Empty(empty));
                 }
             }
 
-            panel.add_child(Elements::Panel(inner_panel));
+            root.content_mut().push(Elements::Row(inner_row));
         }
 
         {
-            let mut inner_panel = Panel::<WindowContext, Elements>::new();
-            inner_panel.rectangle.background = Texture::new(Handle::Texture(texture)).into();
+            let mut inner_row = Row::new();
+            inner_row.background = Texture::new(Handle::Texture(texture)).into();
             {
-                let button: Button<WindowContext, Empty, CallbackImpls> = Button::new_id("Button");
-                inner_panel.add_child(Elements::Button(button));
+                let mut button: Button<WindowContext, Empty, CallbackImpls, StaticID> =
+                    Button::new_static("Button");
+                button.size = Vec2::new(100.0, 100.0);
+                button.anchor = Anchor::Center;
+                inner_row.content_mut().push(Elements::Button(button));
             }
 
-            panel.add_child(Elements::Panel(inner_panel));
+            root.content_mut().push(Elements::Row(inner_row));
         }
 
         {
-            let mut inner_panel = Panel::<WindowContext, Elements>::new();
-            inner_panel.rectangle.background =
+            let mut inner_row = Row::new();
+            inner_row.background =
                 Color::LinearGradient(LinearGradient::new(Argb8888::PURPLE, Argb8888::BLUE, 45.0))
                     .into();
-            inner_panel.horizontal_align = HorizontalAlign::Start;
-            inner_panel.spacing = 10.0;
+            inner_row.spacing = 10.0;
             {
                 for _ in 0..5 {
-                    let mut empty_panel = Panel::<WindowContext, Empty>::new();
-                    empty_panel.rectangle.background = Argb8888::random().into();
-                    inner_panel.add_child(Elements::Empty(empty_panel));
+                    let mut empty = Rectangle::<WindowContext, Empty, NoID>::new();
+                    empty.background = Argb8888::random().into();
+                    inner_row.content_mut().push(Elements::Empty(empty));
                 }
             }
-            panel.add_child(Elements::Panel(inner_panel));
+            root.content_mut().push(Elements::Row(inner_row));
         }
 
         {
-            let mut inner_panel = Panel::<WindowContext, Elements>::with_id("Id");
-            inner_panel.rectangle.background = Argb8888::WHITE.into();
-            inner_panel.horizontal_align = HorizontalAlign::Start;
+            let mut inner_row = Row::new();
+            inner_row.background = Argb8888::WHITE.into();
             {
                 for _ in 0..10 {
-                    let mut empty_panel = Panel::<WindowContext, Empty>::new();
-                    empty_panel.rectangle.background = Argb8888::random().into();
-                    inner_panel.add_child(Elements::Empty(empty_panel));
+                    let mut empty = Rectangle::<WindowContext, Empty, NoID>::new();
+                    empty.background = Argb8888::random().into();
+                    inner_row.content_mut().push(Elements::Empty(empty));
                 }
             }
 
-            panel.add_child(Elements::Panel(inner_panel));
+            root.content_mut().push(Elements::Row(inner_row));
         }
-        let mut timer = Timer::new();
+        let mut timer = Timer::<WindowContext, CallbackImpls, NoID>::new();
         timer.interval = 0.01;
         timer.running = true;
         timer.repeat = true;
-        panel.add_child(Elements::Timer(timer));
+        root.content_mut().push(Elements::Timer(timer));
 
-        self.0 = panel;
+        self.0 = root;
     }
 
     fn root_mut(&mut self) -> &mut Self {
@@ -131,15 +134,15 @@ impl WindowRoot<WindowContext, Self> for Root {
 #[derive(WidgetEnum)]
 #[context(WindowContext)]
 pub enum Elements {
-    Panel(Panel<WindowContext, Elements>),
-    Empty(Panel<WindowContext, Empty>),
-    Timer(Timer<WindowContext, CallbackImpls>),
-    Button(Button<WindowContext, Empty, CallbackImpls>),
+    Row(Row<WindowContext, Elements, NoID>),
+    Empty(Rectangle<WindowContext, Empty, NoID>),
+    Timer(Timer<WindowContext, CallbackImpls, NoID>),
+    Button(Button<WindowContext, Empty, CallbackImpls, StaticID>),
 }
 
 impl Default for Elements {
     fn default() -> Self {
-        Self::Panel(Panel::default())
+        Self::Row(Row::default())
     }
 }
 
