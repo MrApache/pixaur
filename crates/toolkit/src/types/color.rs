@@ -2,13 +2,19 @@ use derive_more::From;
 use glam::Vec4;
 use rand::Rng;
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, Clone, PartialEq, From)]
 pub enum Color {
     Simple(Argb8888),
     LinearGradient(LinearGradient),
 }
 
-#[derive(Debug, Clone)]
+impl Default for Color {
+    fn default() -> Self {
+        Self::Simple(Argb8888::WHITE)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Argb8888 {
     pub r: u8,
     pub g: u8,
@@ -90,11 +96,21 @@ impl From<&Argb8888> for Vec4 {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LinearGradient {
     pub from: Argb8888,
     pub to: Argb8888,
     pub degree: f32,
+}
+
+impl Default for LinearGradient {
+    fn default() -> Self {
+        Self {
+            from: Argb8888::WHITE,
+            to: Argb8888::BLACK,
+            degree: 90.0,
+        }
+    }
 }
 
 impl LinearGradient {
